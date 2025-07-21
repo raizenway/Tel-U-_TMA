@@ -3,10 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 import clsx from "clsx";
-import { BarChart, Home, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function WelcomePage() {
   const [tab, setTab] = useState("dashboard");
+  const router = useRouter();
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -16,37 +19,43 @@ export default function WelcomePage() {
           <Image src="/Logo.png" alt="Logo Telkom University" width={190} height={80} />
         </div>
 
-        <div className="px-6 py-8 border-y flex items-center space-x-4.5">
-          <Image src="/user-icon.png" alt="User" width={70} height={48} className="rounded-full" />
+        <div className="px-6 py-8 border-y flex items-center space-x-4">
+          <Image
+            src="/user-icon.png"
+            alt="User"
+            width={70}
+            height={48}
+            className="rounded-full"
+          />
           <div>
             <p className="font-semibold text-gray-600">Wilson Curtis</p>
             <p className="text-sm text-gray-500">012345678</p>
           </div>
         </div>
 
-       <nav className="flex-1 px-4 mt-4 space-y-2 text-sm font-medium">
-        <div className="flex flex-col w-[300px] h-[1024px] pt-10 gap-6">
-  {/* Menu Sidebar */}
-   <button className="w-full flex items-center space-x-4 text-gray-500 rounded px-3 py-2 cursor-pointer transition-all duration-300 hover:bg-gradient-to-r  hover:from-red-500 hover:to-gray-500 width">
-     <span>🏠</span><span>Home</span>
-  </button>
-
-  <button className="w-full flex items-center space-x-2 text-gray-500 rounded px-3 py-2 cursor-pointer transition-all duration-300 hover:bg-gradient-to-r  hover:from-red-500 hover:to-gray-500">
-    <span>📊</span>
-    <span>Star Assessment</span>
-  </button>
-
-  <button className="w-full flex items-center space-x-2 text-gray-500 rounded px-3 py-2 cursor-pointer transition-all duration-300 hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-500">
-    <span>📈</span>
-    <span>Star Result</span>
-  </button>
-
-  <button className="w-full flex items-center space-x-2 text-gray-500 rounded px-3 py-2 cursor-pointer transition-all duration-300 hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-500">
-    <span>ℹ️</span>
-    <span>About IMA</span>
-  </button>
-  </div>
-</nav>
+        <nav className="flex-1 px-4 mt-4 space-y-2 text-sm font-medium">
+          <div className="flex flex-col w-full pt-10 gap-6">
+            <button className="w-full flex items-center space-x-4 text-gray-500 rounded px-3 py-2 transition-all hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-500">
+              <span>🏠</span>
+              <span>Home</span>
+            </button>
+            <button
+              onClick={() => router.push("/assessment")}
+              className="w-full flex items-center space-x-4 text-gray-500 rounded px-3 py-2 transition-all hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-500"
+            >
+              <span>📊</span>
+              <span>Star Assessment</span>
+            </button>
+            <button className="w-full flex items-center space-x-4 text-gray-500 rounded px-3 py-2 transition-all hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-500">
+              <span>📈</span>
+              <span>Star Result</span>
+            </button>
+            <button className="w-full flex items-center space-x-4 text-gray-500 rounded px-3 py-2 transition-all hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-500">
+              <span>ℹ️</span>
+              <span>About IMA</span>
+            </button>
+          </div>
+        </nav>
 
         <div className="px-6 py-4 border-t">
           <button className="flex items-center gap-2 text-sm text-red-600 font-semibold">
@@ -56,8 +65,8 @@ export default function WelcomePage() {
         </div>
       </aside>
 
-      {/* Konten Utama */}
-      <div className="flex-1 flex flex-col justify-between w-[176px] h-8 mt-4 ml-[3px] rounded-[12px] pt-4 pr-8 pb-4 pl-8">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col pt-4 px-8 pb-4">
         {/* Header */}
         <header className="bg-white flex justify-between items-center px-6 py-4 border-b rounded-lg">
           <h1 className="text-black font-semibold text-lg">
@@ -70,7 +79,7 @@ export default function WelcomePage() {
         </header>
 
         {/* Tabs */}
-        <div className="flex space-x-6 border-b border-gray-300 px-6 pt-6 ">
+        <div className="flex space-x-4 border-b border-gray-300 px-6 pt-6">
           {[
             { name: "Welcome", id: "welcome" },
             { name: "Dashboard", id: "dashboard" },
@@ -91,8 +100,20 @@ export default function WelcomePage() {
           ))}
         </div>
 
-              <main className="p-6 space-y-6">
-          {/* Welcome Box */}
+        {/* Tombol Simpan di Atas */}
+        {tab === "dashboard" && (
+          <div className="flex justify-end px-6 mt-4">
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 text-sm rounded-lg shadow font-semibold"
+              onClick={() => alert("Assessment baru dibuat")}
+            >
+              Buat Assessment
+            </Button>
+          </div>
+        )}
+
+        {/* Main Area */}
+        <main className="p-6 space-y-6 flex-1">
           {tab === "welcome" && (
             <div className="rounded-xl shadow bg-gradient-to-tr from-red-500 to-blue-500 text-white p-8 flex items-center justify-between">
               <div>
@@ -111,22 +132,24 @@ export default function WelcomePage() {
             </div>
           )}
 
-          {/* Konten lainnya bisa ditambahkan di sini */}
-        
-
           {tab === "dashboard" && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-9">
-              <div className="bg-red-700  text-white p-5 shadow rounded">📋 UPPS/kampus Cabang</div>
-              <div className="bg-amber-500 text-white p-6 shadow rounded">📄 Jumlah Variable & Pertanyaa</div>
-              <div className="bg-blue-700 text-white p-6 shadow rounded">ℹ️ Assesment Submitted</div>
-              <div className="bg-emerald-600 text-white p-6 shadow rounded">ℹ️ Assesment Approved</div>
+            <div className="space-y-6">
+              {/* Statistik */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-9">
+                <div className="bg-red-700 text-white p-5 shadow rounded">📋 UPPS/kampus Cabang</div>
+                <div className="bg-amber-500 text-white p-5 shadow rounded">📄 Jumlah Variable & Pertanyaan</div>
+                <div className="bg-blue-700 text-white p-5 shadow rounded">ℹ️ Assessment Submitted</div>
+                <div className="bg-emerald-600 text-white p-5 shadow rounded">✅ Assessment Approved</div>
+              </div>
             </div>
           )}
 
           {tab === "user-manual" && (
             <div className="bg-white p-6 shadow rounded">
-              <h3 className="text-gray-500 font-bold mb-2">📖 User Manual</h3>
-              <p className="text-sm text-gray-500">Panduan lengkap tentang cara menggunakan dashboard ini...</p>
+              <h3 className="text-gray-700 font-bold mb-2">📖 User Manual</h3>
+              <p className="text-sm text-gray-500">
+                Panduan lengkap tentang cara menggunakan dashboard ini...
+              </p>
             </div>
           )}
         </main>

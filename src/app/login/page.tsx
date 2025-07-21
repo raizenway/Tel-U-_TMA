@@ -66,7 +66,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
+                className="mt-1 w-full px-3 py-2 border border-black-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
                 placeholder="••••••••"
               />
             </div>
