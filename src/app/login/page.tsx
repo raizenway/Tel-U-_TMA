@@ -22,6 +22,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Kiri: Form */}
+      <div>
+        Cek Ngepush
+      </div>
       <div className="w-full md:w-1/2 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-md">
           {/* Logo Tel-U */}
