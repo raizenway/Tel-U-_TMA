@@ -1,0 +1,47 @@
+#MUST READ: Hanya file inisiasi otomatisasi deployment ke VPS, konfigurasi pada VPS dan pengaturan secrets pada repositori belum dilakukan
+# Nama alur kerja yang akan tampil di tab Actions GitHub
+name: Deploy to VPS
+
+# Pemicu (trigger): jalankan alur kerja ini setiap kali ada 'push' ke branch 'master'
+on:
+  push:
+    branches:
+      - master
+
+# Pekerjaan (jobs) yang akan dieksekusi
+jobs:
+  deploy:
+    # Menentukan sistem operasi untuk menjalankan pekerjaan ini
+    runs-on: ubuntu-latest
+
+    # Langkah-langkah yang akan dijalankan
+    steps:
+      # Langkah 1: Checkout kode dari repositori
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Langkah 2: Login ke VPS via SSH dan jalankan perintah deployment
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          script: |
+            # Masuk ke direktori proyek di VPS
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+
+            # Tarik perubahan terbaru dari branch master
+            git pull origin master
+
+            # echo "Installing NPM packages..."
+            # npm install
+            # echo "Building assets..."
+            # npm run build
+            # pm2 restart all
+
+            # Jika perlu mengubah permission folder
+            # sudo chown -R www-data:www-data storage bootstrap/cache
+            # sudo chmod -R 775 storage bootstrap/cache
+
+            echo "Deployment complete! ✅"
