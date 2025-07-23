@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Button
-} from "@/components/ui/button";
+} from "@/components/ui/tab-button";
 import {
   Tooltip,
   TooltipProvider,
