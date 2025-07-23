@@ -1,207 +1,216 @@
 "use client";
 
-import Image from "next/image";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Button
+} from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
+import {
+  Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight
+} from "lucide-react";
 
-export default function LoginPage() {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-2">{title}</h2>
+      <div className="bg-gray-50 p-4 rounded-lg border space-x-2 space-y-2">{children}</div>
+    </div>
+  );
+}
+
+// | No | Kategori              | Penjelasan                        |
+// | -- | --------------------- | --------------------------------- |
+// | 1  | **Default**           | Tombol biasa                      |
+// | 2  | **Outline & Ghost**   | Tombol dengan style minimalis     |
+// | 3  | **Destructive**       | Tombol berbahaya (hapus, dll)     |
+// | 4  | **Icon + Label**      | Tombol dengan ikon dan teks       |
+// | 5  | **Icon Only**         | Tombol hanya ikon (action cepat)  |
+// | 6  | **Loading Button**    | Menampilkan animasi loading       |
+// | 7  | **Ukuran Tombol**     | Variasi ukuran: sm, default, lg   |
+// | 8  | **Full Width**        | Tombol selebar container          |
+// | 9  | **Disabled**          | Tidak bisa diklik                 |
+// | 10 | **Toggle**            | Toggle antara aktif/nonaktif      |
+// | 11 | **Dropdown Menu**     | Aksi pilihan pakai dropdown       |
+// | 12 | **Dialog**            | Konfirmasi dialog sebelum aksi    |
+// | 13 | **Upload File**       | Tombol bertema upload             |
+// | 14 | **Copy ke Clipboard** | Menyalin teks ke clipboard        |
+// | 15 | **Link ke Halaman**   | Arahkan ke halaman lain           |
+// | 16 | **Tooltip**           | Info tambahan saat hover          |
+// | 17 | **Warna Custom**      | Style tombol bebas pakai Tailwind |
+// | 18 | **Button Group**      | Tombol grup untuk navigasi        |
+
+
+export default function UniversalButtonPage() {
+  const [toggle, setToggle] = useState(false);
   const router = useRouter();
 
-  const handleLoginRedirect = () => {
-    router.push("/login");
+  const handleCopy = () => {
+    navigator.clipboard.writeText("Teks berhasil disalin!");
+    alert("Teks disalin ke clipboard!");
   };
 
   return (
-    <div className="container">
-      {/* Background Bubble */}
-      <div className="background">
-        <div className="circle blue" />
-        <div className="circle pink" />
-        <div className="circle violet" />
-      </div>
+    <TooltipProvider>
+      <div className="min-h-screen bg-white p-10">
+        <h1 className="text-3xl font-bold mb-10">🎛️ Demo Tombol Universal Lengkap</h1>
+        <div className="grid gap-8">
 
-      {/* Login Card */}
-      <div className="card">
-        <Image
-          src="/Logo.png"
-          alt="Logo Telkom University"
-          width={90}
-          height={90}
-          className="logo"
-        />
+          <Section title="1. Default">
+            <Button>Click Me</Button>
+          </Section>
 
-        <h1>Selamat Datang 🎓</h1>
-        <p>
-          Di <span>Sistem Akademik Mahasiswa</span>
-          <br />
-          Telkom University
-        </p>
+          <Section title="2. Outline & Ghost">
+            <Button variant="outline">Outline</Button>
+            <Button variant="ghost">Ghost</Button>
+          </Section>
 
-        <div className="user-img">
-          <Image src="/user-icon.png" alt="Ilustrasi Mahasiswa" fill />
+          <Section title="3. Destructive">
+            <Button variant="destructive">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Hapus
+            </Button>
+          </Section>
+
+          <Section title="4. Icon + Label">
+            <Button>
+              <Plus className="mr-2 w-4 h-4" />
+              Tambah Data
+            </Button>
+          </Section>
+
+          <Section title="5. Icon Only">
+            <Button variant="ghost" size="icon"><Edit2 className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
+            <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+          </Section>
+
+          <Section title="6. Loading Button">
+            <Button disabled>
+              <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              Loading...
+            </Button>
+          </Section>
+
+          <Section title="7. Ukuran Tombol">
+            <Button size="sm">Kecil</Button>
+            <Button size="default">Normal</Button>
+            <Button size="lg">Besar</Button>
+          </Section>
+
+          <Section title="8. Full Width">
+            <Button className="w-full justify-center">
+              <ArrowRight className="h-4 w-4 mr-2" />
+              Lanjut
+            </Button>
+          </Section>
+
+          <Section title="9. Disabled">
+            <Button disabled>Tidak Bisa Diklik</Button>
+          </Section>
+
+          <Section title="10. Toggle Button">
+            <Button variant={toggle ? "default" : "outline"} onClick={() => setToggle(!toggle)}>
+              {toggle ? "Aktif" : "Nonaktif"}
+            </Button>
+          </Section>
+
+          <Section title="11. Dropdown Menu">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">Pilih Aksi</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => alert("Edit")}>Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alert("Hapus")}>Hapus</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alert("Logout")}>Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Section>
+
+          <Section title="12. Dialog Konfirmasi">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="destructive">Hapus Akun</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Yakin ingin menghapus akun?</DialogTitle>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="ghost">Batal</Button>
+                  <Button variant="destructive" onClick={() => alert("Dihapus")}>Hapus</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </Section>
+
+          <Section title="13. Upload File">
+            <Button>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload File
+            </Button>
+          </Section>
+
+          <Section title="14. Copy ke Clipboard">
+            <Button onClick={handleCopy}>
+              <Copy className="mr-2 h-4 w-4" />
+              Salin Teks
+            </Button>
+          </Section>
+
+          <Section title="15. Link ke Halaman">
+            <Button onClick={() => router.push("/dashboard")}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Ke Dashboard
+            </Button>
+          </Section>
+
+          <Section title="16. Tooltip Button">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Info className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Info tambahan</TooltipContent>
+            </Tooltip>
+          </Section>
+
+          <Section title="17. Warna Custom (Tailwind)">
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-white">Tombol Kuning</Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white">Tombol Ungu</Button>
+          </Section>
+
+          <Section title="18. Button Group">
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <Button variant="outline">Prev</Button>
+              <Button variant="default">1</Button>
+              <Button variant="outline">Next</Button>
+            </div>
+          </Section>
+
         </div>
-
-        <button onClick={handleLoginRedirect}>Masuk</button>
-
-        <footer>
-          &copy; {new Date().getFullYear()} Telkom University. All rights reserved.
-        </footer>
       </div>
-
-      <style jsx>{`
-        .container {
-          position: relative;
-          min-height: 100vh;
-          background: linear-gradient(135deg, #e0f2fe, #f8fafc);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem;
-          overflow: hidden;
-        }
-
-        .background {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-        }
-
-        .circle {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(70px);
-          opacity: 0.3;
-        }
-
-        .blue {
-          width: 260px;
-          height: 260px;
-          background: #93c5fd;
-          top: 8%;
-          left: 5%;
-          animation: pulse 7s infinite;
-        }
-
-        .pink {
-          width: 320px;
-          height: 320px;
-          background: #fbcfe8;
-          bottom: 4%;
-          right: 6%;
-          animation: ping 9s infinite;
-        }
-
-        .violet {
-          width: 200px;
-          height: 200px;
-          background: #ddd6fe;
-          top: 48%;
-          left: 42%;
-          transform: rotate(15deg);
-        }
-
-        .card {
-          position: relative;
-          z-index: 10;
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(20px);
-          border-radius: 2rem;
-          padding: 3rem;
-          max-width: 600px;
-          width: 100%;
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
-          text-align: center;
-          animation: fadeInUp 0.8s ease-out;
-        }
-
-        .logo {
-          display: block;
-          margin: 0 auto 1.5rem;
-          filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
-        }
-
-        h1 {
-          font-size: 2.5rem;
-          font-weight: 800;
-          color: #1e293b;
-          margin-bottom: 1rem;
-        }
-
-        p {
-          font-size: 1.1rem;
-          color: #334155;
-          margin-bottom: 2rem;
-          line-height: 1.6;
-        }
-
-        p span {
-          color: #1d4ed8;
-          font-weight: 600;
-        }
-
-        .user-img {
-          position: relative;
-          width: 220px;
-          height: 220px;
-          margin: 0 auto 2rem;
-        }
-
-        button {
-          background: linear-gradient(to right, #1d4ed8, #6366f1);
-          color: white;
-          border: none;
-          padding: 0.85rem 2.2rem;
-          border-radius: 1.5rem;
-          font-size: 1.05rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
-        }
-
-        button:hover {
-          transform: scale(1.06);
-          box-shadow: 0 12px 30px rgba(99, 102, 241, 0.6);
-        }
-
-        footer {
-          margin-top: 2rem;
-          font-size: 0.75rem;
-          color: #64748b;
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes ping {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.3;
-          }
-          50% {
-            transform: scale(1.12);
-            opacity: 0.1;
-          }
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.3;
-          }
-          50% {
-            transform: scale(1.07);
-            opacity: 0.15;
-          }
-        }
-      `}</style>
-    </div>
+    </TooltipProvider>
   );
 }
