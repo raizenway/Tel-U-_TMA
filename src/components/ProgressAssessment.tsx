@@ -1,26 +1,40 @@
-// components/ProgressAssessment.tsx
+"use client";
+
 export default function ProgressAssessment() {
   return (
-    <div className="bg-white p-4 rounded-xl shadow">
-      <h2 className="text-lg font-bold mb-4">Progres Assessment</h2>
-      <div className="space-y-3">
-        <div>
-          <p>Submit <span className="float-right">59%</span></p>
-          <div className="h-2 bg-gray-200 rounded">
-            <div className="h-2 bg-blue-600 rounded w-[59%]"></div>
-          </div>
+    <div className="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 className="text-xl font-bold text-gray-800">Progress Assessment</h2>
+
+      {/* Submit */}
+      <div>
+        <div className="flex justify-between text-sm mb-1">
+          <span>Submit</span>
+          <span className="font-semibold text-blue-700">59%</span>
         </div>
-        <div>
-          <p>Approve <span className="float-right">27%</span></p>
-          <div className="h-2 bg-gray-200 rounded">
-            <div className="h-2 bg-green-500 rounded w-[27%]"></div>
-          </div>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div className="h-2 bg-blue-600 rounded-full w-[59%]"></div>
         </div>
-        <div>
-          <p>Belum Selesai <span className="float-right">11%</span></p>
-          <div className="h-2 bg-gray-200 rounded">
-            <div className="h-2 bg-gray-500 rounded w-[11%]"></div>
-          </div>
+      </div>
+
+      {/* Approve */}
+      <div>
+        <div className="flex justify-between text-sm mb-1">
+          <span>Approve</span>
+          <span className="font-semibold text-green-700">27%</span>
+        </div>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div className="h-2 bg-green-500 rounded-full w-[27%]"></div>
+        </div>
+      </div>
+
+      {/* Belum Selesai */}
+      <div>
+        <div className="flex justify-between text-sm mb-1">
+          <span>Belum Selesai</span>
+          <span className="font-semibold text-gray-700">11%</span>
+        </div>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div className="h-2 bg-gray-500 rounded-full w-[11%]"></div>
         </div>
       </div>
     </div>
