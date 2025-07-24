@@ -110,6 +110,8 @@ export default function TableApproval() {
           >
             <option value="Tel-U Jakarta">Tel-U Jakarta</option>
             <option value="Tel-U Bandung">Tel-U Bandung</option>
+             <option value="Tel-U Surabaya">Tel-U Surabaya</option>
+            <option value="Tel-U Purwokerto">Tel-U Purwokerto</option>
           </select>
         </div>
       </div>
