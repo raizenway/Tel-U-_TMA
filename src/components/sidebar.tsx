@@ -44,16 +44,18 @@ export default function Sidebar({ navItems, setTab }: SidebarProps) {
       {/* Navigation Items */}
       <nav className="flex-1 px-4 mt-4 space-y-2 text-sm font-medium">
         <div className="flex flex-col gap-4">
-          {navItems.map(({ name, value, action }) => (
-            <Button
-              key={name}
-              variant="ghost"
-              className="w-full justify-start text-gray-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-gray-600"
-              onClick={() => (action ? action() : setTab(value || ""))}
-            >
-              {name}
-            </Button>
-          ))}
+          {navItems
+            .filter((item) => item.value !== "dashboard") // 👈 HILANGKAN DASHBOARD
+            .map(({ name, value, action }) => (
+              <Button
+                key={name}
+                variant="ghost"
+                className="w-full justify-start text-gray-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-gray-600"
+                onClick={() => (action ? action() : setTab(value || ""))}
+              >
+                {name}
+              </Button>
+            ))}
         </div>
       </nav>
 
