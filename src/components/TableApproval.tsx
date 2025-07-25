@@ -44,7 +44,7 @@ export default function TableApproval() {
       id: 2,
       variable: "V2",
       indikator: "Indikator 2",
-      pertanyaan: "Apakah layanan cepat?",
+      pertanyaan: "Apakah layanan nya cepat?",
       jawaban: "Cukup",
       skor: "4",
       tipeSoal: "Skala Likert",
@@ -134,7 +134,7 @@ export default function TableApproval() {
             {currentData.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center py-4 text-gray-500">
-                  Tidak ada data yang tersedia
+                  Tidak ada data yang tersedia.
                 </td>
               </tr>
             ) : (
