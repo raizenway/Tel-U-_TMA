@@ -14,6 +14,7 @@ import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/components/PurwokertoTab";
 import TopbarHeader from "@/components/TopbarHeader";
+import SurabayaTab from "@/components/SurabayaTab";
 
 import {
   DropdownMenu,
@@ -91,7 +92,7 @@ export default function WelcomePage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex justify-end items-center gap-2 border px-3 py-2 rounded-md bg-white text-red-700">
+                <button className="bg-red-500 flex justify-end items-center gap-2 border px-3 py-2 rounded-md bg-white text-red-700">
                   <User className="w-4 h-4" />
                   <span className="hidden sm:inline">Akun</span>
                   <ChevronDown className="w-4 h-4" />
@@ -115,6 +116,7 @@ export default function WelcomePage() {
           {tab === "dashboard" && <DashboardTab />}
           {tab === "user-manual" && <UserManualTab />}
           {tab === "purwokerto" && <PurwokertoTab />}
+          {tab == "surabaya" && <SurabayaTab/>}
           {tab === "assessment-form" && (
             <AssessmentForm
               onSelectCampus={(campus) => {
