@@ -6,7 +6,7 @@ type ButtonType = "button" | "submit" | "reset" | "link";
 
 interface ButtonProps {
   type?: ButtonType;
-  variant?: "primary" | "secondary" | "danger" | "success" | "ghost";
+  variant?: "primary" | "secondary" | "danger" | "success" | "ghost" | "outline";
   size?: "sm" | "md" | "lg";
   className?: string;
   id?: string;
@@ -15,7 +15,7 @@ interface ButtonProps {
   disabled?: boolean;
   isLoading?: boolean;
   icon?: LucideIcon;
-  iconPosition?: "left" | "right";
+  iconPosition?: "left" | "right"| "star";
   fullWidth?: boolean;
   children: React.ReactNode;
 }
@@ -41,6 +41,8 @@ const Button: React.FC<ButtonProps> = ({
     danger: "bg-red-600 text-white hover:bg-red-700",
     success: "bg-green-600 text-white hover:bg-green-700",
     ghost: "bg-transparent text-gray-800 hover:bg-gray-100",
+    outline: "border border-gray-300 text-gray-800 bg-transparent hover:bg-gray-100",
+
   };
 
   const sizeClassMap: Record<string, string> = {
