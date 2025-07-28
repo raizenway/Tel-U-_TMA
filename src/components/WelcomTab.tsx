@@ -5,20 +5,62 @@ import Button from "@/components/button";
 
 const WelcomeTab = () => {
   return (
-    <div className="space-y-8">
-      <div className="rounded-xl shadow overflow-hidden">
-        <Image
-          src="/Hallo.png"
-          alt="Banner"
-          width={1080}
-          height={318}
-          className="w-full h-auto"
-          priority
-        />
+    <div className="space-y-10">
+      {/* ===================== */}
+      {/* BANNER SAPAAN FINAL */}
+      {/* ===================== */}
+      <div className="relative rounded-xl overflow-hidden shadow-lg min-h-[220px] flex">
+        {/* Bagian kiri: biru dengan ilustrasi */}
+        <div className="w-1/2 bg-[#2b4d91] flex items-center justify-center p-6">
+          <Image
+            src="/waving woman.png"
+            alt="Ilustrasi Wanita"
+            width={180}
+            height={180}
+            className="object-contain"
+          />
+        </div>
+
+        {/* Bagian kanan: merah */}
+        <div className="w-1/2 relative bg-[#ec1c24] text-white flex flex-col justify-center p-6 lg:p-10">
+          {/* Lekukan biru di atas kanan */}
+          <svg
+            viewBox="0 0 500 220"
+            className="absolute top-0 right-0 h-[80px] w-full"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0,0 Q400,100 500,0 L500,0 L500,80 L0,80 Z"
+              fill="#6a87c1"
+            />
+          </svg>
+
+          {/* Logo Telkom */}
+          <div className="absolute top-4 right-6 z-10 w-[120px]">
+            <Image
+              src="/Frame.png"
+              alt="Telkom University"
+              width={120}
+              height={40}
+              className="object-contain"
+            />
+          </div>
+
+          {/* Teks Sapaan */}
+          <div className="relative z-10">
+            <h2 className="text-xl lg:text-2xl font-semibold">Hallo, Wilson Curtis</h2>
+            <p className="text-sm lg:text-base mt-2">
+              Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {[ 
+      {/* ===================== */}
+      {/* 3 KARTU INFORMASI */}
+      {/* ===================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-7">
+        {[
           {
             img: "/about tma.png",
             title: "About TMA",
