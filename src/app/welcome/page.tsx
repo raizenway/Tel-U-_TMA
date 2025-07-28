@@ -11,12 +11,19 @@ import { LogOut } from "lucide-react";
 export default function WelcomePage() {
   const [tab, setTab] = useState("welcome");
   const [selectedCampus, setSelectedCampus] = useState("");
+  const [showSubmenu, setShowSubmenu] = useState(false);
   const router = useRouter();
 
   const navItems = [
     { name: "🏠 Home", value: "welcome" },
     { name: "📝 Start Assessment", value: "assessment-form" },
-    { name: "📈 Start Result", action: () => alert("Coming soon") },
+    {
+      name: "📊 Assessment Result",
+      toggle: () => setShowSubmenu((prev) => !prev),
+      submenu: [
+        { name: " Approval Assessment", value: "approval-assessment" },
+      ],
+    },
     { name: "📘 About IMA", value: "user-manual" },
   ];
 
@@ -37,16 +44,36 @@ export default function WelcomePage() {
         </div>
 
         <nav className="flex-1 px-4 mt-4 space-y-2 text-sm font-medium">
-          <div className="flex flex-col gap-4">
-            {navItems.map(({ name, value, action }) => (
-              <Button
-                key={name}
-                variant="ghost"
-                className="w-full justify-start text-gray-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-gray-600"
-                onClick={() => (action ? action() : setTab(value || ""))}
-              >
-                {name}
-              </Button>
+          <div className="flex flex-col gap-2">
+            {navItems.map(({ name, value, action, toggle, submenu }) => (
+              <div key={name}>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-gray-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-gray-600"
+                  onClick={() => {
+                    if (action) return action();
+                    if (toggle) return toggle();
+                    setTab(value || "");
+                  }}
+                >
+                  {name}
+                </Button>
+
+                {submenu && showSubmenu && (
+                  <div className="pl-4 space-y-1">
+                    {submenu.map((sub) => (
+                      <Button
+                        key={sub.name}
+                        variant="ghost"
+                        className="w-full justify-start text-gray-500 hover:text-white hover:bg-gradient-to-r from-red-400 to-gray-500 text-sm"
+                        onClick={() => setTab(sub.value)}
+                      >
+                        {sub.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </nav>
@@ -109,7 +136,6 @@ export default function WelcomePage() {
                 <div className="bg-red-700 text-white p-5 shadow rounded-xl">📋 UPPS/Kampus Cabang</div>
                 <div className="bg-amber-500 text-white p-5 shadow rounded-xl">📄 Jumlah Variabel & Pertanyaan</div>
                 <div className="bg-[#263859] text-white p-5 shadow rounded-xl">ℹ️ Assessment Submitted</div>
-                <div className="bg-emerald-600 text-white p-5 shadow rounded-xl">✅ Assessment Approved</div>
               </div>
               <ProgressAssessment />
             </div>
@@ -139,7 +165,6 @@ export default function WelcomePage() {
           {tab === "assessment-form" && (
             <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
               <div className="flex justify-between items-center flex-wrap gap-4 cursor-pointer">
-                
                 <Button
                   variant="ghost"
                   className="text-red-600 hover:underline text-sm font-semibold gap-1"
@@ -171,6 +196,8 @@ export default function WelcomePage() {
               </div>
             </div>
           )}
+
+         
         </main>
       </div>
     </div>
