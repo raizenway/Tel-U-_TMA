@@ -13,6 +13,7 @@ import WelcomeTab from "@/components/WelcomTab";
 import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/components/PurwokertoTab";
+import TopbarHeader from "@/components/TopbarHeader";
 
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ export default function WelcomePage() {
     { name: "📊 Dashboard", value: "dashboard" },
     { name: "📝 Start Assessment", value: "assessment-form" },
     { name: "📘 About IMA", value: "user-manual" },
+   { name: "👤 User Management", value: "user-management" },
   ];
 
   return (
@@ -41,6 +43,9 @@ export default function WelcomePage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Topbar */}
+        <div className="px-6 pt-6">
+          <TopbarHeader/>
+        </div>
         <div className="flex justify-between items-center px-8 pt-6 border-b">
           {/* Tabs Navigation */}
           {["welcome", "dashboard", "user-manual"].includes(tab) && (
