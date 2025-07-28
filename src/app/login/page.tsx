@@ -22,33 +22,25 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Kiri: Form */}
-      <div>
-        
-      </div>
+     
       <div className="w-full md:w-1/2 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-md">
           {/* Logo Tel-U */}
-          <div className="flex justify-center mb-6">
-            <img
-              src="/Logo.png"
-              alt="Telkom University Logo"
-              className="h-20"
-            />
-          </div>
+          
 
           {/* Judul */}
-          <h2 className="text-xl font-semibold text-center text-[#c8102e] mb-2">
-            Sistem Akademik Mahasiswa
+          <h2 className="text-xl font-semibold  text-[#black] mb-2">
+           Login In An Account
           </h2>
-          <p className="text-sm text-center text-gray-500 mb-6">
-            Silakan login menggunakan akun iGracias Anda
+          <p className="text-sm  text-gray-500 mb-6">
+            Enter your Username and Password to log in our dashboard
           </p>
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                NIM / Email
+               
               </label>
               <input
                 type="text"
@@ -56,13 +48,13 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
-                placeholder="example@student.telkomuniversity.ac.id"
+                placeholder="Username"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Password
+               
               </label>
               <input
                 type="password"
@@ -70,7 +62,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="mt-1 w-full px-3 py-2 border border-black-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
-                placeholder="••••••••"
+                placeholder="Password"
               />
             </div>
 
@@ -111,7 +103,7 @@ export default function LoginPage() {
       {/* Kanan: Gambar */}
       <div className="hidden md:flex w-1/2 relative">
         <img
-          src="/Konten.png"
+          src="/kanan.jpg"
           alt="Tel-U Background"
           className="object-cover w-full h-full"
         />
