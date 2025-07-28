@@ -25,12 +25,21 @@ import {
 
 export default function WelcomePage() {
   const [tab, setTab] = useState("welcome");
+  const [selectedCampus, setSelectedCampus] = useState("");
+  const [showSubmenu, setShowSubmenu] = useState(false);
   const router = useRouter();
 
   const navItems = [
     { name: "🏠 Home", value: "welcome" },
     { name: "📊 Dashboard", value: "dashboard" },
     { name: "📝 Start Assessment", value: "assessment-form" },
+    {
+      name: "📊 Assessment Result",
+      toggle: () => setShowSubmenu((prev) => !prev),
+      submenu: [
+        { name: " Approval Assessment", value: "approval-assessment" },
+      ],
+    },
     { name: "📘 About IMA", value: "user-manual" },
    { name: "👤 User Management", value: "user-management" },
   ];
