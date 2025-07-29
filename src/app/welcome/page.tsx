@@ -31,6 +31,7 @@ export default function WelcomePage() {
     { name: "🏠 Home", value: "welcome" },
     { name: "📊 Dashboard", value: "dashboard" },
     { name: "📝 Start Assessment", value: "assessment-form" },
+    { name: "📋 Assessment Result", value: "assessment-result"},
     { name: "📘 About IMA", value: "user-manual" },
    { name: "👤 User Management", value: "user-management" },
   ];
