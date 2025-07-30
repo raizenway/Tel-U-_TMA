@@ -14,6 +14,7 @@ import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/components/PurwokertoTab";
 import TopbarHeader from "@/components/TopbarHeader";
+import SurabayaTab from "@/components/SurabayaTab";
 
 import {
   DropdownMenu,
@@ -25,12 +26,22 @@ import {
 
 export default function WelcomePage() {
   const [tab, setTab] = useState("welcome");
+  const [selectedCampus, setSelectedCampus] = useState("");
+  const [showSubmenu, setShowSubmenu] = useState(false);
   const router = useRouter();
 
   const navItems = [
     { name: "🏠 Home", value: "welcome" },
     { name: "📊 Dashboard", value: "dashboard" },
     { name: "📝 Start Assessment", value: "assessment-form" },
+    {
+      name: "📊 Assessment Result",
+      toggle: () => setShowSubmenu((prev) => !prev),
+      submenu: [
+        { name: " Approval Assessment", value: "approval-assessment" },
+      ],
+    },
+    { name: "📋 Assessment Result", value: "assessment-result"},
     { name: "📘 About IMA", value: "user-manual" },
    { name: "👤 User Management", value: "user-management" },
   ];
@@ -82,7 +93,7 @@ export default function WelcomePage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex justify-end items-center gap-2 border px-3 py-2 rounded-md bg-white text-red-700">
+                <button className="bg-red-500 flex justify-end items-center gap-2 border px-3 py-2 rounded-md bg-white text-red-700">
                   <User className="w-4 h-4" />
                   <span className="hidden sm:inline">Akun</span>
                   <ChevronDown className="w-4 h-4" />
@@ -106,6 +117,7 @@ export default function WelcomePage() {
           {tab === "dashboard" && <DashboardTab />}
           {tab === "user-manual" && <UserManualTab />}
           {tab === "purwokerto" && <PurwokertoTab />}
+          {tab == "surabaya" && <SurabayaTab/>}
           {tab === "assessment-form" && (
             <AssessmentForm
               onSelectCampus={(campus) => {

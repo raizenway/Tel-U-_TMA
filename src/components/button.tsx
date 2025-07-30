@@ -15,9 +15,10 @@ interface ButtonProps {
   disabled?: boolean;
   isLoading?: boolean;
   icon?: LucideIcon;
-  iconPosition?: "left" | "right"| "star";
+  iconPosition?: "left" | "right" | "star";
   fullWidth?: boolean;
   children: React.ReactNode;
+  download?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -34,6 +35,7 @@ const Button: React.FC<ButtonProps> = ({
   iconPosition = "left",
   fullWidth = false,
   children,
+  download = false,
 }) => {
   const variantClassMap: Record<string, string> = {
     primary: "bg-[#263859] text-white",
@@ -42,7 +44,6 @@ const Button: React.FC<ButtonProps> = ({
     success: "bg-green-600 text-white hover:bg-green-700",
     ghost: "bg-transparent text-gray-800 hover:bg-gray-100",
     outline: "border border-gray-300 text-gray-800 bg-transparent hover:bg-gray-100",
-
   };
 
   const sizeClassMap: Record<string, string> = {
@@ -62,6 +63,11 @@ const Button: React.FC<ButtonProps> = ({
     className
   );
 
+  const renderIcon = () => {
+    if (!Icon || isLoading) return null;
+    return <Icon size={18} />;
+  };
+
   // Jika type === "link", render <a>
   if (type === "link" && href) {
     return (
@@ -71,15 +77,17 @@ const Button: React.FC<ButtonProps> = ({
         onClick={disabled ? undefined : onClick}
         className={baseClass}
         aria-disabled={disabled}
+        download={download}
       >
-        {Icon && iconPosition === "left" && <Icon size={18} />}
+        {Icon && iconPosition === "left" && renderIcon()}
+        {iconPosition === "star" && renderIcon()}
         <span>{children}</span>
-        {Icon && iconPosition === "right" && <Icon size={18} />}
+        {Icon && iconPosition === "right" && renderIcon()}
       </a>
     );
   }
 
-  // Render <button> biasa
+  // Render <button>
   return (
     <button
       type={type as "button" | "submit" | "reset"}
@@ -110,9 +118,10 @@ const Button: React.FC<ButtonProps> = ({
           />
         </svg>
       )}
-      {Icon && iconPosition === "left" && <Icon size={18} />}
+      {Icon && iconPosition === "left" && renderIcon()}
+      {iconPosition === "star" && renderIcon()}
       <span>{children}</span>
-      {Icon && iconPosition === "right" && <Icon size={18} />}
+      {Icon && iconPosition === "right" && renderIcon()}
     </button>
   );
 };
