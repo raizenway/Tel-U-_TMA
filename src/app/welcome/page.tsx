@@ -41,6 +41,7 @@ export default function WelcomePage() {
         { name: " Approval Assessment", value: "approval-assessment" },
       ],
     },
+    { name: "📋 Assessment Result", value: "assessment-result"},
     { name: "📘 About IMA", value: "user-manual" },
    { name: "👤 User Management", value: "user-management" },
   ];
