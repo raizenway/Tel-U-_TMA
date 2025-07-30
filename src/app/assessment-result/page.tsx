@@ -7,6 +7,7 @@ import { ChevronDown, LogOut, User } from 'lucide-react';
 import { FaUser } from 'react-icons/fa';
 import { FiChevronDown } from 'react-icons/fi';
 import UniversalDropdown from '@/components/ui/universal-dropdown';
+import Button from '@/components/button';
 
 type Tab = "welcome" | "assessment-result" | "form" | "result";
 
@@ -461,10 +462,10 @@ export default function WelcomePage() {
               ) : (
                 <>
                   <div className="overflow-x-auto border rounded">
-                    <table className="min-w-full text-sm">
+                    <table className="w-[100px] text-sm">
                       <thead>
                         <tr>
-                          <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A] text-white">
+                          <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A]/90 text-white">
                             Nama UPPS/KC
                           </th>
                           {columns.map((c, i) => {
@@ -533,13 +534,12 @@ export default function WelcomePage() {
                           </td>
                         </tr>
                       </tbody>
-                    </table>
-                  </div>
-
-                  {/* REPORT – tabel tunggal agar rapi */}
+                      </table>
+                    </div> 
+                      {/* REPORT – tabel tunggal agar rapi */}
                   <div className="overflow-x-auto border rounded mt-6">
-                    <table className="min-w-full table-fixed text-sm">
-                      <thead className="bg-[#12263A] text-white">
+                    <table className="w-full table-fixed text-sm">
+                      <thead className="bg-[#12263A]/90 text-white">
                         <tr>
                           <th className="p-3 w-64 text-left">Report</th>
                           {columns.map((c) => (
@@ -604,9 +604,11 @@ export default function WelcomePage() {
                           <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
                           {columns.map((c) => (
                             <td key={c.id} className="p-3 text-center border-l">
-                              <button className="bg-blue-900 text-white px-4 py-1.5 rounded hover:bg-blue-800">
+                              
+                              <Button 
+                               variant='primary'>
                                 Download
-                              </button>
+                              </Button>
                             </td>
                           ))}
                         </tr>
