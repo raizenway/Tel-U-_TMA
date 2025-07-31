@@ -31,24 +31,20 @@ export default function WelcomePage() {
   const pathname = usePathname();
 
   const [tab, setTab] = useState("welcome");
-  const [selectedCampus, setSelectedCampus] = useState("");
-  const [showSubmenu, setShowSubmenu] = useState(false);
-  const router = useRouter();
 
-  const navItems = [
-    { name: "🏠 Home", value: "welcome" },
-    { name: "📊 Dashboard", value: "dashboard" },
-    { name: "📝 Start Assessment", value: "assessment-form" },
-    {
-      name: "📊 Assessment Result",
-      toggle: () => setShowSubmenu((prev) => !prev),
-      submenu: [
-        { name: " Approval Assessment", value: "approval-assessment" },
-      ],
-    },
-    { name: "📘 About IMA", value: "user-manual" },
-   { name: "👤 User Management", value: "user-management" },
-  ];
+  useEffect(() => {
+    const path = pathname?.split("/")[1];
+    setTab(path || "welcome");
+  }, [pathname]);
+
+  
+  const handleNavClick = (item: any) => {
+    if (item.path) {
+      router.push(`/${item.path}`);
+    }
+  };
+
+  const [isFormDirty, setIsFormDirty] = useState(false); // ← Tambahkan ini
 
   return (
     <div className="flex min-h-screen bg-gray-100">
