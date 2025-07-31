@@ -10,9 +10,12 @@ export default function AddUserPage() {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || '';
 
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
+
   const [form, setForm] = useState({
     userId: '',
-    userName: '',
+    username: '',
     password: '',
     namaUser: '',
     namaPIC: '',
@@ -30,29 +33,24 @@ export default function AddUserPage() {
   };
 
   const handleSave = () => {
-    alert('Data berhasil disimpan (nanti hubungkan ke database/API)');
+    const newUser = {
+      userId: form.userId,
+      username: form.username,
+      password: form.password,
+      namaUser: form.namaUser,
+      role: role,
+      status: form.status.toLowerCase(),
+    };
+
+    const storedUsers = localStorage.getItem('users');
+    const users = storedUsers ? JSON.parse(storedUsers) : [];
+    users.push(newUser);
+
+    localStorage.setItem('users', JSON.stringify(users));
+    router.push('/user-management');
   };
 
   const isFormValid = Object.values(form).every((val) => val.trim() !== '');
-
-  const navItems = [
-    { name: 'Welcome', value: 'welcome' },
-    { name: 'Dashboard', value: 'dashboard' },
-    { name: 'Assessment', value: 'assessment' },
-    { name: 'User Manual', value: 'manual' },
-    { name: 'Kelola User', value: 'user' },
-    {
-      name: 'Logout',
-      action: () => {
-        alert('Logout clicked');
-      },
-    },
-  ];
-
-  const handleSidebarClick = (tab: string) => {
-  router.push(`/${tab}`);
-};
-
 
   return (
     <div className="flex min-h-screen">
@@ -70,36 +68,36 @@ export default function AddUserPage() {
         <main className="p-8">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">Tambah User - {role}</h1>
 
-          <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (isFormValid) handleSave();
-              }}
-              className="grid grid-cols-2 gap-4"
-            >
-              {/* Semua inputan tetap seperti sebelumnya */}
-              <div>
-                <label className="block mb-1 text-sm font-medium">User ID</label>
-                <input
-                  name="userId"
-                  value={form.userId}
-                  onChange={handleChange}
-                  placeholder="Masukkan User ID"
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
-                />
-              </div>
+      <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl mx-auto">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (isFormValid) handleSave();
+          }}
+          className="grid grid-cols-2 gap-4"
+        >
+          {/* --- semua input tetap seperti sebelumnya --- */}
+          <div>
+            <label className="block mb-1 text-sm font-medium">User ID</label>
+            <input
+              name="userId"
+              value={form.userId}
+              onChange={handleChange}
+              placeholder="Masukkan User ID"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+            />
+          </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium">User Name</label>
-                <input
-                  name="userName"
-                  value={form.userName}
-                  onChange={handleChange}
-                  placeholder="Masukkan User Name"
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
-                />
-              </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">User Name</label>
+            <input
+              name="userName"
+              value={form.userName}
+              onChange={handleChange}
+              placeholder="Masukkan User Name"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+            />
+          </div>
 
               <div>
                 <label className="block mb-1 text-sm font-medium">Password</label>
@@ -113,32 +111,32 @@ export default function AddUserPage() {
                 />
               </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium">Nama User</label>
-                <input
-                  name="namaUser"
-                  value={form.namaUser}
-                  onChange={handleChange}
-                  placeholder="Masukkan Nama User"
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
-                />
-              </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Nama User</label>
+            <input
+              name="namaUser"
+              value={form.namaUser}
+              onChange={handleChange}
+              placeholder="Masukkan Nama User"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+            />
+          </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium">Logo UPPS/KC</label>
-                <input type="file" className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200" />
-              </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Logo UPPS/KC</label>
+            <input type="file" className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200" />
+          </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium">Nama PIC</label>
-                <input
-                  name="namaPIC"
-                  value={form.namaPIC}
-                  onChange={handleChange}
-                  placeholder="Masukkan Nama PIC"
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
-                />
-              </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Nama PIC</label>
+            <input
+              name="namaPIC"
+              value={form.namaPIC}
+              onChange={handleChange}
+              placeholder="Masukkan Nama PIC"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+            />
+          </div>
 
               <div>
                 <label className="block mb-1 text-sm font-medium">Email</label>
@@ -152,31 +150,31 @@ export default function AddUserPage() {
                 />
               </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium">Nomor Handphone</label>
-                <input
-                  name="nomorHp"
-                  value={form.nomorHp}
-                  onChange={handleChange}
-                  placeholder="Masukkan Nomor Handphone"
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
-                />
-              </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Nomor Handphone</label>
+            <input
+              name="nomorHp"
+              value={form.nomorHp}
+              onChange={handleChange}
+              placeholder="Masukkan Nomor Handphone"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+            />
+          </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium">Status</label>
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
-                >
-                  <option value="">Pilih Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-            </form>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Status</label>
+            <select
+              name="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+            >
+              <option value="">Pilih Status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </form>
 
             <div className="flex justify-end mt-6 gap-4">
               <button
