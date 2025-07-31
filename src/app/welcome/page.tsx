@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { useRouter } from "next/navigation";
-import { LogOut, User, ChevronDown } from "lucide-react";
+import {
+  LogOut,
+  User,
+  ChevronDown
+} from "lucide-react";
 
 import Button from "@/components/button";
 import Sidebar from "@/components/sidebar";
@@ -13,9 +16,8 @@ import WelcomeTab from "@/components/WelcomTab";
 import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/components/PurwokertoTab";
-import TopbarHeader from "@/components/TopbarHeader";
 import SurabayaTab from "@/components/SurabayaTab";
-
+import TopbarHeader from "@/components/TopbarHeader";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -25,49 +27,49 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function WelcomePage() {
-  const [tab, setTab] = useState("welcome");
-  const [selectedCampus, setSelectedCampus] = useState("");
-  const [showSubmenu, setShowSubmenu] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
-  const navItems = [
-    { name: "🏠 Home", value: "welcome" },
-    { name: "📊 Dashboard", value: "dashboard" },
-    { name: "📝 Start Assessment", value: "assessment-form" },
-    {
-      name: "📊 Assessment Result",
-      toggle: () => setShowSubmenu((prev) => !prev),
-      submenu: [
-        { name: " Approval Assessment", value: "approval-assessment" },
-      ],
-    },
-    { name: "📘 About IMA", value: "user-manual" },
-   { name: "👤 User Management", value: "user-management" },
-  ];
+  const [tab, setTab] = useState("welcome");
+
+  useEffect(() => {
+    const path = pathname?.split("/")[1];
+    setTab(path || "welcome");
+  }, [pathname]);
+
+  
+  const handleNavClick = (item: any) => {
+    if (item.path) {
+      router.push(`/${item.path}`);
+    }
+  };
+
+  const [isFormDirty, setIsFormDirty] = useState(false); // ← Tambahkan ini
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar navItems={navItems} setTab={setTab} />
+      <Sidebar onItemClick={handleNavClick} />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Topbar */}
         <div className="px-6 pt-6">
-          <TopbarHeader/>
+          <TopbarHeader />
         </div>
+
         <div className="flex justify-between items-center px-8 pt-6 border-b">
-          {/* Tabs Navigation */}
           {["welcome", "dashboard", "user-manual"].includes(tab) && (
             <div className="flex gap-6">
-              {["Welcome", "Dashboard", "User Manual"].map((name) => (
+              {[
+                { name: "Welcome", path: "welcome" },
+                { name: "Dashboard", path: "dashboard" },
+                { name: "User Manual", path: "user-manual" },
+              ].map(({ name, path }) => (
                 <Button
                   key={name}
                   variant="ghost"
-                  onClick={() => setTab(name.toLowerCase().replace(" ", "-"))}
+                  onClick={() => router.push(`/${path}`)}
                   className={clsx(
                     "pb-3 font-semibold rounded-none",
-                    tab === name.toLowerCase().replace(" ", "-")
+                    tab === path
                       ? "text-red-600 border-b-2 border-red-600"
                       : "text-gray-500 hover:text-red-600"
                   )}
@@ -78,12 +80,11 @@ export default function WelcomePage() {
             </div>
           )}
 
-          {/* Right: Account Dropdown */}
           <div className="flex items-center gap-4">
             {tab === "dashboard" && (
               <Button
                 variant="primary"
-                onClick={() => setTab("assessment-form")}
+                onClick={() => router.push("/assessment")}
                 className="text-sm"
               >
                 Buat Assessment
@@ -92,7 +93,7 @@ export default function WelcomePage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="bg-red-500 flex justify-end items-center gap-2 border px-3 py-2 rounded-md bg-white text-red-700">
+                <button className="flex items-center gap-2 px-3 py-2 border rounded-md bg-white text-red-700">
                   <User className="w-4 h-4" />
                   <span className="hidden sm:inline">Akun</span>
                   <ChevronDown className="w-4 h-4" />
@@ -103,25 +104,27 @@ export default function WelcomePage() {
                 <DropdownMenuItem>Pengaturan</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push("/login")}>
-                  <LogOut className="mr-2 h-4 w-4" /> Keluar
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Keluar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {/* Konten Dinamis */}
         <main className="flex-1 px-8 py-6 space-y-6 overflow-auto">
           {tab === "welcome" && <WelcomeTab />}
           {tab === "dashboard" && <DashboardTab />}
           {tab === "user-manual" && <UserManualTab />}
-          {tab === "purwokerto" && <PurwokertoTab />}
-          {tab == "surabaya" && <SurabayaTab/>}
+          {tab === "assessment-form" && (
+                     <PurwokertoTab setIsFormDirty={setIsFormDirty} />
+                   )}
+          {tab === "surabaya" && <SurabayaTab />}
           {tab === "assessment-form" && (
             <AssessmentForm
               onSelectCampus={(campus) => {
                 if (campus === "Tel-U Purwokerto") {
-                  setTab("purwokerto");
+                  router.push("/purwokerto");
                 } else {
                   alert(`Pilihannya: ${campus}`);
                 }
