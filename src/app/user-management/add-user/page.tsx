@@ -40,6 +40,10 @@ export default function AddUserPage() {
       namaUser: form.namaUser,
       role: role,
       status: form.status.toLowerCase(),
+      namaPIC: form.namaPIC,
+      email: form.email,
+      nomorHp: form.nomorHp,
+      logoFile: role !== 'Non SSO' && logoFileName !== 'Cari Lampiran...' ? logoFileName : '',
     };
 
     const storedUsers = localStorage.getItem('users');
@@ -92,7 +96,7 @@ export default function AddUserPage() {
             <label className="block mb-1 text-sm font-medium">User ID</label>
             <input
               name="userId"
-              type="string"
+              type="text"
               value={form.userId}
               onChange={handleChange}
               placeholder="Masukkan User ID"
@@ -159,24 +163,22 @@ export default function AddUserPage() {
                   <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-200 px-3 py-2 text-gray-700">
                     <span className="truncate">{logoFileName}</span>
                     <div className="flex items-center gap-2">
-                    {logoFile && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                        setLogoFile(null);
-                        setLogoFileName('Cari Lampiran...');
-                        }}
-                        className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
-                     >
-                     ✕
-                     </button>
-                    )}
-
-                    {!logoFile && (
-                      <span className="text-sm font-semibold text-gray-600">Upload</span>
-                    )}
-</div>
-
+                      {logoFile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLogoFile(null);
+                            setLogoFileName('Cari Lampiran...');
+                          }}
+                          className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {!logoFile && (
+                        <span className="text-sm font-semibold text-gray-600">Upload</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -211,7 +213,8 @@ export default function AddUserPage() {
             <label className="block mb-1 text-sm font-medium">Nomor Handphone</label>
             <input
               name="nomorHp"
-              type="numeric" maxLength={15}
+              type="text"
+              maxLength={15}
               value={form.nomorHp}
               onChange={handleChange}
               placeholder="Masukkan Nomor Handphone"
