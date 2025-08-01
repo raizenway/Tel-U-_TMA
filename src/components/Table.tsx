@@ -5,6 +5,7 @@ import React from "react";
 interface Column {
   header: string;
   key: string;
+  width?: string; // opsional: bisa atur width per kolom
 }
 
 interface TableProps {
@@ -14,7 +15,12 @@ interface TableProps {
   rowsPerPage: number;
 }
 
-const Table: React.FC<TableProps> = ({ columns, data, currentPage, rowsPerPage }) => {
+const Table: React.FC<TableProps> = ({
+  columns,
+  data,
+  currentPage,
+  rowsPerPage,
+}) => {
   return (
     <div className="w-full overflow-x-auto">
       <div className="min-w-[800px] inline-block align-middle">
@@ -25,6 +31,7 @@ const Table: React.FC<TableProps> = ({ columns, data, currentPage, rowsPerPage }
                 <th
                   key={index}
                   className="text-left px-4 py-2 border whitespace-nowrap"
+                  style={{ width: col.width }}
                 >
                   {col.header}
                 </th>
@@ -42,6 +49,7 @@ const Table: React.FC<TableProps> = ({ columns, data, currentPage, rowsPerPage }
                         ? "max-w-xs break-words"
                         : "whitespace-nowrap"
                     }`}
+                    style={{ width: col.width }}
                   >
                     {col.key === "nomor"
                       ? (rowIndex + 1) + (currentPage - 1) * rowsPerPage
