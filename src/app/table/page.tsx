@@ -26,14 +26,15 @@ const TablePage = () => {
   ];
 
   const columns = [
-    { header: "Nomor", key: "nomor" },
-    { header: "Nama Variable", key: "variable" },
-    { header: "Indikator", key: "indikator" },
-    { header: "Pertanyaan", key: "pertanyaan" },
-    { header: "Jawaban", key: "jawaban" },
-    { header: "Skor", key: "skor" },
-    { header: "Tipe Soal", key: "tipeSoal" },
-  ];
+  { header: "No", key: "nomor", width: "41px",  },
+  { header: "Variable", key: "variable", width: "160px" },
+  { header: "Indikator", key: "indikator", width: "319px" },
+  { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
+  { header: "Jawaban", key: "jawaban", width: "126px" },
+  { header: "Skor", key: "skor", width: "319px",   },
+  { header: "Tipe Soal", key: "tipeSoal", width: "160px",  },
+];
+
 
   const data = [
     {
