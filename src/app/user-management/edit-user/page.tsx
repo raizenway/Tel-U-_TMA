@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AddUserPage() {
+export default function EditUserPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const role = searchParams.get('role') || '';
+  const userIdFromQuery = searchParams.get('userId');
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
@@ -20,10 +20,43 @@ export default function AddUserPage() {
     email: '',
     nomorHp: '',
     status: '',
+    role: '',
   });
 
+  useEffect(() => {
+    if (!userIdFromQuery) return;
+
+    const storedUser = localStorage.getItem('selectedUser');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.userId === userIdFromQuery) {
+          setForm({
+            userId: user.userId || '',
+            username: user.username || '',
+            password: user.password || '',
+            namaUser: user.namaUser || '',
+            namaPIC: user.namaPIC || '',
+            email: user.email || '',
+            nomorHp: user.nomorHp || '',
+            status: user.status || '',
+            role: user.role || '',
+          });
+        } else {
+          console.warn('User ID di query tidak cocok dengan selectedUser.');
+        }
+      } catch (err) {
+        console.error('Gagal parsing selectedUser:', err);
+      }
+    } else {
+      console.warn('selectedUser tidak ditemukan di localStorage.');
+    }
+  }, [userIdFromQuery]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'nomorHp' && /[^0-9]/.test(value)) return; // hanya angka
+    setForm({ ...form, [name]: value });
   };
 
   const handleCancel = () => {
@@ -31,36 +64,24 @@ export default function AddUserPage() {
   };
 
   const handleSave = () => {
-    const newUser = {
-      userId: form.userId,
-      username: form.username,
-      password: form.password,
-      namaUser: form.namaUser,
-      role: role,
-      status: form.status.toLowerCase(),
-      namaPIC: form.namaPIC,
-      email: form.email,
-      nomorHp: form.nomorHp,
-      logoFile: role !== 'Non SSO' && logoFileName !== 'Cari Lampiran...' ? logoFileName : '',
-    };
-
     const storedUsers = localStorage.getItem('users');
-    const users = storedUsers ? JSON.parse(storedUsers) : [];
-    users.push(newUser);
+    let users = storedUsers ? JSON.parse(storedUsers) : [];
+
+    users = users.map((user: any) =>
+      user.userId === form.userId ? { ...user, ...form } : user
+    );
 
     localStorage.setItem('users', JSON.stringify(users));
+    localStorage.removeItem('selectedUser'); // bersihkan setelah simpan
     router.push('/user-management');
   };
 
-  const isFormValid = form.userId.trim() !== '' &&
-    form.username.trim() !== '' &&
-    form.password.trim() !== '' &&
-    form.namaUser.trim() !== '' &&
-    form.status.trim() !== '';
+  const isFormValid =
+    form.userId && form.username && form.password && form.namaUser && form.status;
 
   return (
     <main className="min-h-screen bg-gray-200 p-8">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Tambah User - {role}</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">Edit User - {form.role}</h1>
 
       <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl mx-auto">
         <form
@@ -76,9 +97,8 @@ export default function AddUserPage() {
               name="userId"
               type="text"
               value={form.userId}
-              onChange={handleChange}
-              placeholder="Masukkan User ID"
-              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+              readOnly
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
             />
           </div>
 
@@ -89,7 +109,6 @@ export default function AddUserPage() {
               type="text"
               value={form.username}
               onChange={handleChange}
-              placeholder="Masukkan Username"
               className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
             />
           </div>
@@ -101,7 +120,6 @@ export default function AddUserPage() {
               type="password"
               value={form.password}
               onChange={handleChange}
-              placeholder="Masukkan Password"
               className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
             />
           </div>
@@ -113,13 +131,11 @@ export default function AddUserPage() {
               type="text"
               value={form.namaUser}
               onChange={handleChange}
-              placeholder="Masukkan Nama User"
               className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
             />
           </div>
 
-          {/* Hanya tampil jika bukan non-sso */}
-          {role !== 'Non SSO' && (
+          {form.role !== 'Non SSO' && (
             <>
               <div>
                 <label className="block mb-1 text-sm font-medium">Logo UPPS/KC</label>
@@ -141,7 +157,7 @@ export default function AddUserPage() {
                   <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-200 px-3 py-2 text-gray-700">
                     <span className="truncate">{logoFileName}</span>
                     <div className="flex items-center gap-2">
-                      {logoFile && (
+                      {logoFile ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -152,8 +168,7 @@ export default function AddUserPage() {
                         >
                           ✕
                         </button>
-                      )}
-                      {!logoFile && (
+                      ) : (
                         <span className="text-sm font-semibold text-gray-600">Upload</span>
                       )}
                     </div>
@@ -168,7 +183,6 @@ export default function AddUserPage() {
                   type="text"
                   value={form.namaPIC}
                   onChange={handleChange}
-                  placeholder="Masukkan Nama PIC"
                   className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
                 />
               </div>
@@ -182,7 +196,6 @@ export default function AddUserPage() {
               type="email"
               value={form.email}
               onChange={handleChange}
-              placeholder="Masukkan Alamat Email"
               className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
             />
           </div>
@@ -192,10 +205,9 @@ export default function AddUserPage() {
             <input
               name="nomorHp"
               type="text"
-              maxLength={15}
               value={form.nomorHp}
               onChange={handleChange}
-              placeholder="Masukkan Nomor Handphone"
+              maxLength={15}
               className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
             />
           </div>
@@ -215,7 +227,6 @@ export default function AddUserPage() {
           </div>
         </form>
 
-        {/* Tombol Aksi */}
         <div className="flex justify-end mt-6 gap-4">
           <button
             onClick={handleCancel}
