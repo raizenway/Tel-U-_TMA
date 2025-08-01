@@ -1,0 +1,11 @@
+.table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+table {
+  min-width: 1200px;
+  border-collapse: collapse;
+  font-size: 14px;
+  white-space: nowrap;
+}

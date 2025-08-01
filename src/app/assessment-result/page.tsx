@@ -7,6 +7,7 @@ import { ChevronDown, LogOut, User } from 'lucide-react';
 import { FaUser } from 'react-icons/fa';
 import { FiChevronDown } from 'react-icons/fi';
 import UniversalDropdown from '@/components/ui/universal-dropdown';
+import Button from '@/components/button';
 
 type Tab = "welcome" | "assessment-result" | "form" | "result";
 
@@ -461,10 +462,10 @@ export default function WelcomePage() {
               ) : (
                 <>
                   <div className="overflow-x-auto border rounded">
-                    <table className="min-w-full text-sm">
+                    <table className="w-[100px] text-sm">
                       <thead>
                         <tr>
-                          <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A] text-white">
+                          <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A]/90 text-white">
                             Nama UPPS/KC
                           </th>
                           {columns.map((c, i) => {
@@ -533,86 +534,117 @@ export default function WelcomePage() {
                           </td>
                         </tr>
                       </tbody>
-                    </table>
-                  </div>
-
-                  {/* REPORT – tabel tunggal agar rapi */}
-                  <div className="overflow-x-auto border rounded mt-6">
-                    <table className="min-w-full table-fixed text-sm">
-                      <thead className="bg-[#12263A] text-white">
-                        <tr>
-                          <th className="p-3 w-64 text-left">Report</th>
-                          {columns.map((c) => (
-                            <th key={c.id} className="p-3 min-w-[220px] text-center">
+                      </table>
+                    </div> 
+                            
+                          {/* Report-Table */}
+                     <div className="overflow-x-auto border rounded mt-6">
+                  <table className="w-full table-fixed text-sm">
+                    <thead className="bg-[#12263A]/90 text-white">
+                      <tr>
+                        <th className="p-3 w-64 text-left">Report</th>
+                        {columns.map((c, i) => {
+                          const pal = getPalette(i);
+                          return (
+                            <th
+                              key={c.id}
+                              className={`px-4 py-3 text-left font-semibold min-w-[220px] text-black border-l-2 ${pal.header} ${pal.border}`}
+                            >
                               {c.name}
                             </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="odd:bg-white even:bg-gray-50">
-                          <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>
-                          {columns.map((c) => {
-                            const data = (reportsByUPPS[c.id] || [])[0];
-                            return (
-                              <td key={c.id} className="p-3 text-center border-l">
-                                {data ? `${data.code} (${data.name})` : '-'}
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                        <tr className="odd:bg-white even:bg-gray-50">
-                          <td className="p-3 font-semibold bg-gray-100 text-left">Point</td>
-                          {columns.map((c) => {
-                            const data = (reportsByUPPS[c.id] || [])[0];
-                            return (
-                              <td key={c.id} className="p-3 text-center border-l">
-                                {data ? data.point : '-'}
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                        <tr className="odd:bg-white even:bg-gray-50">
-                          <td className="p-3 font-semibold bg-gray-100 text-left">Maturity Level</td>
-                          {columns.map((c) => {
-                            const data = (reportsByUPPS[c.id] || [])[0];
-                            return (
-                              <td key={c.id} className="p-3 text-center border-l">
-                                {data ? data.maturityLevel : '-'}
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                        <tr className="odd:bg-white even:bg-gray-50">
-                          <td className="p-3 font-semibold bg-gray-100 text-left">
-                            Deskripsi per Variabel
-                          </td>
-                          {columns.map((c) => {
-                            const data = (reportsByUPPS[c.id] || [])[0];
-                            return (
-                              <td key={c.id} className="p-3 text-justify border-l align-top">
-                                {data ? data.desc : '-'}
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                        <tr className="odd:bg-white even:bg-gray-50">
-                          <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
-                          {columns.map((c) => (
-                            <td key={c.id} className="p-3 text-center border-l">
-                              <button className="bg-blue-900 text-white px-4 py-1.5 rounded hover:bg-blue-800">
-                                Download
-                              </button>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Baris: Nama Variabel */}
+                      <tr className="odd:bg-white even:bg-gray-50">
+                        <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>
+                        {columns.map((c, i) => {
+                          const data = (reportsByUPPS[c.id] || [])[0];
+                          const pal = getPalette(i);
+                          return (
+                            <td
+                              key={c.id}
+                              className={`p-3 text-center border-l-2 h-full align-top ${pal.border}`}
+                            >
+                              {data ? `${data.code} (${data.name})` : '-'}
                             </td>
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Baris: Point */}
+                      <tr className="odd:bg-white even:bg-gray-50">
+                        <td className="p-3 font-semibold bg-gray-100 text-left">Point</td>
+                        {columns.map((c, i) => {
+                          const data = (reportsByUPPS[c.id] || [])[0];
+                          const pal = getPalette(i);
+                          return (
+                            <td
+                              key={c.id}
+                              className={`p-3 text-center border-l-2 h-full ${pal.border}`}
+                            >
+                              {data ? data.point : '-'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Baris: Maturity Level */}
+                      <tr className="odd:bg-white even:bg-gray-50">
+                        <td className="p-3 font-semibold bg-gray-100 text-left">Maturity Level</td>
+                        {columns.map((c, i) => {
+                          const data = (reportsByUPPS[c.id] || [])[0];
+                          const pal = getPalette(i);
+                          return (
+                            <td
+                              key={c.id}
+                              className={`p-3 text-center border-l-2 h-full ${pal.border}`}
+                            >
+                              {data ? data.maturityLevel : '-'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Baris: Deskripsi */}
+                      <tr className="odd:bg-white even:bg-gray-50">
+                        <td className="p-3 font-semibold bg-gray-100 text-left">
+                          Deskripsi per Variabel
+                        </td>
+                        {columns.map((c, i) => {
+                          const data = (reportsByUPPS[c.id] || [])[0];
+                          const pal = getPalette(i);
+                          return (
+                            <td
+                              key={c.id}
+                              className={`p-3 text-justify border-l-2 align-top h-full ${pal.border}`}
+                            >
+                              {data ? data.desc : '-'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Baris: Action */}
+                      <tr className="odd:bg-white even:bg-gray-50">
+                        <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
+                        {columns.map((c, i) => {
+                          const pal = getPalette(i);
+                          return (
+                            <td
+                              key={c.id}
+                              className={`p-3 text-center border-l-2 h-full ${pal.border}`}
+                            >
+                              <Button variant="primary">Download</Button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
                 </>
               )}
             </div>

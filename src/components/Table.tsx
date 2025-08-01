@@ -1,48 +1,66 @@
+"use client";
+
 import React from "react";
 
 interface Column {
   header: string;
   key: string;
+  width?: string; // opsional: bisa atur width per kolom
 }
 
 interface TableProps {
   columns: Column[];
   data: Record<string, any>[];
+  currentPage: number;
+  rowsPerPage: number;
 }
 
-const Table: React.FC<TableProps> = ({ columns, data }) => {
+const Table: React.FC<TableProps> = ({
+  columns,
+  data,
+  currentPage,
+  rowsPerPage,
+}) => {
   return (
-    <div className="overflow-x-auto w-full rounded-lg border border-gray-300">
-      <table className="min-w-full table-auto border-collapse">
-        <thead className="bg-gray-100">
-          <tr>
-            {columns.map((col, idx) => (
-              <th key={idx} className="border px-4 py-2 text-left text-sm font-medium text-gray-700">
-                {col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.length === 0 ? (
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[800px] inline-block align-middle">
+        <table className="w-full border border-gray-300 text-sm">
+          <thead className="bg-gray-100">
             <tr>
-              <td colSpan={columns.length} className="text-center py-4 text-gray-400">
-                Data belum tersedia
-              </td>
+              {columns.map((col, index) => (
+                <th
+                  key={index}
+                  className="text-left px-4 py-2 border whitespace-nowrap"
+                  style={{ width: col.width }}
+                >
+                  {col.header}
+                </th>
+              ))}
             </tr>
-          ) : (
-            data.map((row, i) => (
-              <tr key={i} className="hover:bg-gray-50">
-                {columns.map((col, j) => (
-                  <td key={j} className="border px-4 py-2 text-sm">
-                    {row[col.key]}
+          </thead>
+          <tbody>
+            {data.map((row, rowIndex) => (
+              <tr key={rowIndex} className="border-t">
+                {columns.map((col, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className={`px-2 py-2 border align-top text-xs ${
+                      ["indikator", "pertanyaan"].includes(col.key)
+                        ? "max-w-xs break-words"
+                        : "whitespace-nowrap"
+                    }`}
+                    style={{ width: col.width }}
+                  >
+                    {col.key === "nomor"
+                      ? (rowIndex + 1) + (currentPage - 1) * rowsPerPage
+                      : row[col.key]}
                   </td>
                 ))}
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
