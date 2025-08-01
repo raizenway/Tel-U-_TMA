@@ -7,9 +7,12 @@ interface ModalConfirmProps {
   onCancel: () => void;
   onConfirm: () => void;
   title: string; // ini tampilnya di bawah header
+  message?:string;
   header?: string; 
   confirmLabel?: string;
   cancelLabel?: string;
+  hideDefaultButtons?: boolean; // ← Tambahkan ini
+  hideHeader?: boolean; //menambahkan ini
   children: React.ReactNode;
 }
 
@@ -22,6 +25,7 @@ export default function ModalConfirm({
   confirmLabel = 'Ya',
   cancelLabel = 'Batal',
   children,
+  hideDefaultButtons = false,
 }: ModalConfirmProps) {
   return (
     <Dialog open={isOpen} onClose={onCancel} className="relative z-50">
@@ -43,10 +47,13 @@ export default function ModalConfirm({
               {title}
             </Dialog.Title>
 
+            
+
             {/* 🟡 ISI DINAMIS */}
             <div>{children}</div>
 
             {/* 🔘 BUTTON */}
+            {!hideDefaultButtons && (
             <div className="flex justify-center gap-4 mt-4">
               <button
                 onClick={onCancel}
@@ -61,6 +68,7 @@ export default function ModalConfirm({
                 {confirmLabel}
               </button>
             </div>
+            )}
           </div>
         </Dialog.Panel>
       </div>
