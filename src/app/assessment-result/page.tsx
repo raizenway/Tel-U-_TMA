@@ -8,6 +8,7 @@ import { FaUser } from 'react-icons/fa';
 import { FiChevronDown } from 'react-icons/fi';
 import UniversalDropdown from '@/components/ui/universal-dropdown';
 import Button from '@/components/button';
+import { getPeriodeLabel } from "@/utils/periode";
 
 type Tab = "welcome" | "assessment-result" | "form" | "result";
 
@@ -35,12 +36,13 @@ ChartJS.register(
 interface Assessment {
   id: string;
   name: string;
-  submitDate: string; // yyyy-mm-dd
+  submitPeriode: string; 
   email: string;
   studentBody: number;
   jumlahProdi: number;
   jumlahProdiUnggul: number;
   maturityLevel: string;
+
 }
 
 interface VariableReport {
@@ -52,17 +54,20 @@ interface VariableReport {
 }
 
 interface FilterPayload {
-  date: string;
   ids: string[];
+  periode: string; 
+
 }
 
 interface FilterUPPSPopoverProps {
   open: boolean;
   onClose: () => void;
-  defaultDate: string;
+  defaultPeriode: string;
   defaultSelectedIds: string[];
   onApply: (payload: FilterPayload) => void;
   onReset: () => void;
+  submitPeriode: string; // ← Ini penting!
+
 }
 
 /* =========================
@@ -72,7 +77,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-sby',
     name: 'Tel-U Surabaya',
-    submitDate: '2025-07-07',
+    submitPeriode: 'semester genap 2025',
     email: 'surabaya@telkomuniversity.ac.id',
     studentBody: 3500,
     jumlahProdi: 11,
@@ -82,7 +87,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-jkt',
     name: 'Tel-U Jakarta',
-    submitDate: '2025-07-07',
+    submitPeriode: 'semester genap 2025',
     email: 'jkt.telkomuniversity.ac.id',
     studentBody: 3400,
     jumlahProdi: 13,
@@ -92,7 +97,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-bdg',
     name: 'Tel-U Bandung',
-    submitDate: '2025-07-07',
+    submitPeriode: 'semester genap 2025',
     email: 'bandung.telkomuniversity.ac.id',
     studentBody: 3800,
     jumlahProdi: 10,
@@ -102,7 +107,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-pwk',
     name: 'Tel-U Purwokerto',
-    submitDate: '2025-07-07',
+    submitPeriode: 'semester genap 2025',
     email: 'purwokerto@telkomuniversity.ac.id',
     studentBody: 3100,
     jumlahProdi: 11,
@@ -236,12 +241,13 @@ function hexWithAlpha(hex: string, alpha: number) {
 function FilterUPPSPopover({
   open,
   onClose,
-  defaultDate,
+  defaultPeriode,
   defaultSelectedIds,
   onApply,
   onReset,
+  submitPeriode,
 }: FilterUPPSPopoverProps) {
-  const [date, setDate] = useState<string>(defaultDate);
+  const [periode, setPeriode] = useState<string>(defaultPeriode);
   const [ids, setIds] = useState<string[]>(defaultSelectedIds);
   const isAllSelected = ids.length === assessmentList.length;
 
@@ -260,18 +266,22 @@ function FilterUPPSPopover({
   return (
     <div className="absolute z-30 mt-2 w-80 bg-white rounded-md shadow-lg border">
       <div className="p-4 space-y-4">
-        {/* Pilih Tanggal */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Pilih Tanggal
-          </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-red-400"
-          />
-        </div>
+       {/* Pilih Periode */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Pilih Periode
+              </label>
+              <select
+                value={periode}
+                onChange={(e) => setPeriode(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-red-400"
+              >
+                <option value="Genap 2025">Genap 2025</option>
+                <option value="Ganjil 2025">Ganjil 2025</option>
+                <option value="Genap 2024">Genap 2024</option>
+              </select>
+            </div>
+
 
         {/* Checkbox UPPS */}
         <div className="space-y-2 text-sm text-gray-700 max-h-40 overflow-y-auto pr-1">
@@ -302,7 +312,7 @@ function FilterUPPSPopover({
         <div className="flex flex-col gap-2 pt-2">
           <button
             onClick={() => {
-              onApply({ date, ids });
+              onApply({ periode, ids });
               onClose();
             }}
             className="w-full bg-blue-900 hover:bg-blue-800 text-white py-2 rounded font-semibold"
@@ -312,7 +322,7 @@ function FilterUPPSPopover({
           <button
             onClick={() => {
               onReset();
-              setDate('');
+              setPeriode('');
               setIds([]);
               onClose();
             }}
@@ -330,30 +340,32 @@ function FilterUPPSPopover({
  * Main Page
  * =======================*/
 export default function WelcomePage() {
-  const [tab, setTab] = useState<Tab>('assessment-result');
-
+  const [tab, setTab] = useState<'assessment-result'>('assessment-result');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filterDate, setFilterDate] = useState('');
-  const [filterIds, setFilterIds] = useState<string[]>([]);
+  const [filterPeriode, setFilterPeriode] = useState(''); 
+  const [filterIds, setFilterIds] = useState<string[]>([]); 
 
-  // Kolom persis sesuai pilihan
+  // 🔍 Filter data sesuai pilihan user
   const columns = useMemo<Assessment[]>(() => {
     if (filterIds.length === 0) return [];
     return assessmentList.filter(
-      (a) => filterIds.includes(a.id) && (!filterDate || a.submitDate === filterDate)
+      (a) =>
+        filterIds.includes(a.id) &&
+        (!filterPeriode || a.submitPeriode === filterPeriode)
     );
-  }, [filterIds, filterDate]);
+  }, [filterIds, filterPeriode]);
 
+  // 🏷️ Label tampilan filter di button
   const filterLabel = useMemo(() => {
     const count = filterIds.length;
     const isAll = count === assessmentList.length;
-    const datePart = filterDate
-      ? ` • ${new Date(filterDate).toLocaleDateString('id-ID')}`
-      : '';
-    if (!count && !filterDate) return 'Pilih UPPS/KC';
-    if (isAll) return `Semua UPPS${datePart}`;
-    return `${count} UPPS${datePart}`;
-  }, [filterIds, filterDate]);
+    const periodePart = filterPeriode ? ` • ${getPeriodeLabel(filterPeriode)}` : "";
+
+    if (!count && !filterPeriode) return "Pilih UPPS/KC";
+    if (isAll) return `Semua UPPS${periodePart}`;
+    return `${count} UPPS${periodePart}`;
+  }, [filterIds, filterPeriode]);
+
 
    return (
     <div className="flex min-h-screen bg-gray-100">
@@ -432,7 +444,7 @@ export default function WelcomePage() {
                   onClick={() => setFilterOpen((v) => !v)}
                   className="min-w-[16rem] flex justify-between items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm"
                 >
-                  <span className={clsx(!filterIds.length && !filterDate && 'text-gray-400')}>
+                  <span className={clsx(!filterIds.length && !filterPeriode && 'text-gray-400')}>
                     {filterLabel}
                   </span>
                   <FiChevronDown className="text-gray-500" />
@@ -441,16 +453,18 @@ export default function WelcomePage() {
                 <FilterUPPSPopover
                   open={filterOpen}
                   onClose={() => setFilterOpen(false)}
-                  defaultDate={filterDate}
+                  defaultPeriode={filterPeriode}
                   defaultSelectedIds={filterIds}
-                  onApply={({ date, ids }) => {
-                    setFilterDate(date);
+                  onApply={({ periode, ids }) => {
+                    setFilterPeriode(periode);
                     setFilterIds(ids);
+                    
                   }}
                   onReset={() => {
-                    setFilterDate('');
+                    setFilterPeriode('');
                     setFilterIds([]);
                   }}
+                    submitPeriode={filterPeriode}
                 />
               </div>
 
@@ -461,8 +475,8 @@ export default function WelcomePage() {
                 </p>
               ) : (
                 <>
-                  <div className="overflow-x-auto border rounded">
-                    <table className="w-[100px] text-sm">
+                  <div className="overflow-x-auto border rounded mt-6">
+                    <table className="w-full table-fixed text-sm">
                       <thead>
                         <tr>
                           <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A]/90 text-white">
@@ -490,7 +504,7 @@ export default function WelcomePage() {
                           {
                             label: 'Tanggal Submit Assessment',
                             render: (c: Assessment) =>
-                              new Date(c.submitDate).toLocaleDateString('id-ID'),
+                            getPeriodeLabel(c.submitPeriode)
                           },
                           { label: 'Email', render: (c: Assessment) => c.email },
                           { label: 'Student Body', render: (c: Assessment) => c.studentBody },
@@ -557,6 +571,7 @@ export default function WelcomePage() {
                       </tr>
                     </thead>
                     <tbody>
+                      
                       {/* Baris: Nama Variabel */}
                       <tr className="odd:bg-white even:bg-gray-50">
                         <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>

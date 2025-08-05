@@ -1,21 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Table from "@/components/Table";
 import { User, ChevronDown, Download, Printer, Copy, Pencil, Trash2 } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import Button from "@/components/button";
 import NotificationBell from "@/components/ui/NotificationBell";
 import UniversalDropdown from "@/components/ui/universal-dropdown";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const TablePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [tab, setTab] = useState("maturity-level");
   const router = useRouter();
 
-  const rawData = [
+  // Data asli
+  const [data, setData] = useState<any[]>([
     {
       namalevel: "Very Low Maturity",
       skorminimum: "0%",
@@ -37,11 +37,12 @@ const TablePage = () => {
       deskripsiumum:
         "Sudah siap otonomi level 2, dan masih ada yang perlu ditingkatkan",
     },
-  ];
+  ]);
 
-  const filteredData = rawData.filter((row) =>
+  // Filter data
+  const filteredData = data.filter((row) =>
     Object.values(row).some((val) =>
-      val?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      String(val).toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
@@ -51,21 +52,45 @@ const TablePage = () => {
     currentPage * 10
   );
 
+  // Fungsi aksi
+  const handleTambah = () => {
+    router.push("/formmaturity");
+  };
+
+  const handleEdit = (index: number) => {
+    const realIndex = (currentPage - 1) * 10 + index;
+    router.push(`/edit-maturity/${realIndex}`);
+  };
+
+  const handleDelete = (index: number) => {
+    const realIndex = (currentPage - 1) * 10 + index;
+    const rowNumber = realIndex + 1;
+    if (confirm(`Yakin ingin menghapus baris ke-${rowNumber}?`)) {
+      const newData = [...data];
+      newData.splice(realIndex, 1);
+      setData(newData);
+      alert(`🗑️ Baris ke-${rowNumber} berhasil dihapus.`);
+      if (newData.length < currentPage * 10 && currentPage > 1 && paginatedData.length === 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    }
+  };
+
   const handlePrint = () => window.print();
 
   const handleDownload = () => {
-    const headers = columns.map((col) => col.header).join("\t");
+    const headers = ["Level", "Nama Level", "Skor Minimum", "Skor Maximum", "Deskripsi Umum"];
     const rows = filteredData
-      .map((row, i) =>
-        columns
-          .map((col) =>
-            col.key === "level" ? i + 1 : (row as any)[col.key] || ""
-          )
-          .join("\t")
-      )
+      .map((row, i) => [
+        i + 1,
+        row.namalevel,
+        row.skorminimum,
+        row.skormaximum,
+        row.deskripsiumum,
+      ].join("\t"))
       .join("\n");
 
-    const tsv = headers + "\n" + rows;
+    const tsv = headers.join("\t") + "\n" + rows;
     const blob = new Blob([tsv], { type: "text/tab-separated-values" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -76,87 +101,66 @@ const TablePage = () => {
   };
 
   const handleCopy = () => {
-    const headers = columns.map((col) => col.header).join("\t");
+    const headers = ["Level", "Nama Level", "Skor Minimum", "Skor Maximum", "Deskripsi Umum"];
     const rows = filteredData
-      .map((row, i) =>
-        columns
-          .map((col) =>
-            col.key === "level" ? i + 1 : (row as any)[col.key] || ""
-          )
-          .join("\t")
-      )
+      .map((row, i) => [
+        i + 1,
+        row.namalevel,
+        row.skorminimum,
+        row.skormaximum,
+        row.deskripsiumum,
+      ].join("\t"))
       .join("\n");
 
-    const textToCopy = headers + "\n" + rows;
+    const textToCopy = headers.join("\t") + "\n" + rows;
     navigator.clipboard.writeText(textToCopy).then(() => {
       alert("✅ Data berhasil disalin ke clipboard!");
     });
   };
 
-  const handleTambah = () => {
-    router.push("/tambah-maturity");
-  };
+  // 🔧 Tambahkan kolom "aksi" ke data (tanpa ubah Table.tsx)
+  const dataDenganAksi = paginatedData.map((row, index) => ({
+    ...row,
+    // Auto-increment Level
+    level: (currentPage - 1) * 10 + index + 1,
+    // Kolom aksi: JSX langsung
+    aksi: (
+      <div className="flex justify-center gap-4 text-xs">
+        <button
+          onClick={() => handleEdit(index)}
+          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+        >
+          <Pencil size={14} /> Edit
+        </button>
+        <button
+          onClick={() => handleDelete(index)}
+          className="flex items-center gap-1 text-red-600 hover:text-red-800"
+        >
+          <Trash2 size={14} /> Delete
+        </button>
+      </div>
+    ),
+  }));
 
-  const handleEdit = (index: number) => {
-    const realIndex = (currentPage - 1) * 10 + index;
-    const rowNumber = realIndex + 1;
-    console.log("Edit row at index:", realIndex, "Row number:", rowNumber);
-    router.push(`/edit-maturity/${realIndex}`); // Asumsi Anda punya halaman edit
-  };
-
-  const handleDelete = (index: number) => {
-    const realIndex = (currentPage - 1) * 10 + index;
-    const rowNumber = realIndex + 1;
-    const confirmed = confirm(`Yakin ingin menghapus baris ke-${rowNumber}?`);
-    if (confirmed) {
-      alert(`🗑️ Baris ke-${rowNumber} berhasil dihapus (simulasi).`);
-      // Di sini Anda bisa tambahkan logika hapus dari state jika pakai useState
-    }
-  };
-
+  // Kolom tabel — tidak perlu render, hanya daftar key
   const columns = [
     { header: "Level", key: "level", width: "60px" },
     { header: "Nama Level", key: "namalevel", width: "200px" },
     { header: "Skor Minimum", key: "skorminimum", width: "160px" },
     { header: "Skor Maximum", key: "skormaximum", width: "160px" },
     { header: "Deskripsi Umum", key: "deskripsiumum", width: "250px" },
-    {
-      header: "Aksi",
-      key: "aksi",
-      width: "160px",
-      render: (row: any, index: number) => (
-        <div className="flex justify-center gap-3 text-xs">
-          <button
-            onClick={() => handleEdit(index)}
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
-          >
-            <Pencil size={14} /> Edit
-          </button>
-          <button
-            onClick={() => handleDelete(index)}
-            className="flex items-center gap-1 text-red-600 hover:text-red-800 hover:underline"
-          >
-            <Trash2 size={14} /> Delete
-          </button>
-        </div>
-      ),
-    },
+    { header: "Aksi", key: "aksi", width: "160px" },
   ];
 
-  const navItems = [
-    { name: "🏠 Home", value: "welcome" },
-    { name: "📊 Dashboard", value: "dashboard" },
-    { name: "📝 Start Assessment", value: "assessment-form" },
-    { name: "📊 Assessment Result", value: "asesment-result" },
-    { name: "Maturity Level", value: "maturity-level" },
-    { name: "📘 About IMA", value: "user-manual" },
-    { name: "👤 User Management", value: "user-management" },
-  ];
+  // Untuk sidebar & navbar
+  const pathname = usePathname();
+  const handleNavClick = (item: any) => {
+    if (item.path) router.push(`/${item.path}`);
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar navItems={navItems} setTab={setTab} />
-
+      <Sidebar onItemClick={handleNavClick} />
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="px-6 pt-6">
@@ -170,8 +174,8 @@ const TablePage = () => {
                 </div>
               }
             >
-              <UniversalDropdown.Item label="Profil" onClick={() => console.log("Profil")} />
-              <UniversalDropdown.Item label="Logout" onClick={() => console.log("Logout")} />
+              <UniversalDropdown.Item label="Profil" onClick={() => {}} />
+              <UniversalDropdown.Item label="Logout" onClick={() => {}} />
             </UniversalDropdown>
           </div>
         </div>
@@ -182,32 +186,23 @@ const TablePage = () => {
           <div className="flex flex-wrap justify-between items-center gap-4">
             <input
               type="text"
-              placeholder="Cari"
+              placeholder="Cari..."
               className="border px-3 py-2 rounded-md w-full max-w-xs"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
-            <div className="flex gap-2 items-center">
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-              >
-                <Copy size={16} /> Copy
+            <div className="flex gap-2">
+              <button onClick={handleCopy} className="flex items-center gap-1 border px-2 py-2 rounded hover:bg-gray-100 text-xs">
+                <Copy size={14} /> Copy
               </button>
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-              >
-                <Printer size={16} /> Print
+              <button onClick={handlePrint} className="flex items-center gap-1 border px-2 py-2 rounded hover:bg-gray-100 text-xs">
+                <Printer size={14} /> Print
               </button>
-              <button
-                onClick={handleDownload}
-                className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-              >
-                <Download size={16} /> Download
+              <button onClick={handleDownload} className="flex items-center gap-1 border px-2 py-2 rounded hover:bg-gray-100 text-xs">
+                <Download size={14} /> Download
               </button>
-              <Button variant="primary" onClick={handleTambah}>
+              <Button variant="primary" onClick={handleTambah} className="text-xs">
                 + Tambah Maturity
               </Button>
             </div>
@@ -217,31 +212,28 @@ const TablePage = () => {
           <div className="overflow-x-auto max-h-[300px]">
             <Table
               columns={columns}
-              data={paginatedData.map((row, index) => ({
-                ...row,
-                level: (currentPage - 1) * 10 + index + 1,
-              }))}
+              data={dataDenganAksi} 
               currentPage={currentPage}
               rowsPerPage={10}
             />
           </div>
 
           {/* Pagination */}
-          <div className="flex justify-between items-center mt-4 flex-wrap gap-4">
+          <div className="flex justify-between items-center mt-4 flex-wrap gap-2">
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+                className="w-8 h-8 border rounded-full disabled:opacity-50"
               >
                 {"<"}
               </button>
-              {[...Array(totalPages)].map((_, i) => (
+              {Array.from({ length: totalPages }, (_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 flex items-center justify-center border rounded-full ${
-                    currentPage === i + 1 ? "bg-gray-200 font-bold" : ""
+                  className={`w-8 h-8 border rounded-full ${
+                    currentPage === i + 1 ? "bg-blue-100 font-bold" : ""
                   }`}
                 >
                   {i + 1}
@@ -250,7 +242,7 @@ const TablePage = () => {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+                className="w-8 h-8 border rounded-full disabled:opacity-50"
               >
                 {">"}
               </button>
@@ -261,5 +253,7 @@ const TablePage = () => {
     </div>
   );
 };
+
+
 
 export default TablePage;
