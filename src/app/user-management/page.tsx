@@ -1,8 +1,10 @@
 'use client';
-
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
+import { useRouter, usePathname } from 'next/navigation';
+import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
+import Sidebar from '@/components/sidebar';
+import { FaCopy, FaPrint, FaDownload, FaSearch, FaEdit, FaTimes, FaRedo } from 'react-icons/fa';
+import SuccessNotification from '@/components/SuccessNotification';
 
 interface User {
   userId: string;
@@ -18,24 +20,24 @@ interface User {
 }
 
 export default function UserManagementPage() {
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [tab, setTab] = useState('welcome');
   const [userList, setUserList] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); 
+  const [showSuccess, setShowSuccess] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
   const [targetStatus, setTargetStatus] = useState<'active' | 'inactive' | null>(null);
+
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowRoleDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
+  // Ambil data dari localStorage saat mount
   useEffect(() => {
     const storedUsers = localStorage.getItem('users');
     if (storedUsers) {
@@ -45,10 +47,52 @@ export default function UserManagementPage() {
       }));
       setUserList(parsedUsers);
     }
+
+    const isNewDataAdded = localStorage.getItem('newDataAdded');
+    if (isNewDataAdded === 'true') {
+      setShowSuccess(true);
+      localStorage.removeItem('newDataAdded');
+    }
+
+    const timer = setTimeout(() => {
+      setShowSuccess(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const path = pathname?.split('/')[1];
+    setTab(path || 'welcome');
+  }, [pathname]);
+
+  // ✅ Filter hanya field string agar pencarian tidak error
+  const filteredUsers = userList.filter((user) => {
+    const search = searchTerm.toLowerCase();
+    return Object.values(user).some((value) => 
+      typeof value === 'string' && value.toLowerCase().includes(search)
+    );
+  });
+
+  // Pagination
+  const totalItems = filteredUsers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
   const handleTambahUserClick = () => {
-    setShowRoleDropdown(prev => !prev);
+    setShowRoleDropdown((prev) => !prev);
   };
 
   const handleRoleSelect = (role: string) => {
@@ -58,8 +102,8 @@ export default function UserManagementPage() {
   };
 
   const toggleStatus = (index: number) => {
-    setPendingToggleIndex(index);
-    const nextStatus = userList[index].status === 'active' ? 'inactive' : 'active';
+    setPendingToggleIndex(indexOfFirstItem + index);
+    const nextStatus = currentUsers[index].status === 'active' ? 'inactive' : 'active';
     setTargetStatus(nextStatus);
     setShowModal(true);
   };
@@ -82,136 +126,245 @@ export default function UserManagementPage() {
     router.push(`/user-management/edit-user?userId=${user.userId}`);
   };
 
+  const handleCopy = () => {
+    const header = 'User ID,User Name,Nama User,Role,Status\n';
+    const rows = filteredUsers.map(
+      (user) =>
+        `${user.userId},${user.username},${user.namaUser},${user.role},${user.status}`
+    );
+    const csv = header + rows.join('\n');
+    navigator.clipboard.writeText(csv).then(() => {
+      alert('Data user berhasil disalin ke clipboard!');
+    });
+  };
+
+  const handlePrint = () => {
+    const printContents = document.getElementById('user-table')?.outerHTML;
+    if (!printContents) return;
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Users</title>
+            <style>
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            </style>
+          </head>
+          <body>${printContents}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handleDownload = () => {
+    const header = 'User ID,User Name,Nama User,Role,Status\n';
+    const rows = filteredUsers.map(
+      (user) =>
+        `${user.userId},${user.username},${user.namaUser},${user.role},${user.status}`
+    );
+    const csv = header + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'user_list.csv');
+    link.click();
+  };
+
+  const handleNavClick = (item: any) => {
+    if (item.path) {
+      router.push(`/${item.path}`);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-white p-8">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">User Management</h1>
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar onItemClick={handleNavClick} />
 
-      <div className="bg-gray-100 rounded-lg p-6 shadow-sm overflow-auto">
-        <div className="flex justify-between items-center mb-4 relative min-w-max">
-          <input
-            type="text"
-            placeholder="Search user..."
-            className="border border-gray-300 px-3 py-2 rounded-md w-64"
+      <main className="min-h-screen w-full p-8">
+        {showSuccess && (
+          <SuccessNotification
+            isOpen={showSuccess}
+            message="User berhasil ditambahkan!"
+            onClose={() => setShowSuccess(false)}
           />
+        )}
 
-          <div className="flex gap-2 relative" ref={dropdownRef}>
-            <button className="px-4 py-2 border rounded bg-white hover:bg-gray-200">Copy</button>
-            <button className="px-4 py-2 border rounded bg-white hover:bg-gray-200">Print</button>
-            <button className="px-4 py-2 border rounded bg-white hover:bg-gray-200">Download ⏷</button>
-
+        <div className="bg-white rounded-lg p-6 shadow-sm overflow-auto w-full">
+          {/* Header Table */}
+          <div className="flex justify-between items-center mb-4 relative min-w-max">
             <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Cari..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-3 py-2 rounded-md w-64 bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <div className="flex gap-2 relative" ref={dropdownRef}>
               <button
-                onClick={handleTambahUserClick}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                onClick={handleCopy}
+                className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
               >
-                Tambah User
+                <FaCopy /> Copy
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
+              >
+                <FaPrint /> Print
+              </button>
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
+              >
+                <FaDownload /> Download
               </button>
 
-              {showRoleDropdown && (
-                <div className="absolute right-0 mt-1 w-36 bg-white border border-gray-300 rounded shadow-md z-[9999]">
-                  <button
-                    onClick={() => handleRoleSelect('UPPS/KC')}
-                    className="block w-full text-left px-4 py-2 hover:bg-blue-100"
-                  >
-                    UPPS/KC
-                  </button>
-                  <button
-                    onClick={() => handleRoleSelect('Non SSO')}
-                    className="block w-full text-left px-4 py-2 hover:bg-blue-100"
-                  >
-                    Non SSO
-                  </button>
-                </div>
-              )}
+              <div className="relative">
+                <button
+                  onClick={handleTambahUserClick}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                >
+                  Tambah User
+                </button>
+                {showRoleDropdown && (
+                  <div className="absolute right-0 mt-1 w-36 bg-white border border-gray-300 rounded shadow-md z-[9999]">
+                    <button
+                      onClick={() => handleRoleSelect('UPPS/KC')}
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-100"
+                    >
+                      UPPS/KC
+                    </button>
+                    <button
+                      onClick={() => handleRoleSelect('Non SSO')}
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-100"
+                    >
+                      Non SSO
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto relative w-full max-h-[600px]">
+            <table id="user-table" className="w-full text-left border border-gray-300 text-sm bg-white">
+              <thead className="bg-gray-200 sticky top-0 z-50">
+                <tr>
+                  <th className="px-4 py-3 border w-28">User ID</th>
+                  <th className="px-4 py-3 border w-40">User Name</th>
+                  <th className="px-4 py-3 border w-32">Password</th>
+                  <th className="px-4 py-3 border w-48">Nama User</th>
+                  <th className="px-4 py-3 border w-32">Role</th>
+                  <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-56">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-4 text-gray-500 bg-white">
+                      Belum ada user yang ditambahkan.
+                    </td>
+                  </tr>
+                ) : (
+                  currentUsers.map((user, index) => (
+                    <tr key={index} className="hover:bg-gray-50 align-top">
+                      <td className="px-4 py-3 border">{user.userId}</td>
+                      <td className="px-4 py-3 border">{user.username}</td>
+                      <td className="px-4 py-3 border">••••••••</td>
+                      <td className="px-4 py-3 border">{user.namaUser}</td>
+                      <td className="px-4 py-3 border">{user.role}</td>
+                      <td className="px-10 py-5 sticky right-0 bg-white z-40 border w-28">
+                        <div className="flex gap-3 relative z-50">
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="text-blue-500 flex items-center gap-1 hover:underline"
+                          >
+                            <FaEdit /> Edit
+                          </button>
+                          {user.status === 'active' ? (
+                            <button
+                              onClick={() => toggleStatus(index)}
+                              className="text-red-600 flex items-center gap-1 hover:underline"
+                            >
+                              <FaTimes /> Deactivate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => toggleStatus(index)}
+                              className="text-green-500 flex items-center gap-1 hover:underline"
+                            >
+                              <FaRedo /> Reactivate
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex justify-between items-center mt-4 px-4">
+            <div className="flex items-center gap-2">
+              <select
+                className="border rounded px-2 py-1"
+                value={itemsPerPage}
+                onChange={handleItemsPerPageChange}
+              >
+                <option value={5}>5 Data</option>
+                <option value={10}>10 Data</option>
+                <option value={20}>20 Data</option>
+                <option value={50}>50 Data</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-2 py-1 border rounded disabled:opacity-50"
+              >
+                {"<"}
+              </button>
+              <span>{currentPage}</span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 border rounded disabled:opacity-50"
+              >
+                {">"}
+              </button>
+            </div>
+
+            <div>Total {filteredUsers.length} data</div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border border-gray-300 text-sm min-w-max">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="p-3 border">User ID</th>
-                <th className="p-3 border">User Name</th>
-                <th className="p-3 border">Password</th>
-                <th className="p-3 border">Nama User</th>
-                <th className="p-3 border">Role</th>
-                <th className="p-3 border">Nama PIC</th>
-                <th className="p-3 border">Nomor Handphone</th>
-                <th className="p-3 border">Email</th>
-                <th className="p-3 border">Logo UPPS/KC</th>
-                <th className="p-3 border">Status</th>
-                <th className="p-3 border sticky right-0 bg-gray-200 z-10 w-40">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {userList.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="text-center p-4 text-gray-500">
-                    Belum ada user yang ditambahkan.
-                  </td>
-                </tr>
-              ) : (
-                userList.map((user, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="p-3 border">{user.userId}</td>
-                    <td className="p-3 border">{user.username}</td>
-                    <td className="p-3 border">••••••••</td>
-                    <td className="p-3 border">{user.namaUser}</td>
-                    <td className="p-3 border">{user.role}</td>
-                    <td className="p-3 border">{user.namaPIC || '-'}</td>
-                    <td className="p-3 border">{user.nomorHp || '-'}</td>
-                    <td className="p-3 border">{user.email || '-'}</td>
-                    <td className="p-3 border">
-                      {user.role === 'UPPS/KC' ? user.logoFile || 'logo.png' : '-'}
-                    </td>
-                    <td className="p-3 border capitalize">{user.status}</td>
-                    <td className="border px-2 py-1 sticky right-0 bg-white z-10 w-40">
-                      <button
-                        onClick={() => handleEditUser(user)}
-                        className="text-blue-500 mr-2 hover:underline"
-                      >
-                        ✏️ Edit
-                      </button>
-                      {user.status === 'active' ? (
-                        <button
-                          onClick={() => toggleStatus(index)}
-                          className="text-red-600 hover:underline"
-                        >
-                          ❌ Deactivate
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => toggleStatus(index)}
-                          className="text-green-500 hover:underline"
-                        >
-                          🔁 Activate
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal Konfirmasi */}
-      <div className="custom-modal-width">
+        {/* Modal */}
         <ModalConfirm
           isOpen={showModal}
           onCancel={() => setShowModal(false)}
           onConfirm={handleConfirm}
           title={
             targetStatus === 'inactive'
-              ? 'Apakah kamu yakin, kamu ingin menonaktifkan user ini?'
-              : 'Apakah kamu yakin, kamu ingin mengaktifkan kembali data ini?'
+              ? 'Apakah kamu yakin ingin menonaktifkan user ini?'
+              : 'Apakah kamu yakin ingin mengaktifkan kembali user ini?'
           }
           header={
             targetStatus === 'inactive'
               ? 'Non Aktifkan User'
-              : 'Aktifkan Kembali Data'
+              : 'Aktifkan Kembali User'
           }
           confirmLabel="Ya, lakukan"
           cancelLabel="Batal"
@@ -224,13 +377,13 @@ export default function UserManagementPage() {
               <div className="font-semibold text-base mb-1">Informasi</div>
               <div className="pl-1">
                 {targetStatus === 'inactive'
-                  ? 'kamu bisa mengembalikan kembali data yang sudah dihilangkan'
-                  : 'kamu bisa menghapus kembali data yang sudah dipulihkan'}
+                  ? 'User yang dinonaktifkan tidak akan bisa login sampai diaktifkan kembali.'
+                  : 'User yang diaktifkan kembali akan bisa login seperti biasa.'}
               </div>
             </div>
           </div>
         </ModalConfirm>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
