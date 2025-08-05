@@ -39,8 +39,6 @@ export default function Page() {
     <div>Data yang sudah diubah tidak akan disimpan.</div>
   </div>
 </ModalConfirm>
-
-
     </div>
   );
 }
