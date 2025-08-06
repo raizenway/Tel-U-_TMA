@@ -57,15 +57,8 @@ export default function AssessmentFormPage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* SIDEBAR */}
-      <Sidebar onItemClick={handleNavItemClick} />
-
       {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col">
-        {/* TOPBAR */}
-        <div className="px-6 pt-6 bg-white shadow">
-          <TopbarHeader />
-        </div>
-
         {/* CONTENT */}
         <main className="p-6 bg-gray-50 flex-1 overflow-y-auto">
           {tab === "assessment-form" && (

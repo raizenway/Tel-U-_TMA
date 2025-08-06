@@ -1,9 +1,8 @@
+// app/api-igracias/page.tsx
 'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/sidebar';
-import TopbarHeader from '@/components/TopbarHeader';
+import Button from '@/components/button';
 
 export default function ApiIgraciasPage() {
   const router = useRouter();
@@ -17,15 +16,15 @@ export default function ApiIgraciasPage() {
   const [deskripsiSkor, setDeskripsiSkor] = useState<{
     [key: number]: string;
   }>({
-    0: 'Lorem ipsum dolor sit amet consectetur.',
-    1: 'Lorem ipsum dolor sit amet consectetur.',
-    2: 'Lorem ipsum dolor sit amet consectetur.',
-    3: 'Lorem ipsum dolor sit amet consectetur.',
-    4: 'Lorem ipsum dolor sit amet consectetur.',
+    0: 'Tidak ada dokumentasi.',
+    1: 'Ada dokumentasi dasar.',
+    2: 'Dokumentasi sebagian lengkap.',
+    3: 'Dokumentasi hampir lengkap.',
+    4: 'Dokumentasi lengkap dan terupdate.',
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Validasi
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!namaVariabel.trim()) newErrors.namaVariabel = 'Wajib diisi';
@@ -37,42 +36,47 @@ export default function ApiIgraciasPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSimpan = () => {
-    if (!validate()) {
-      alert('Mohon lengkapi semua field yang wajib.');
-      return;
-    }
+ const handleSimpan = () => {
+  if (!validate()) return;
 
-    // Ambil data dari localStorage
-    const saved = localStorage.getItem('assessmentList');
-    const list = saved ? JSON.parse(saved) : [];
+  const saved = localStorage.getItem('assessmentList');
+  const list = saved ? JSON.parse(saved) : [];
 
-    // Hitung nomor terakhir
-    const lastNomor = list.length > 0 ? Math.max(...list.map((i: any) => i.nomor)) : 0;
-
-    // Data baru
-    const newItem = {
-      nomor: lastNomor + 1,
-      variable: namaVariabel,
-      bobot: 1,
-      indikator,
-      pertanyaan,
-      tipeSoal: 'API dari iGracias',
-      status: status === 'Active' ? 'Active' : 'Inactive',
-    };
-
-    // Simpan ke localStorage
-    const updated = [...list, newItem];
-    localStorage.setItem('assessmentList', JSON.stringify(updated));
-
-    alert('Data berhasil disimpan!');
-    router.push('/daftar-assessment');
+  const baseData = {
+    variable: namaVariabel,
+    bobot: 1,
+    indikator,
+    pertanyaan,
+    tipeSoal: 'API dari iGracias',
+    status: status === 'Active' ? 'Active' : 'Inactive',
+    deskripsiSkor0: deskripsiSkor[0],
+    deskripsiSkor1: deskripsiSkor[1],
+    deskripsiSkor2: deskripsiSkor[2],
+    deskripsiSkor3: deskripsiSkor[3],
+    deskripsiSkor4: deskripsiSkor[4],
   };
 
-  // 🔁 Handler untuk redirect otomatis saat pilih tipe soal
+  let updated;
+  const editData = localStorage.getItem('editData');
+
+  if (editData) {
+    const data = JSON.parse(editData);
+    updated = list.map((item: any) =>
+      item.nomor === data.nomor ? { ...item, ...baseData } : item
+    );
+    localStorage.removeItem('editData'); // ✅ BARU HAPUS DI SINI!
+  } else {
+    const lastNomor = list.length > 0 ? Math.max(...list.map((i: any) => i.nomor)) : 0;
+    updated = [...list, { ...baseData, nomor: lastNomor + 1 }];
+  }
+
+  localStorage.setItem('assessmentList', JSON.stringify(updated));
+  router.push('/daftar-assessment');
+};
+
+  // Redirect otomatis saat ganti tipe soal
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
-
     if (selected === 'pilihan-jawaban') {
       router.push('/pilih-jawaban');
     } else if (selected === 'api-igracias') {
@@ -82,30 +86,53 @@ export default function ApiIgraciasPage() {
     }
   };
 
+  // Load data untuk edit
+  useEffect(() => {
+  const editData = localStorage.getItem('editData');
+  if (editData) {
+    const data = JSON.parse(editData);
+ setNamaVariabel(data.variable || '');
+    setLinkApi(data.linkApi || '');
+    setIndikator(data.indikator || '');
+    setPertanyaan(data.pertanyaan || '');
+    setStatus(data.status || 'Inactive');
+
+       if (data.deskripsiSkor) {
+      setDeskripsiSkor(data.deskripsiSkor);
+    } else if (data.deskripsiSkor0 !== undefined) {
+      setDeskripsiSkor({
+        0: data.deskripsiSkor0,
+        1: data.deskripsiSkor1,
+        2: data.deskripsiSkor2,
+        3: data.deskripsiSkor3,
+        4: data.deskripsiSkor4,
+        });
+      }
+
+     
+    }
+  }, []);
+
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <Sidebar onItemClick={(item) => item.path && router.push(`/${item.path}`)} />
+      <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
+        <div
+          className="bg-white rounded-xl shadow-md mx-auto"
+          style={{ width: '1100px', minHeight: '650px', margin: '0 auto' }}
+        >
+          <div className="p-8 border-b border-gray-200">
+            <h1 className="text-2xl font-bold text-gray-800">Soal: API dari iGracias</h1>
+          </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Topbar */}
-        <TopbarHeader />
-
-        {/* Page Content */}
-        <main className="p-6 bg-gray-100 flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-md">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Soal 2: API dari iGracias</h1>
-
+          <div className="p-8 space-y-6 overflow-y-auto max-h-[500px]">
             {/* Type Soal & Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* 🔹 Dropdown Type Soal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Type Soal</label>
                 <select
                   className="w-full border border-gray-300 rounded-lg px-4 py-3"
                   onChange={handleTypeChange}
-                  defaultValue="api-igracias" // Tetap di halaman ini saat load
+                  defaultValue="api-igracias"
                 >
                   <option value="">Pilih Type Soal</option>
                   <option value="pilihan-jawaban">Pilihan Jawaban</option>
@@ -113,8 +140,32 @@ export default function ApiIgraciasPage() {
                   <option value="submit-excel">Submit Jawaban Excel</option>
                 </select>
               </div>
+               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Link API</label>
+                <input
+                  type="text"
+                  className={`w-full border ${errors.linkApi ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3`}
+                  value={linkApi}
+                  onChange={(e) => setLinkApi(e.target.value)}
+                  placeholder="Masukkan Link API"
+                />
+                {errors.linkApi && <p className="text-red-500 text-xs mt-1">{errors.linkApi}</p>}
+              </div>
+            </div>
 
-              {/* Status (tidak diubah posisinya) */}
+            {/* Nama Variabel & Link API */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
+                <input
+                  type="text"
+                  className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3`}
+                  value={namaVariabel}
+                  onChange={(e) => setNamaVariabel(e.target.value)}
+                  placeholder="Masukkan Nama Variabel"
+                />
+                {errors.namaVariabel && <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select
@@ -128,36 +179,11 @@ export default function ApiIgraciasPage() {
                 </select>
                 {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
               </div>
-            </div>
-
-            {/* Nama Variabel & Link API */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
-                <input
-                  type="text"
-                  className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3`}
-                  value={namaVariabel}
-                  onChange={(e) => setNamaVariabel(e.target.value)}
-                  placeholder="Masukkan Nama Variabel"
-                />
-                {errors.namaVariabel && <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Link API</label>
-                <input
-                  type="text"
-                  className={`w-full border ${errors.linkApi ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3`}
-                  value={linkApi}
-                  onChange={(e) => setLinkApi(e.target.value)}
-                  placeholder="Masukkan Link API"
-                />
-                {errors.linkApi && <p className="text-red-500 text-xs mt-1">{errors.linkApi}</p>}
-              </div>
+             
             </div>
 
             {/* Indikator & Pertanyaan */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Indikator</label>
                 <textarea
@@ -183,7 +209,7 @@ export default function ApiIgraciasPage() {
             </div>
 
             {/* Deskripsi Skor */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[0, 1, 2, 3, 4].map((skor) => (
                 <div key={skor}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi Skor {skor}</label>
@@ -196,61 +222,32 @@ export default function ApiIgraciasPage() {
                         [skor]: e.target.value,
                       }))
                     }
-                    placeholder="Masukkan Deskripsi Skor"
-                    rows={4}
+                    placeholder={`Masukkan deskripsi untuk skor ${skor}`}
+                    rows={3}
                   ></textarea>
                 </div>
               ))}
             </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end space-x-4 mt-6">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="flex items-center px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleSimpan}
-                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                Simpan
-              </button>
-            </div>
           </div>
-        </main>
-      </div>
+
+          <div className="p-8 border-t bg-gray-50 flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={() => router.push('/daftar-assessment')}
+              className="px-15 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            >
+              Batal
+            </button>
+            <Button
+              variant="primary"
+              onClick={handleSimpan}
+              className="px-15 py-2 text-white rounded-lg transition"
+            >
+              Simpan
+            </Button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
