@@ -39,9 +39,9 @@ export default function LoginPage() {
             />
             {/* Logo Kanan: Misalnya Logo Prodi */}
             <Image
-              src="/logo yayasan 1.png"
+              src="/tr.png"
               alt="Logo Program Studi"
-              width={100}
+              width={190}
               height={100}
               className="object-contain"
             />
