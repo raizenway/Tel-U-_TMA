@@ -10,7 +10,7 @@ interface Column {
 
 interface TableProps {
   columns: Column[];
-  data: Record<string, any>[];
+  data: Record<string, string>[];
   currentPage: number;
   rowsPerPage: number;
 }
@@ -23,8 +23,8 @@ const Table: React.FC<TableProps> = ({
 }) => {
   return (
     <div className="w-full overflow-x-auto">
-      <div className="min-w-[800px] inline-block align-middle">
-        <table className="w-full border border-gray-300 text-sm">
+      <div className="min-w-max inline-block align-middle">
+        <table className="overflow-x-auto w-full border border-gray-300 text-sm">
           <thead className="bg-gray-100">
             <tr>
               {columns.map((col, index) => (

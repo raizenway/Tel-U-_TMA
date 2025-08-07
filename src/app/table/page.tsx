@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import Table from "@/components/Table";
 import { Download, Printer, ChevronDown, Copy } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
-import TopbarHeader from "@/components/TopbarHeader";
 import Sidebar from "@/components/sidebar";
+import Button  from "@/components/button";
+
 
 const TablePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,9 +14,10 @@ const TablePage = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(null);
+  const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
   const [tab, setTab] = useState("approval-assessment");
 
+  
   const rowsPerPage = 10;
 
   const campusOptions = [
@@ -24,16 +26,18 @@ const TablePage = () => {
     "Tel-U Surabaya",
     "Tel-U Purwokerto",
   ];
-
-  const columns = [
-  { header: "No", key: "nomor", width: "41px",  },
-  { header: "Variable", key: "variable", width: "160px" },
-  { header: "Indikator", key: "indikator", width: "319px" },
-  { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
-  { header: "Jawaban", key: "jawaban", width: "126px" },
-  { header: "Skor", key: "skor", width: "319px",   },
-  { header: "Tipe Soal", key: "tipeSoal", width: "160px",  },
+  
+const columns = [
+  { header: "No", key: "nomor", width: "80px" },
+  { header: "Variable", key: "variable", width: "150px" },
+  { header: "Indikator", key: "indikator", width: "250px" },
+  { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
+  { header: "Jawaban", key: "jawaban", width: "150px" },
+  { header: "Skor", key: "skor", width: "100px" },
+  { header: "Tipe Soal", key: "tipeSoal", width: "150px" },
 ];
+
+
 
 
   const data = [
@@ -269,24 +273,19 @@ const TablePage = () => {
     setModalType(null);
   };
 
-  const navItems = [
-    { name: "\ud83c\udfe0 Home", value: "welcome" },
-    { name: "\ud83d\udcca Dashboard", value: "dashboard" },
-    { name: "\ud83d\udcdd Start Assessment", value: "assessment-form" },
-    { name: "\ud83d\udcca Assessment Result", value: "asesment-result" },
-    { name: " Approval Assessment", value: "approval-assessment" },
-    { name: "\ud83d\udcd8 About IMA", value: "user-manual" },
-    { name: "\ud83d\udc64 User Management", value: "user-management" },
-  ];
+ const navItems = [
+  { name: "🏠 Home", value: "welcome" },
+  { name: "📊 Dashboard", value: "dashboard" },
+  { name: "📝 Start Assessment", value: "assessment-form" },
+  { name: "📊 Assessment Result", value: "asesment-result" },
+  { name: "📋 Approval Assessment", value: "approval-assessment" },
+  { name: "📘 About IMA", value: "user-manual" },
+  { name: "👤 User Management", value: "user-management" },
+];
 
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar navItems={navItems} setTab={setTab} activeTab={tab} />
-
-      <div className="flex-1 flex flex-col">
-        <div className="px-6 pt-6">
-          <TopbarHeader />
-        </div>
 
         {tab === "approval-assessment" && (
           <div className="p-6 bg-white rounded-xl shadow m-6 space-y-4">
@@ -301,13 +300,14 @@ const TablePage = () => {
               />
 
               <div className="flex gap-2 items-center">
-                <button
+                <Button
+                  variant="outline"
                   onClick={handleCopy}
                   className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
                 >
-                  <Copy size={16} />
-                  Copy
-                </button>
+                  <Copy size={16} className="inline-block"/>
+                  <span className="text-sm leading-none">Copy</span>
+                </Button>
                 <button
                   onClick={handlePrint}
                   className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
@@ -353,66 +353,70 @@ const TablePage = () => {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto w-[800px] h-[350px]">
-              <Table
-                columns={columns}
-                data={paginatedData}
-                currentPage={currentPage}
-                rowsPerPage={rowsPerPage}
-              />
-            </div>
-
-            {/* Pagination & Action */}
-            <div className="flex justify-between items-center mt-4 flex-wrap gap-4">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-                >
-                  &lt;
-                </button>
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 flex items-center justify-center border rounded-full ${
-                      currentPage === i + 1 ? "bg-gray-200 font-bold" : ""
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-                >
-                  &gt;
-                </button>
+            {/* Table Scrollable */}
+              <div className="w-full overflow-x-auto">
+                <div className="max-h-[350px] w-[800px] overflow-y-auto">
+                  <Table
+                    columns={columns}
+                    data={paginatedData}
+                    currentPage={currentPage}
+                    rowsPerPage={rowsPerPage}
+                  />
+                </div>
               </div>
 
+
+            {/* Pagination & Action */}
+           <div className="flex justify-between items-center mt-4 flex-wrap gap-4">
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
+           {/* Tombol ke halaman sebelumnya */}
+               <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+               >
+                  &lt;
+              </button>
+
+           {/* Hanya 1 nomor halaman aktif */}
+            <div className="w-8 h-8 flex items-center justify-center border rounded-full font-bold bg-white text-black">
+              {currentPage}
+              </div>
+
+           {/* Tombol ke halaman berikutnya */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+             >
+              &gt;
+            </button>
+          </div>
+       
+
+              <div className="flex gap-6">
+                <Button
+                    variant="success"
+                    onClick={() => {
+                    
                     setModalType("approve");
                     setShowModal(true);
                   }}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-10 py-2  text-white rounded"
                 >
                   Approve
-                </button>
+                </Button>
 
-                <button
-                  onClick={() => {
+                <Button
+                    variant="danger"
+                    onClick={() => {
                     setModalType("revisi");
                     setShowModal(true);
                   }}
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                  className="px-10 py-2 text-white rounded"
                 >
                   Revisi
-                </button>
+                </Button>
               </div>
 
               <ModalConfirm
@@ -433,7 +437,6 @@ const TablePage = () => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 

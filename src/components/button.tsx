@@ -4,22 +4,22 @@ import { LucideIcon } from "lucide-react";
 
 type ButtonType = "button" | "submit" | "reset" | "link";
 
-interface ButtonProps {
-  type?: ButtonType;
-  variant?: "primary" | "secondary" | "danger" | "success" | "ghost" | "outline";
-  size?: "sm" | "md" | "lg";
-  className?: string;
-  id?: string;
-  href?: string; // khusus untuk link
-  onClick?: () => void;
-  disabled?: boolean;
-  isLoading?: boolean;
-  icon?: LucideIcon;
-  iconPosition?: "left" | "right" | "star";
-  fullWidth?: boolean;
-  children: React.ReactNode;
-  download?: boolean;
-}
+  interface ButtonProps {
+    type?: ButtonType;
+    variant?: "primary" | "secondary" | "danger" | "success" | "ghost" | "outline" | "outline grey" | "simpan" ;
+    size?: "sm" | "md" | "lg";
+    className?: string;
+    id?: string;
+    href?: string; // khusus untuk link
+    onClick?: () => void;
+    disabled?: boolean;
+    isLoading?: boolean;
+    icon?: LucideIcon;
+    iconPosition?: "left" | "right" | "star";
+    fullWidth?: boolean;
+    children: React.ReactNode;
+    download?: boolean;
+  }
 
 const Button: React.FC<ButtonProps> = ({
   type = "button",
@@ -44,7 +44,8 @@ const Button: React.FC<ButtonProps> = ({
     success: "bg-green-600 text-white hover:bg-green-700",
     ghost: "bg-transparent text-gray-800 hover:bg-gray-100",
     outline: "border border-gray-300 text-gray-800 bg-transparent hover:bg-gray-100",
-  };
+    simpan: "bg-[#263859] text-white hover:bg-[#1e2e4a] rounded-[16px] font-semibold",
+    };
 
   const sizeClassMap: Record<string, string> = {
     sm: "px-3 py-1 text-sm",
