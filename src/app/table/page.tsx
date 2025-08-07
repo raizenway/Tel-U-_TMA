@@ -46,7 +46,7 @@ const TablePage = () => {
       skor: "2",
       tipeSoal: "Pilihan Ganda",
     },
-    {
+    { 
       variable: "V4 (Sarana & Prasarana)",
       indikator: "Luas perpustakaan di TUNC (m2)",
       pertanyaan: "Luas perpustakaan di TUNC (m2)",
