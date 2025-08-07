@@ -122,9 +122,35 @@
     };
 
     const handleConfirm = () => {
-        alert("Data telah disetujui");
-        setShowModal(false);
-      };
+  // Ambil semua jawaban dan format untuk disimpan
+  const resultData = questions.map((q) => ({
+    no: q.id,
+    kode: q.section,
+    pertanyaan: q.question,
+    jawaban: answers[q.id] || "-",
+    status: answers[q.id] ? "Terisi" : "Kosong",
+  }));
+
+  // Simpan ke localStorage (bisa diganti kirim ke API)
+  const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
+  const newEntry = {
+    id: Date.now(), // ID unik
+    unit: "Tel-U Purwokerto", // bisa diambil dari context
+    tanggal: new Date().toLocaleDateString("id-ID"),
+    totalTerisi: Object.keys(answers).length,
+    data: resultData,
+  };
+  localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
+
+  // Tutup modal & tampilkan sukses
+  setShowModal(false);
+  setShowSuccess(true);
+
+  // Redirect setelah 1.5 detik
+  setTimeout(() => {
+    router.push("/assessmenttable");
+  }, 1500);
+};
       const router = useRouter();
       const [showResetModal, setShowResetModal] = useState(false);
       const [resetQuestionId, setResetQuestionId] = useState<number | null>(null);
@@ -426,19 +452,51 @@
         >
           Kembali ke Pengisian Assessment
         </Button>
-    <Button
-      variant="primary"
-      onClick={() => {
-        handleConfirm(); // simpan logika pengiriman
-        setShowSuccess(true); // munculkan notifikasi sukses
-        setTimeout(() => {
-          router.push("/assessment-form"); // pindah halaman setelah 1.5 detik
-        }, 1500);
-      }}
-      className="px-4 py-2 text-white rounded-md"
-    >
-      Submit
-    </Button>
+                
+        <Button
+            variant="primary"
+            onClick={() => {
+              // Ambil semua jawaban
+              const allAnswers = Object.keys(answers).map(id => ({
+                id,
+                jawaban: answers[id],
+              }));
+
+              // Hitung skor (misal: rata-rata jumlah jawaban "3" atau "Lebih dari 3")
+              const skorTinggi = allAnswers.filter(a => a.jawaban === "3" || a.jawaban === "Lebih dari 3").length;
+              const hasilSkor = Math.min(4, Math.ceil(skorTinggi / 7)); // Skala 1-4
+
+              // Data yang akan disimpan
+              const submissionData = {
+                id: 3,
+                logo: "school", // akan dirender ulang di AssessmentTable
+                nama: "Tel-U Purwokerto",
+                tanggal: new Date().toLocaleDateString("id-ID"),
+                skor: [hasilSkor, hasilSkor, hasilSkor, hasilSkor], // bisa di-custom
+                hasil: hasilSkor,
+                status: "Lulus",
+                aksi: "view",
+              };
+
+              // Simpan ke localStorage
+              localStorage.setItem("assessment_submission_purwokerto", JSON.stringify(submissionData));
+
+              // Tandai form sudah disimpan
+              setFormBelumDisimpan(false);
+
+              // Jalankan proses submit
+              handleConfirm();
+              setShowSuccess(true);
+
+              // Redirect
+              setTimeout(() => {
+                router.push("/assesmenttable");
+              }, 1500);
+            }}
+            className="px-4 py-2 text-white rounded-md"
+          >
+            Submit
+          </Button>
 
     <SuccessNotification
       isOpen={showSuccess}

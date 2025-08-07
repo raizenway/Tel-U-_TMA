@@ -1,30 +1,18 @@
+// app/welcome/page.tsx
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import {
-  LogOut,
-  User,
-  ChevronDown
-} from "lucide-react";
+import { LogOut, User, ChevronDown } from "lucide-react";
 
 import Button from "@/components/button";
-import Sidebar from "@/components/sidebar";
 import AssessmentForm from "@/components/AssetmentFrom";
 import WelcomeTab from "@/components/WelcomTab";
 import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/components/PurwokertoTab";
 import SurabayaTab from "@/components/SurabayaTab";
-import TopbarHeader from "@/components/TopbarHeader";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -37,17 +25,6 @@ export default function WelcomePage() {
     setTab(path || "welcome");
   }, [pathname]);
 
-  const navItems = [
-    { name: "🏠 Home", path: "welcome" },
-    { name: "📝 Start Assessment", path: "assessment" },
-    {
-      name: "📊 Assessment Result",
-      submenu: [{ name: "Approval Assessment", path: "approval-assessment" }],
-    },
-    { name: "📘 About IMA", path: "user-manual" },
-    { name: "👤 User Management", path: "user-management" },
-  ];
-
   const handleNavClick = (item: any) => {
     if (item.path) {
       router.push(`/${item.path}`);
@@ -56,16 +33,11 @@ export default function WelcomePage() {
 
   const [isFormDirty, setIsFormDirty] = useState(false);
 
-
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar  setTab={setTab} onItemClick={handleNavClick} />
-
+      {/* Main Content - Sekarang mengisi seluruh layar */}
       <div className="flex-1 flex flex-col">
-        <div className="px-6 pt-6">
-          <TopbarHeader />
-        </div>
-
+        {/* Tab Navigation */}
         <div className="flex justify-between items-center px-8 pt-6 border-b">
           {["welcome", "dashboard", "user-manual"].includes(tab) && (
             <div className="flex gap-6">
@@ -91,8 +63,8 @@ export default function WelcomePage() {
             </div>
           )}
 
-          <div className="flex items-center gap-4">
-            {tab === "dashboard" && (
+         {/* Di dalam halaman, misal dashboard page */}
+            <div className="absolute top-3 right-50 z-40">
               <Button
                 variant="primary"
                 onClick={() => router.push("/assessment")}
@@ -100,34 +72,17 @@ export default function WelcomePage() {
               >
                 Buat Assessment
               </Button>
-            )}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 px-3 py-2 border rounded-md bg-white text-red-700">
-                  <User className="w-4 h-4" />
-                  <span className="hidden sm:inline">Akun</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="z-50 bg-white border p-2">
-                <DropdownMenuItem>Profil</DropdownMenuItem>
-                <DropdownMenuItem>Pengaturan</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/login")}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Keluar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            </div>
         </div>
 
+        {/* Main Content */}
         <main className="flex-1 px-8 py-6 space-y-6 overflow-auto">
           {tab === "welcome" && <WelcomeTab />}
           {tab === "dashboard" && <DashboardTab />}
           {tab === "user-manual" && <UserManualTab />}
-          {tab === "purwokerto" && <PurwokertoTab setIsFormDirty={setIsFormDirty} />}
+          {tab === "purwokerto" && (
+            <PurwokertoTab setIsFormDirty={setIsFormDirty} />
+          )}
           {tab === "surabaya" && <SurabayaTab />}
           {tab === "assessment-form" && (
             <AssessmentForm
