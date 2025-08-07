@@ -264,7 +264,7 @@ export default function UserManagementPage() {
                   <th className="px-4 py-3 border w-32">Password</th>
                   <th className="px-4 py-3 border w-48">Nama User</th>
                   <th className="px-4 py-3 border w-32">Role</th>
-                  <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-56">Aksi</th>
+                  <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-24">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -316,38 +316,46 @@ export default function UserManagementPage() {
 
           {/* Pagination */}
           <div className="flex justify-between items-center mt-4 px-4">
-            <div className="flex items-center gap-2">
-              <select
-                className="border rounded px-2 py-1"
-                value={itemsPerPage}
-                onChange={handleItemsPerPageChange}
-              >
-                <option value={5}>5 Data</option>
-                <option value={10}>10 Data</option>
-                <option value={20}>20 Data</option>
-                <option value={50}>50 Data</option>
-              </select>
-            </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="border border-gray-300 rounded-full px-1 py-1 bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+            >
+              <option value={5}>5 Data</option>
+              <option value={10}>10 Data</option>
+              <option value={20}>20 Data</option>
+              <option value={50}>50 Data</option>
+            </select>
+          </div>
+
 
             <div className="flex items-center gap-2">
+              {/* Tombol Prev */}
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-2 py-1 border rounded disabled:opacity-50"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 bg-gray-300 text-gray-500 disabled:opacity-50 hover:bg-gray-200 transition"
               >
                 {"<"}
               </button>
-              <span>{currentPage}</span>
+
+              {/* Nomor Halaman */}
+              <span className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 bg-gray-100 text-gray-500">
+                {currentPage}
+              </span>
+
+              {/* Tombol Next */}
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-2 py-1 border rounded disabled:opacity-50"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 bg-gray-300 text-gray-500 disabled:opacity-50 hover:bg-gray-200 transition"
               >
                 {">"}
               </button>
             </div>
 
-            <div>Total {filteredUsers.length} data</div>
+            <div>Total {filteredUsers.length}</div>
           </div>
         </div>
 

@@ -8,10 +8,12 @@ export default function EditUserPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userIdFromQuery = searchParams.get('userId');
+  const pathname = usePathname();
+
+  const [tab, setTab] = useState("welcome");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
-  const pathname = usePathname();
-  const [tab, setTab] = useState("welcome");
+
   const [form, setForm] = useState({
     userId: '',
     username: '',
@@ -22,6 +24,7 @@ export default function EditUserPage() {
     nomorHp: '',
     status: '',
     role: '',
+    logoPreview: '',
   });
 
   useEffect(() => {
@@ -42,7 +45,9 @@ export default function EditUserPage() {
             nomorHp: user.nomorHp || '',
             status: user.status || '',
             role: user.role || '',
+            logoPreview: user.logoPreview || '',
           });
+          setLogoFileName(user.logoFileName || 'Cari Lampiran...');
         }
       } catch (err) {
         console.error('Gagal parsing selectedUser:', err);
@@ -65,11 +70,11 @@ export default function EditUserPage() {
     let users = storedUsers ? JSON.parse(storedUsers) : [];
 
     users = users.map((user: any) =>
-      user.userId === form.userId ? { ...user, ...form } : user
+      user.userId === form.userId ? { ...user, ...form, logoFileName } : user
     );
 
     localStorage.setItem('users', JSON.stringify(users));
-    localStorage.removeItem('selectedUser'); // bersihkan setelah simpan
+    localStorage.removeItem('selectedUser');
     router.push('/user-management');
   };
 
@@ -92,7 +97,6 @@ export default function EditUserPage() {
       <Sidebar onItemClick={handleNavClick} />
 
       <main className="min-h-screen bg-gray-200 p-8 w-full">
-
         <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto">
           <form
             onSubmit={(e) => {
@@ -158,8 +162,17 @@ export default function EditUserPage() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          setLogoFile(file);
-                          setLogoFileName(file.name);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const base64String = reader.result as string;
+                            setForm((prev) => ({
+                              ...prev,
+                              logoPreview: base64String,
+                            }));
+                            setLogoFile(file);
+                            setLogoFileName(file.name);
+                          };
+                          reader.readAsDataURL(file);
                         }
                       }}
                       className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
@@ -172,6 +185,7 @@ export default function EditUserPage() {
                             type="button"
                             onClick={() => {
                               setLogoFile(null);
+                              setForm((prev) => ({ ...prev, logoPreview: '' }));
                               setLogoFileName('Cari Lampiran...');
                             }}
                             className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
@@ -183,6 +197,13 @@ export default function EditUserPage() {
                         )}
                       </div>
                     </div>
+                    {form.logoPreview && (
+                      <img
+                        src={form.logoPreview}
+                        alt="Preview Logo"
+                        className="mt-2 max-h-24 object-contain"
+                      />
+                    )}
                   </div>
                 </div>
 

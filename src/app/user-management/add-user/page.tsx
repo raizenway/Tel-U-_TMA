@@ -27,14 +27,34 @@ export default function AddUserPage() {
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Filter hanya angka untuk userId dan nomorHp
+    if (name === 'userId' || name === 'nomorHp') {
+      const numericValue = value.replace(/\D/g, ''); // hapus semua non angka
+      setForm({ ...form, [name]: numericValue });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const handleCancel = () => {
     router.push('/user-management');
   };
 
+  // Form wajib isi semua field
+  const isFormValid = 
+    form.userId.trim() !== '' &&
+    form.username.trim() !== '' &&
+    form.password.trim() !== '' &&
+    form.namaUser.trim() !== '' &&
+    form.status.trim() !== '' &&
+    form.email.trim() !== '' &&
+    form.nomorHp.trim() !== '';
+
   const handleSave = () => {
+    if (!isFormValid) return; // proteksi tambahan
+
     const newUser = {
       userId: form.userId,
       username: form.username,
@@ -52,19 +72,10 @@ export default function AddUserPage() {
     const users = storedUsers ? JSON.parse(storedUsers) : [];
     users.push(newUser);
 
-    
-
     localStorage.setItem('users', JSON.stringify(users));
-    
     localStorage.setItem('newDataAdded', 'true');
     router.push('/user-management');
   };
-
-  const isFormValid = form.userId.trim() !== '' &&
-    form.username.trim() !== '' &&
-    form.password.trim() !== '' &&
-    form.namaUser.trim() !== '' &&
-    form.status.trim() !== '';
 
   const handleNavClick = (item: any) => {
     if (item.path) {
@@ -78,18 +89,9 @@ export default function AddUserPage() {
   }, [pathname]);
 
   return ( 
-    <div className="flex min-h-screen  bg-gray-200 ">
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-gray-200">
       <Sidebar onItemClick={handleNavClick} />
-
-      {/* Main Content */}
       <div className="flex-1 p-8">
-       
-
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">
-          Tambah User - {role}
-        </h1>
-
         <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl">
           <form
             onSubmit={(e) => {
@@ -98,16 +100,18 @@ export default function AddUserPage() {
             }}
             className="grid grid-cols-2 gap-4"
           >
-            {/* User ID */}
+            {/* User ID (hanya angka) */}
             <div>
               <label className="block mb-1 text-sm font-medium">User ID</label>
               <input
                 name="userId"
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.userId}
                 onChange={handleChange}
-                placeholder="Masukkan User ID"
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                placeholder="Masukkan User ID "
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
 
@@ -120,7 +124,7 @@ export default function AddUserPage() {
                 value={form.username}
                 onChange={handleChange}
                 placeholder="Masukkan Username"
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
 
@@ -133,7 +137,7 @@ export default function AddUserPage() {
                 value={form.password}
                 onChange={handleChange}
                 placeholder="Masukkan Password"
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
 
@@ -146,7 +150,7 @@ export default function AddUserPage() {
                 value={form.namaUser}
                 onChange={handleChange}
                 placeholder="Masukkan Nama User"
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
 
@@ -170,7 +174,7 @@ export default function AddUserPage() {
                       }}
                       className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
                     />
-                    <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-200 px-3 py-2 text-gray-700">
+                    <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-100 px-3 py-2 text-gray-700">
                       <span className="truncate">{logoFileName}</span>
                       <div className="flex items-center gap-2">
                         {logoFile && (
@@ -186,7 +190,7 @@ export default function AddUserPage() {
                           </button>
                         )}
                         {!logoFile && (
-                          <span className="text-sm font-semibold text-gray-600">Upload</span>
+                          <span className="text-sm font-semibold text-gray-400">Upload</span>
                         )}
                       </div>
                     </div>
@@ -201,7 +205,7 @@ export default function AddUserPage() {
                     value={form.namaPIC}
                     onChange={handleChange}
                     placeholder="Masukkan Nama PIC"
-                    className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                    className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
                   />
                 </div>
               </>
@@ -216,21 +220,23 @@ export default function AddUserPage() {
                 value={form.email}
                 onChange={handleChange}
                 placeholder="Masukkan Alamat Email"
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
 
-            {/* Nomor HP */}
+            {/* Nomor HP (hanya angka) */}
             <div>
               <label className="block mb-1 text-sm font-medium">Nomor Handphone</label>
               <input
                 name="nomorHp"
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={15}
                 value={form.nomorHp}
                 onChange={handleChange}
-                placeholder="Masukkan Nomor Handphone"
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                placeholder="Masukkan Nomor Handphone "
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
 
@@ -241,7 +247,7 @@ export default function AddUserPage() {
                 name="status"
                 value={form.status}
                 onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-200"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               >
                 <option value="">Pilih Status</option>
                 <option value="active">Active</option>
