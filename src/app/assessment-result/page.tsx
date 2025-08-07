@@ -77,7 +77,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-sby',
     name: 'Tel-U Surabaya',
-    submitPeriode: 'semester genap 2025',
+    submitPeriode: 'Ganjil 2025',
     email: 'surabaya@telkomuniversity.ac.id',
     studentBody: 3500,
     jumlahProdi: 11,
@@ -87,7 +87,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-jkt',
     name: 'Tel-U Jakarta',
-    submitPeriode: 'semester genap 2025',
+    submitPeriode: 'Ganjil 2025',
     email: 'jkt.telkomuniversity.ac.id',
     studentBody: 3400,
     jumlahProdi: 13,
@@ -97,7 +97,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-bdg',
     name: 'Tel-U Bandung',
-    submitPeriode: 'semester genap 2025',
+    submitPeriode: 'Ganjil 2025',
     email: 'bandung.telkomuniversity.ac.id',
     studentBody: 3800,
     jumlahProdi: 10,
@@ -107,7 +107,7 @@ const assessmentList: Assessment[] = [
   {
     id: 'tel-u-pwk',
     name: 'Tel-U Purwokerto',
-    submitPeriode: 'semester genap 2025',
+    submitPeriode: 'Ganjil 2025',
     email: 'purwokerto@telkomuniversity.ac.id',
     studentBody: 3100,
     jumlahProdi: 11,
@@ -502,7 +502,7 @@ export default function WelcomePage() {
                       <tbody className="text-gray-700">
                         {[
                           {
-                            label: 'Tanggal Submit Assessment',
+                            label: 'Priode Submit Assessment',
                             render: (c: Assessment) =>
                             getPeriodeLabel(c.submitPeriode)
                           },
