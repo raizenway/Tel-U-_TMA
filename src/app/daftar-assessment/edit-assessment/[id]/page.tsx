@@ -50,19 +50,19 @@ export default function EditAssessmentPage() {
     // 🔁 Redirect ke halaman spesifik berdasarkan tipe soal
     if (item.tipeSoal === 'API dari iGracias') {
       localStorage.setItem('editData', JSON.stringify(item));
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
       return;
     }
 
     if (item.tipeSoal === 'Pilihan Jawaban') {
       localStorage.setItem('editData', JSON.stringify(item));
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assessment/pilih-jawaban');
       return;
     }
 
     if (item.tipeSoal === 'Submit Jawaban Excel') {
       localStorage.setItem('editData', JSON.stringify(item));
-      router.push('/submit-excel');
+      router.push('/daftar-assessment/submit-excel');
       return;
     }
 

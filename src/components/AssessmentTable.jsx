@@ -1,14 +1,15 @@
-// components/AssessmentTable.jsx
 "use client";
+
 import { useEffect, useState } from "react";
 import { FaSchool } from 'react-icons/fa';
 import { MdRemoveRedEye, MdEdit } from 'react-icons/md';
-import Table from '@/components/Table'; // Pastikan path benar (misal: @/components/Table)
-import { FiSearch } from 'react-icons/fi'; // Untuk ikon pencarian
-import { BiCopy } from 'react-icons/bi'; // Untuk ikon copy
-import { BsPrinter } from 'react-icons/bs'; // Untuk ikon print
-import { HiDownload } from 'react-icons/hi'; // Untuk ikon download
-import { IoIosPaperPlane } from 'react-icons/io'; // Untuk ikon start assessment
+import Table from '@/components/Table';
+import { BiCopy } from 'react-icons/bi';
+import { BsPrinter } from 'react-icons/bs';
+import { HiDownload } from 'react-icons/hi';
+import { IoIosPaperPlane } from 'react-icons/io';
+import SuccessNotification from "@/components/SuccessNotification";
+import Button from "@/components/button";
 
 const AssessmentTable = () => {
   const [data, setData] = useState([
@@ -44,30 +45,43 @@ const AssessmentTable = () => {
     },
   ]);
 
+  const [showSuccess, setShowSuccess] = useState(false);
+
   useEffect(() => {
+    const savedMessage = localStorage.getItem("showSuccessNotification");
+    if (savedMessage) {
+      setShowSuccess(true);
+      localStorage.removeItem("showSuccessNotification");
+    }
+
     const saved = localStorage.getItem("assessment_submission_purwokerto");
-    if (saved) {
+    const hasPurwokerto = data.some(item => item.nama === "Tel-U Purwokerto");
+
+    if (saved && !hasPurwokerto) {
       try {
         const purwokertoData = JSON.parse(saved);
         const logo = <FaSchool className="text-blue-600 text-xl" />;
+        const newData = [...data];
+        const insertIndex = 2;
 
-        // Sisipkan Tel-U Purwokerto di posisi ketiga (index 2)
-        const updatedData = [...data];
-        updatedData.splice(2, 0, {
-          ...purwokertoData,
+        newData.splice(insertIndex, 0, {
+          id: Date.now(),
           logo,
+          nama: "Tel-U Purwokerto",
           skor: purwokertoData.skor || [3, 3, 3, 3],
           hasil: purwokertoData.hasil || 3,
+          tanggal: new Date().toLocaleDateString("id-ID"),
+          status: "Lulus",
+          aksi: "view",
         });
 
-        setData(updatedData);
+        setData(newData);
       } catch (e) {
         console.error("Gagal parsing data Purwokerto:", e);
       }
     }
   }, []);
 
-  // Konfigurasi kolom untuk komponen Table
   const columns = [
     { header: "No", key: "nomor", width: "50px" },
     { header: "Logo", key: "logo", width: "60px" },
@@ -82,7 +96,6 @@ const AssessmentTable = () => {
     { header: "Aksi", key: "aksi", width: "80px" },
   ];
 
-  // Transformasi data agar sesuai dengan format `Table`
   const tableData = data.map((item, index) => ({
     nomor: index + 1,
     logo: item.logo,
@@ -96,14 +109,18 @@ const AssessmentTable = () => {
     status: (
       <span
         className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-          item.status === "Lulus"
-            ? "bg-green-100 text-green-800"
-            : item.status === "Belum Selesai"
-            ? "bg-yellow-100 text-yellow-800"
-            : "bg-gray-100 text-gray-800"
+          item.nama === "Tel-U Jakarta"
+            ? "bg-blue-500 text-white"
+            : item.status === "Lulus"
+            ? "bg-green-500 text-white"
+            : "bg-red-500 text-white"
         }`}
       >
-        {item.status}
+        {item.nama === "Tel-U Jakarta"
+          ? "Submitted"
+          : item.status === "Lulus"
+          ? "Approve"
+          : "Belum Selesai"}
       </span>
     ),
     aksi:
@@ -116,70 +133,65 @@ const AssessmentTable = () => {
           <MdRemoveRedEye size={20} />
         </button>
       ) : item.aksi === "progress" ? (
-        <div className="text-red-500 mx-auto">🔴</div>
+        <div className="text-red-500 mx-auto">
+          <IoIosPaperPlane size={20} />
+        </div>
       ) : null,
   }));
 
   return (
-   <div
-      className="p-4 bg-white rounded-lg shadow-md"
-      style={{
-        position: 'absolute',     // Bisa diganti: 'fixed', 'relative'
-        top: '80px',              // Jarak dari atas
-        left: '50px',             // Jarak dari kiri
-        width: 'calc(100% - 100px)', // Lebar responsif
-        maxWidth: '1200px',       // Maksimal lebar
-        minHeight: '60px',       // Tinggi minimum
-        maxHeight: '80vh',        // Maksimal tinggi (80% dari viewport)
-        overflowY: 'auto',        // Scroll jika konten terlalu panjang
-        zIndex: 10,               // Di atas elemen lain
-        border: '1px solid #e5e7eb', // Opsional: tambah border
-      }}
+    <div
+       className="p-3 bg-white rounded-lg shadow-md border border-gray-200 mx-auto w-full max-w-6xl min-h-16 max-h-96 overflow-y-auto"
     >
-      {/* Judul Halaman */}
+      <SuccessNotification
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Assessment berhasil dikirim!"
+      />
+
       <h2 className="text-2xl font-semibold text-gray-800 mb-6">
         Pengisian Assessment
       </h2>
 
-      {/* Deskripsi */}
       <p className="text-sm text-gray-600 mb-4">
         Berikut adalah daftar UPPS/KC yang sudah melakukan assessment
       </p>
 
-      {/* Baris Kontrol */}
       <div className="flex items-center justify-between mb-4">
-        {/* Search */}
-        <div className="flex items-center space-x-2">
-          <FiSearch className="text-gray-500" />
-          <input
-            type="text"
-            placeholder="Cari..."
-            className="border border-gray-300 rounded px-3 py-2 w-48 text-sm"
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Cari..."
+          className="border border-gray-300 rounded px-3 py-2 w-48 text-sm"
+        />
 
-        {/* Buttons */}
-        <div className="flex items-center space-x-4">
-          <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md flex items-center gap-2">
-            <BiCopy className="text-gray-600" />
-            Copy
-          </button>
-          <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md flex items-center gap-2">
-            <BsPrinter className="text-gray-600" />
-            Print
-          </button>
-          <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md flex items-center gap-2">
-            <HiDownload className="text-gray-600" />
-            Download
-          </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2">
-            <IoIosPaperPlane className="text-white" />
-            Start Assessment
-          </button>
-        </div>
-      </div>
+        <div className="flex flex-wrap items-center justify-between gap-6 mb-4">
 
-      {/* Gunakan komponen Table generik */}
+  {/* Tombol Kiri: Copy, Print, Download */}
+  <div className="flex flex-wrap gap-2">
+    <button className="h-10 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded border border-gray-300 text-sm flex items-center gap-2">
+      <BiCopy size={16} />
+      Copy
+    </button>
+    <button className="h-10 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded border border-gray-300 text-sm flex items-center gap-2">
+      <BsPrinter size={16} />
+      Print
+    </button>
+    <button className="h-10 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded border border-gray-300 text-sm flex items-center gap-2">
+      <HiDownload size={16} />
+      Download
+    </button>
+  </div>
+
+  {/* Tombol Utama: Start Assessment (di kanan) */}
+  <Button
+    variant="primary"
+    className="h-10  text-white text-sm font-semibold px-6 py-2 rounded flex items-center gap-5"
+  >
+    Start Assessment
+  </Button>
+
+</div>
+</div>
       <Table
         columns={columns}
         data={tableData}

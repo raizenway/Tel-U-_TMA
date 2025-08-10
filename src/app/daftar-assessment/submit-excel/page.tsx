@@ -26,11 +26,11 @@ export default function SubmitExcelPage() {
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assesment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/submit-excel');
+      router.push('/daftar-assesment/submit-excel');
     }
   };
 
@@ -286,7 +286,7 @@ export default function SubmitExcelPage() {
           <div className="flex justify-end space-x-4 mt-6">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={() => router.push('/daftar-assessment/tambah-assessment')}
               className="flex items-center px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
             >
               <svg

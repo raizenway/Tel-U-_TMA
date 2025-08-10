@@ -134,17 +134,17 @@ export default function PilihJawabanPage() {
 
   const handleCancel = () => {
     localStorage.removeItem('editData'); // Pastikan bersih
-    router.push('/daftar-assessment');
+    router.push('/daftar-assessment/tambah-assessment');
   };
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assesment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/submit-excel');
+      router.push('/daftar-assessment/submit-excel');
     }
   };
 

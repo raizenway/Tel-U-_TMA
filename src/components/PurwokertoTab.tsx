@@ -454,56 +454,54 @@
         </Button>
                 
         <Button
-            variant="primary"
-            onClick={() => {
-              // Ambil semua jawaban
-              const allAnswers = Object.keys(answers).map(id => ({
-                id,
-                jawaban: answers[id],
-              }));
+      variant="primary"
+      onClick={() => {
+        // Ambil semua jawaban
+        const allAnswers = Object.keys(answers).map(id => ({
+          id,
+          jawaban: answers[id],
+        }));
+        // Hitung skor
+        const skorTinggi = allAnswers.filter(a => a.jawaban === "3" || a.jawaban === "Lebih dari 3").length;
+        const hasilSkor = Math.min(4, Math.ceil(skorTinggi / 7));
+        // Data yang akan disimpan
+        const submissionData = {
+          id: 3,
+          logo: "school",
+          nama: "Tel-U Purwokerto",
+          tanggal: new Date().toLocaleDateString("id-ID"),
+          skor: [hasilSkor, hasilSkor, hasilSkor, hasilSkor],
+          hasil: hasilSkor,
+          status: "Lulus",
+          aksi: "view",
+        };
+        // Simpan ke localStorage
+        localStorage.setItem("assessment_submission_purwokerto", JSON.stringify(submissionData));
+        setFormBelumDisimpan(false);
 
-              // Hitung skor (misal: rata-rata jumlah jawaban "3" atau "Lebih dari 3")
-              const skorTinggi = allAnswers.filter(a => a.jawaban === "3" || a.jawaban === "Lebih dari 3").length;
-              const hasilSkor = Math.min(4, Math.ceil(skorTinggi / 7)); // Skala 1-4
+        // Jalankan proses simpan ke history
+        handleConfirm();
+        setShowSuccess(true);
 
-              // Data yang akan disimpan
-              const submissionData = {
-                id: 3,
-                logo: "school", // akan dirender ulang di AssessmentTable
-                nama: "Tel-U Purwokerto",
-                tanggal: new Date().toLocaleDateString("id-ID"),
-                skor: [hasilSkor, hasilSkor, hasilSkor, hasilSkor], // bisa di-custom
-                hasil: hasilSkor,
-                status: "Lulus",
-                aksi: "view",
-              };
+        // 🔔 Tambahkan: tanda notifikasi untuk halaman tujuan
+        localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
 
-              // Simpan ke localStorage
-              localStorage.setItem("assessment_submission_purwokerto", JSON.stringify(submissionData));
+        // 🔧 Perbaiki typo di URL
+        setTimeout(() => {
+          router.push("/assessment/assessmenttable"); // ✅ Perbaiki dari "/assesmenttable"
+        }, 1500);
+      }}
+      className="px-4 py-2 text-white rounded-md"
+    >
+      Submit
+    </Button>
 
-              // Tandai form sudah disimpan
-              setFormBelumDisimpan(false);
-
-              // Jalankan proses submit
-              handleConfirm();
-              setShowSuccess(true);
-
-              // Redirect
-              setTimeout(() => {
-                router.push("/assesmenttable");
-              }, 1500);
-            }}
-            className="px-4 py-2 text-white rounded-md"
-          >
-            Submit
-          </Button>
-
-    <SuccessNotification
-      isOpen={showSuccess}
-      onClose={() => setShowSuccess(false)}
-      message="Assessment berhasil dikirim!"
-    />
       </div>
+       <SuccessNotification
+    isOpen={showSuccess}
+    onClose={() => setShowSuccess(false)}
+    message="Assessment berhasil dikirim!"
+  />
     </ModalConfirm>
 
     <ModalConfirm

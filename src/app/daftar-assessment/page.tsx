@@ -131,7 +131,7 @@
     };
 
     const handleTambah = () => {
-      router.push('/tambah-assessment');
+      router.push('/daftar-assessment/tambah-assessment');
     };
 
     return (
@@ -253,7 +253,7 @@
                               {col.key === 'action' ? (
                                 <div className="flex justify-center gap-3">
                                   <button
-                                    onClick={() => router.push(`/edit-assessment/${item.nomor}`)}
+                                    onClick={() => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
                                     className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium"
                                   >
                                     <Pencil size={14} className="mr-1" /> Edit

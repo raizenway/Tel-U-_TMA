@@ -78,11 +78,11 @@ export default function ApiIgraciasPage() {
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assessment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/submit-excel');
+      router.push('/daftar-assessment/submit-excel');
     }
   };
 
@@ -233,7 +233,7 @@ export default function ApiIgraciasPage() {
           <div className="p-8 border-t bg-gray-50 flex justify-end gap-4">
             <button
               type="button"
-              onClick={() => router.push('/daftar-assessment')}
+              onClick={() => router.push('/daftar-assessment/tambah-assessment')}
               className="px-15 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
             >
               Batal
