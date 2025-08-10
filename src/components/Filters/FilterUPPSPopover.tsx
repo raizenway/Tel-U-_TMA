@@ -29,7 +29,7 @@ const periodeOptions = [
 ];
 
 export default function FilterUPPSPopover({
-  open,
+  open,   
   onClose,
   defaultPeriode,
   defaultSelectedIds,
