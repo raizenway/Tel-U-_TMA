@@ -133,7 +133,7 @@ const AssessmentTable = () => {
           <MdRemoveRedEye size={20} />
         </button>
       ) : item.aksi === "progress" ? (
-        <div className="text-red-500 mx-auto">
+        <div className="text-red-499 mx-auto">
           <IoIosPaperPlane size={20} />
         </div>
       ) : null,
