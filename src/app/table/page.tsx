@@ -39,7 +39,6 @@ const columns = [
 
 
 
-
   const data = [
     {
       variable: "V1 (Mutu)",
@@ -353,17 +352,18 @@ const columns = [
               </div>
             </div>
 
-            {/* Table Scrollable */}
-              <div className="w-full overflow-x-auto">
-                <div className="max-h-[350px] w-[800px] overflow-y-auto">
-                  <Table
-                    columns={columns}
-                    data={paginatedData}
-                    currentPage={currentPage}
-                    rowsPerPage={rowsPerPage}
-                  />
-                </div>
-              </div>
+           {/* Table Scrollable */}
+<div className="w-full overflow-x-auto">
+  <div className="max-h-[350px] min-w-[800px] overflow-y-auto">
+    <Table
+      columns={columns}
+      data={paginatedData}
+      currentPage={currentPage}
+      rowsPerPage={rowsPerPage}
+    />
+  </div>
+</div>
+
 
 
             {/* Pagination & Action */}
