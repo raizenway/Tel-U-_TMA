@@ -10,20 +10,21 @@ const WelcomeTab = () => {
       {/* ===================== */}
       {/* BANNER SAPAAN FINAL */}
       {/* ===================== */}
-      <div className="relative rounded-xl overflow-hidden shadow-lg min-h-[220px] flex bg-cover bg-center">
+      <div className="relative rounded-xl overflow-hidden shadow-lg min-h-[220px] bg-cover bg-center">
         {/* Gambar Hallo.png sebagai latar belakang */}
         <Image
           src="/Hallo.png"
-          alt="Ilustrasi Wanita"
+          alt="Latar Belakang"
           width={500}
           height={220}
           className="absolute inset-0 object-cover w-full h-full z-0"
         />
 
-        {/* Kontainer untuk elemen-elemen di atas gambar */}
-        <div className="relative z-10 p-6 flex items-center justify-between">
+        {/* Kontainer utama: Flex untuk kiri-kanan */}
+        <div className="relative z-10 p-6 flex items-center justify-between min-h-[220px]">
+          
           {/* Kolom Kiri: Gambar wanita melambai */}
-          <div>
+          <div className="flex-shrink-0">
             <Image
               src="/waving woman.png"
               alt="Ilustrasi Wanita"
@@ -33,27 +34,22 @@ const WelcomeTab = () => {
             />
           </div>
 
-          {/* Kolom Kanan: Logo Telkom + Teks Sapaan */}
-          <div className="flex flex-col items-end">
-            {/* Logo Telkom */}
-            <div className="mb-4">
-              <Image
-                src="/Frame.png"
-                alt="Telkom University"
-                width={120}
-                height={40}
-                className="object-contain"
-              />
-            </div>
+        <div className="flex flex-col items-end space-y-4 ml-auto max-w-xs">
+  {/* Logo: geser 6px ke atas, 8px ke kiri */}
+  <div className="relative -top-8 -right-2 -left-11 z-10">
+    <Image src="/Frame.png" alt="Telkom" width={160} height={40} className="object-contain" />
+  </div>
 
-            {/* Teks Sapaan */}
-            <div>
-              <h2 className="text-xl lg:text-2xl font-semibold">Hallo, Wilson Curtis</h2>
-              <p className="text-sm lg:text-base mt-2">
-                Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
-              </p>
-            </div>
-          </div>
+  {/* Teks: geser 4px ke bawah */}
+   <div className="text-right max-w-xs">
+   <h2 className="text-xl lg:text-2xl font-semibold text-white relative -translate-x-150 top-2">
+  Hallo, Wilson Curtis
+</h2>
+    <p className="text-sm lg:text-base text-white relative -translate-x-150 mt-4  ">
+  Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
+</p>
+  </div>
+</div>
         </div>
       </div>
 

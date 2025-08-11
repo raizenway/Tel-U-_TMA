@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
+import {
+    Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
+    DoorOpen,
+    ArrowLeft
+  } from "lucide-react";
+  import { X, Save } from "lucide-react";
 
 export default function ApiIgraciasPage() {
   const router = useRouter();
@@ -78,11 +84,11 @@ export default function ApiIgraciasPage() {
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assessment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/submit-excel');
+      router.push('/daftar-assessment/submit-excel');
     }
   };
 
@@ -155,17 +161,33 @@ export default function ApiIgraciasPage() {
 
             {/* Nama Variabel & Link API */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
-                <input
-                  type="text"
-                  className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3`}
-                  value={namaVariabel}
-                  onChange={(e) => setNamaVariabel(e.target.value)}
-                  placeholder="Masukkan Nama Variabel"
-                />
-                {errors.namaVariabel && <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>}
-              </div>
+             <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
+                    <select
+                      className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 bg-white`}
+                      value={namaVariabel}
+                      onChange={(e) => setNamaVariabel(e.target.value)}
+                      aria-label="Nama Variabel"
+                    >
+                      <option value="" disabled>
+                        Pilih Nama Variabel
+                      </option>
+                      {/* Contoh opsi - ganti sesuai kebutuhan aplikasi kamu */}
+                      <option value="Akademisi">Akademisi</option>
+                      <option value="Akademik">Akademik</option>
+                      <option value="Alumni">Alumni</option>
+                      <option value="Kemahasiswaan">Kemahsisiwaan</option>
+                      <option value="Kerjasama">Kerjasama</option>
+                      <option value="Keuangan">Keuangan</option>
+                      <option value="Mahasiswa Asing">Mahasiswa Asing</option>
+                      <option value="Mutu">Mutu</option>
+                      <option value="SDM">SDM</option>
+                      <option value="PPM, Publikasi, HKI">PPM, Publikasi, HKI</option>
+                    </select>
+                    {errors.namaVariabel && (
+                      <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>
+                    )}
+                  </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select
@@ -231,17 +253,21 @@ export default function ApiIgraciasPage() {
           </div>
 
           <div className="p-8 border-t bg-gray-50 flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={() => router.push('/daftar-assessment')}
-              className="px-15 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            <Button
+              variant="ghost"
+              icon={X}
+              iconPosition="left"
+              onClick={() => router.push('/daftar-assessment/tambah-assessment')}
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
               Batal
-            </button>
+            </Button>
             <Button
-              variant="primary"
+              variant="simpan"
+              icon={Save}
+              iconPosition="left"
               onClick={handleSimpan}
-              className="px-15 py-2 text-white rounded-lg transition"
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold"
             >
               Simpan
             </Button>

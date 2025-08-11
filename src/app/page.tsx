@@ -25,7 +25,7 @@
     DialogTitle,
     DialogFooter
   } from "@/components/ui/dialog";
-  import {
+import {
     Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
     DoorOpen,
     ArrowLeft,
