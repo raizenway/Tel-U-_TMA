@@ -249,7 +249,7 @@ export default function UserManagementPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto relative w-full max-h-[600px]">
+          <div className="overflow-x-auto relative w-full max-h-[600px] ">
             <table id="user-table" className="w-full text-left border border-gray-300 text-sm bg-white">
               <thead className="bg-gray-200 sticky top-0 z-50">
                 <tr>
