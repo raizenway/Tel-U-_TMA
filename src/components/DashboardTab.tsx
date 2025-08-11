@@ -18,6 +18,7 @@ import {
   Legend,
 } from "recharts";
 import ProgressAssessment from "@/components/ProgressAssessment";
+import AssessmentTable from "./AssessmentTable";
 
 const radarData = [
   { subject: "Akademik", A: 90 },
@@ -113,7 +114,13 @@ export default function DashboardTab() {
             </LineChart>
           </ResponsiveContainer>
         </div>
+       
       </div>
+        {/* 🔽 TAMBAHKAN AssessmentTable DI SINI (di bawah Student Body) */}
+      <div className="top-8">
+        <AssessmentTable />
+      </div>
+      {/* 🔚 SELESAI TAMBAHAN */} 
     </div>
   );
 }

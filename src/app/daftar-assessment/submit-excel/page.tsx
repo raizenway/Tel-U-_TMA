@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
-import Sidebar from '@/components/sidebar';
-import TopbarHeader from '@/components/TopbarHeader';
+import Button from '@/components/button';
 
-// ✅ Tipe data assessment
+  import { X, Save } from "lucide-react";
+
 interface AssessmentItem {
   nomor: number;
   variable: string;
@@ -14,7 +14,8 @@ interface AssessmentItem {
   pertanyaan: string;
   tipeSoal: string;
   status: 'Active' | 'Inactive';
-  [key: string]: any; // fleksibel untuk properti tambahan
+  pertanyaan2?: string; // opsional
+  skor?: { [level: number]: string }; // tambahkan skor
 }
 
 export default function SubmitExcelPage() {
@@ -26,11 +27,11 @@ export default function SubmitExcelPage() {
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assesment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/submit-excel');
+      router.push('/daftar-assesment/submit-excel');
     }
   };
 
@@ -284,32 +285,22 @@ export default function SubmitExcelPage() {
 
           {/* Buttons */}
           <div className="flex justify-end space-x-4 mt-6">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="flex items-center px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            <Button
+             variant='ghost'
+             icon={X}
+              iconPosition="left"
+              onClick={() => router.push('/daftar-assessment/tambah-assessment')}
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
               Batal
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="simpan"
+              icon={Save}
+              iconPosition="left"
               onClick={handleSimpan}
               disabled={loading}
-              className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
+             className="rounded-[12px] px-17 py-2 text-sm font-semibold"
             >
               {loading ? (
                 <>
@@ -337,24 +328,10 @@ export default function SubmitExcelPage() {
                 </>
               ) : (
                 <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
                   Simpan
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </main>

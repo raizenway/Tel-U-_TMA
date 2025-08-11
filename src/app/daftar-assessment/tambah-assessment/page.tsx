@@ -18,13 +18,13 @@ export default function Page() {
     // Navigasi ke halaman berdasarkan tipe soal
     switch (selectedType) {
       case 'Pilihan Jawaban':
-        router.push('/pilih-jawaban');
+        router.push('/daftar-assessment/pilih-jawaban');
         break;
       case 'API dari iGracias':
-        router.push('/api-igracias');
+        router.push('/daftar-assessment/api-igracias');
         break;
       case 'Submit Jawaban Excel':
-        router.push('/submit-excel');
+        router.push('/daftar-assessment/submit-excel');
         break;
       default:
         break;

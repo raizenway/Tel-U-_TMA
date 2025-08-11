@@ -25,13 +25,16 @@
     DialogTitle,
     DialogFooter
   } from "@/components/ui/dialog";
-  import {
+import {
     Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
     DoorOpen,
-    ArrowLeft
+    ArrowLeft,
+    Printer,
+    Search,
+    ChevronDown
   } from "lucide-react";
   import Button  from "@/components/button"
-  import { X, Save } from "lucide-react";
+  import { X, Save} from "lucide-react";
 
 
   function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -68,6 +71,46 @@
   export default function UniversalButtonPage() {
     const [toggle, setToggle] = useState(false);
     const router = useRouter();
+
+    const handleDownload = () => {
+  // Helper untuk escape karakter tab atau newline
+  const escapeTSV = (value) => {
+    if (typeof value === "string") {
+      return value.replace(/\t/g, " ").replace(/\n/g, " ");
+    }
+    return value ?? "";
+  };
+
+  const tsv =
+    columns.map((col) => escapeTSV(col.header)).join("\t") +
+    "\n" +
+    filteredData
+      .map((row, i) =>
+        columns
+          .map((col) =>
+            col.key === "nomor"
+              ? i + 1 // kalau mau pagination: (i + 1) + (currentPage - 1) * rowsPerPage
+              : escapeTSV(row[col.key])
+          )
+          .join("\t")
+      )
+      .join("\n");
+
+  const blob = new Blob([tsv], { type: "text/tab-separated-values;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tabel.tsv";
+  document.body.appendChild(a); // biar kompatibel di Firefox
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+    
+
+    const handlePrint = () => window.print();
 
     const handleCopy = () => {
       navigator.clipboard.writeText("Teks berhasil disalin!");
@@ -278,6 +321,42 @@
               className="px-8"
               >
                 Next Question
+                </Button>
+            </Section>
+
+            <Section title="24. Copy">
+              <Button
+               variant="outline"
+               icon={Copy}
+              iconPosition="left" 
+              onClick={handleCopy}
+               >
+                Copy
+                </Button>
+                 <Button
+               variant="outline"
+               icon={Printer}
+              iconPosition="left" 
+              onClick={handlePrint}
+               >
+                Print
+                </Button>
+                 <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
+                <Search className="w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Cari"
+                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+                  onChange={(e) => console.log("Search:", e.target.value)}
+                 />
+                </div>
+                 <Button
+               variant="outline"
+               icon={ChevronDown}
+              iconPosition="right" 
+                  onClick={handleDownload}
+               >
+                Download
                 </Button>
             </Section>
 

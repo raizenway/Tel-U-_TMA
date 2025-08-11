@@ -6,6 +6,7 @@ import Image from "next/image";
 import Button from "@/components/button";
 import { useRouter } from "next/navigation";
 import TopbarHeader from "@/components/TopbarHeader";
+import {ArrowRight} from "lucide-react";
 
 const campuses = [
   { name: "Tel-U Jakarta", image: "/image 2.png" },
@@ -42,7 +43,7 @@ export default function AssessmentPage() {
 
   const handleSelectCampus = (campus: string) => {
     if (campus === "Tel-U Purwokerto") {
-      router.push("/assessment-form");
+      router.push("/assessment/assessment-form");
     } else {
       alert(`Fitur untuk ${campus} belum tersedia.`);
     }
@@ -61,10 +62,13 @@ export default function AssessmentPage() {
                 <Image src={campus.image} alt={campus.name} width={243} height={107} priority />
                 <h3 className="text-lg font-semibold text-gray-800">{campus.name}</h3>
                 <Button
-                  className="bg-[#1d2c4c] hover:bg-[#16223b] text-white px-6 py-2 text-base rounded-lg transition-all duration-200"
+                variant="primary"
+                 icon={ArrowRight}
+                 iconPosition="right"
                   onClick={() => handleSelectCampus(campus.name)}
+                  className="rounded-[12px] px-17 py-2 text-sm font-semibold"
                 >
-                  Pilih <span className="ml-2">➔</span>
+                  Pilih 
                 </Button>
               </div>
             ))}
