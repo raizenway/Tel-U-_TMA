@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Button from "@/components/button";
+import { ArrowRight } from "lucide-react";
 
 export default function AssessmentForm({ onSelectCampus }: { onSelectCampus: (campus: string) => void }) {
   const campuses = [
@@ -42,10 +43,12 @@ export default function AssessmentForm({ onSelectCampus }: { onSelectCampus: (ca
             </div>
             <h3 className="text-lg font-semibold text-gray-800">Tel-U Purwokerto</h3>
             <Button
-              className="bg-[#1d2c4c] hover:bg-[#16223b] text-white px-8 py-2 text-base rounded-lg transition-all duration-200"
+              variant="primary"
+              icon={ArrowRight}
+              iconPosition="right"
               onClick={() => onSelectCampus("Tel-U Purwokerto")}
             >
-              Pilih <span className="text-base ml-2">➔</span>
+             pilih
             </Button>
           </div>
         </div>

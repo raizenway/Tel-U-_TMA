@@ -273,19 +273,11 @@ const columns = [
     setModalType(null);
   };
 
- const navItems = [
-  { name: "🏠 Home", value: "welcome" },
-  { name: "📊 Dashboard", value: "dashboard" },
-  { name: "📝 Start Assessment", value: "assessment-form" },
-  { name: "📊 Assessment Result", value: "asesment-result" },
-  { name: "📋 Approval Assessment", value: "approval-assessment" },
-  { name: "📘 About IMA", value: "user-manual" },
-  { name: "👤 User Management", value: "user-management" },
-];
+
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar navItems={navItems} setTab={setTab} activeTab={tab} />
+      
 
         {tab === "approval-assessment" && (
           <div className="p-6 bg-white rounded-xl shadow m-6 space-y-4">

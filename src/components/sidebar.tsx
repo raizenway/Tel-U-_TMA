@@ -54,7 +54,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       submenu: [
         {
           name: "Approval Assessment",
-          path: "approval-assessment",
+          path: "table",
           icon: <span>📋</span>, // ClipboardList
         },
       ],
