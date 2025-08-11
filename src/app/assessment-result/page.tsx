@@ -6,7 +6,6 @@ import clsx from 'clsx';
 import { ChevronDown, LogOut, User } from 'lucide-react';
 import { FaUser } from 'react-icons/fa';
 import { FiChevronDown } from 'react-icons/fi';
-import UniversalDropdown from '@/components/ui/universal-dropdown';
 import Button from '@/components/button';
 import { getPeriodeLabel } from "@/utils/periode";
 
@@ -369,66 +368,8 @@ export default function WelcomePage() {
 
    return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-80 bg-white border-r flex flex-col">
-        <div className="px-6 py-8">
-          <Image src="/Logo.png" alt="Logo Telkom University" width={190} height={80} />
-        </div>
-
-        <div className="px-6 py-8 border-y flex items-center space-x-4.5">
-          <Image src="/user-icon.png" alt="User" width={70} height={48} className="rounded-full" />
-          <div>
-            <p className="font-semibold text-gray-600">Wilson Curtis</p>
-            <p className="text-sm text-gray-500">012345678</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-4 mt-4 space-y-2 text-sm font-medium">
-          <div>
-            <button
-              onClick={() => setTab('assessment-result')}
-              className="w-full flex items-center gap-3 text-gray-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-gray-600 px-4 py-2 rounded-md transition-all"
-            >
-              📊 Assessment Result
-            </button>
-          </div>
-        </nav>
-
-        <div className="px-6 py-4 border-t">
-          <button className="flex items-center gap-2 text-sm text-red-600 font-semibold">
-            <LogOut size={16} /> Keluar
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white flex justify-between items-center px-6 py-4 border-b rounded-lg">
-          <h1 className="text-black font-semibold text-lg">
-            TRANSFORMATION MATURITY ASSESSMENT DASHBOARD
-          </h1>
-
-          <div className="flex items-center gap-4">
-            <button className="px-3 py-1 rounded text-sm text-gray-700">🌐 IND</button>
-
-            
-            <UniversalDropdown
-                trigger={
-                  <div className="flex items-center gap-2 border-2 border-[#2C3E50] rounded-xl px-4 py-2 bg-white text-[#2C3E50]">
-                    <User size={20} />
-                    <ChevronDown size={20} />
-                  </div>
-                }
-              >
-                <UniversalDropdown.Item label="Profil" onClick={() => console.log('Profil')} />
-                <UniversalDropdown.Item label="Logout" onClick={() => console.log('Logout')} />
-              </UniversalDropdown>
-                          
-          </div>
-        </header>
-        
-      <main className="p-6 space-y-6">
-      {/* ASSESSMENT RESULT */}
+       <main className="p-6 space-y-6">
+       {/* ASSESSMENT RESULT */}
           {tab === 'assessment-result' && (
             <div className="bg-white p-6 rounded shadow space-y-6">
               <div>
@@ -665,7 +606,6 @@ export default function WelcomePage() {
             </div>
           )}
         </main>
-      </div>
     </div>
   );
 }

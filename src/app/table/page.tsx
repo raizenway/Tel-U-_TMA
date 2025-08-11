@@ -28,15 +28,14 @@ const TablePage = () => {
   ];
   
 const columns = [
-  { header: "No", key: "nomor", width: "80px" },
-  { header: "Variable", key: "variable", width: "150px" },
-  { header: "Indikator", key: "indikator", width: "250px" },
-  { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
-  { header: "Jawaban", key: "jawaban", width: "150px" },
-  { header: "Skor", key: "skor", width: "100px" },
-  { header: "Tipe Soal", key: "tipeSoal", width: "150px" },
+  { header: "No", key: "nomor", width: "2.84%" },
+  { header: "Variable", key: "variable", width: "11.08%" },
+  { header: "Indikator", key: "indikator", width: "22.09%" },
+  { header: "Pertanyaan", key: "pertanyaan", width: "22.09%" },
+  { header: "Jawaban", key: "jawaban", width: "8.73%" },
+  { header: "Skor", key: "skor", width: "22.09%" },
+  { header: "Tipe Soal", key: "tipeSoal", width: "11.08%" },
 ];
-
 
 
 
@@ -50,7 +49,7 @@ const columns = [
       skor: "2",
       tipeSoal: "Pilihan Ganda",
     },
-    { 
+    {
       variable: "V4 (Sarana & Prasarana)",
       indikator: "Luas perpustakaan di TUNC (m2)",
       pertanyaan: "Luas perpustakaan di TUNC (m2)",
@@ -345,17 +344,18 @@ const columns = [
               </div>
             </div>
 
-            {/* Table Scrollable */}
-              <div className="w-full overflow-x-auto">
-                <div className="max-h-[350px] w-[800px] overflow-y-auto">
-                  <Table
-                    columns={columns}
-                    data={paginatedData}
-                    currentPage={currentPage}
-                    rowsPerPage={rowsPerPage}
-                  />
-                </div>
-              </div>
+           {/* Table Scrollable */}
+<div className="w-full overflow-x-auto">
+  <div className="max-h-[350px] min-w-[800px] overflow-y-auto">
+    <Table
+      columns={columns}
+      data={paginatedData}
+      currentPage={currentPage}
+      rowsPerPage={rowsPerPage}
+    />
+  </div>
+</div>
+
 
 
             {/* Pagination & Action */}
