@@ -91,11 +91,6 @@
                         <td className="py-3 px-6 font-medium text-gray-600">Start of Week</td>
                         <td className="py-3 px-6">{country.startOfWeek || 'Tidak diketahui'}</td>
                         </tr>
-                        <tr>
-                                <img
-                                src={country.coactOfArms}
-                                />
-                        </tr>
                 </tbody>
             </table>
 

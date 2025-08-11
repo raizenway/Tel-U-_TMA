@@ -1,10 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/sidebar';
-import TopbarHeader from '@/components/TopbarHeader';
 import Button from '@/components/button';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
+import { X, Save } from "lucide-react";
 
 export default function PilihJawabanPage() {
   const router = useRouter();
@@ -38,6 +37,17 @@ export default function PilihJawabanPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editNomor, setEditNomor] = useState<number | null>(null);
 
+  interface AssessmentItem {
+  nomor: number;
+  variable: string;
+  bobot: number;
+  indikator: string;
+  tipeSoal: string;
+  status: 'Active' | 'Inactive';
+  pertanyaan: string;
+  pertanyaan2?: string;
+  skor: Record<number, string>;
+}
   // ✅ Load data jika dalam mode edit
   useEffect(() => {
     const editData = localStorage.getItem('editData');
@@ -102,7 +112,7 @@ export default function PilihJawabanPage() {
     let updated;
     if (isEditMode && editNomor !== null) {
       // 🔁 Update data lama
-      updated = list.map((item: any) =>
+     updated = list.map((item: AssessmentItem) => 
         item.nomor === editNomor
           ? {
               ...item,
@@ -114,7 +124,9 @@ export default function PilihJawabanPage() {
       );
     } else {
       // ➕ Tambah data baru
-      const lastNomor = list.length > 0 ? Math.max(...list.map((i: any) => i.nomor)) : 0;
+      const lastNomor = list.length > 0 
+  ? Math.max(...list.map((item: { nomor: number }) => item.nomor)) 
+  : 0;
       const count = jumlahPertanyaan === '2 Pertanyaan' ? 2 : 1;
 
       const newItems = Array.from({ length: count }, (_, i) => ({
@@ -409,17 +421,19 @@ export default function PilihJawabanPage() {
           <div className="flex justify-end space-x-3 mt-6 gap-2">
             <Button
               variant='ghost'
-              type="button"
+              icon={X}
+              iconPosition="left"
               onClick={handleCancel}
-              className="px-14 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition"
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
               Batal
             </Button>
             <Button
-              variant='primary'
-              type="button"
+              variant="simpan"
+              icon={Save}
+              iconPosition="left"
               onClick={handleSave}
-              className="px-15 py-2 text-white rounded-md"
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold"
             >
               Simpan
             </Button>
