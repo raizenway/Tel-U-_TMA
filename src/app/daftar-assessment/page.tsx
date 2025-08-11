@@ -4,7 +4,6 @@
   import React, { useState, useEffect } from 'react';
   import { useRouter } from 'next/navigation';
   import { Pencil, X, Check, Info,  } from 'lucide-react';
-
   import Button from '@/components/button';
   import SuccessNotification from '@/components/SuccessNotification'; // ✅ Import notifikasi
   import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
@@ -134,8 +133,6 @@
 
     return (
       <div className="flex min-h-screen">
-        {/* Sidebar */}
-
           {/* Content Area */}
           <div className="p-5 bg-gray-100 flex-1">
             {/* ✅ Tambahkan Notifikasi di Sini */}
