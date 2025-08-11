@@ -3,13 +3,11 @@
 
   import React, { useState, useEffect } from 'react';
   import { useRouter } from 'next/navigation';
-  import { Pencil, X, Check, Info } from 'lucide-react';
-  import Sidebar from '@/components/sidebar';
-  import TopbarHeader from '@/components/TopbarHeader';
+  import { Pencil, X, Check, Info,  } from 'lucide-react';
+
   import Button from '@/components/button';
   import SuccessNotification from '@/components/SuccessNotification'; // ✅ Import notifikasi
   import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
-
   const ITEMS_PER_PAGE = 10;
 
   export default function AssessmentPage() {
@@ -131,7 +129,7 @@
     };
 
     const handleTambah = () => {
-      router.push('/tambah-assessment');
+      router.push('/daftar-assessment/tambah-assessment');
     };
 
     return (
@@ -253,7 +251,7 @@
                               {col.key === 'action' ? (
                                 <div className="flex justify-center gap-3">
                                   <button
-                                    onClick={() => router.push(`/edit-assessment/${item.nomor}`)}
+                                    onClick={() => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
                                     className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium"
                                   >
                                     <Pencil size={14} className="mr-1" /> Edit
@@ -298,19 +296,19 @@
               {/* Pagination */}
               <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50 flex-shrink-0">
                 <span>{currentData.length} Data ditampilkan</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                     disabled={page === 1}
-                    className="border px-3 py-1 rounded disabled:opacity-50 hover:bg-gray-100 transition"
+                    className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
                   >
                     {'<'}
                   </button>
-                  <span className="font-medium">{page}</span>
+                  <span className="font-medium bg-gray-150 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50">{page}</span>
                   <button
                     onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                     disabled={page === totalPages}
-                    className="border px-3 py-1 rounded disabled:opacity-50 hover:bg-gray-100 transition"
+                    className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
                   >
                     {'>'}
                   </button>

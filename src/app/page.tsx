@@ -25,11 +25,11 @@
     DialogTitle,
     DialogFooter
   } from "@/components/ui/dialog";
-  import {
+import {
     Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
     DoorOpen,
     ArrowLeft
-  } from "lucide-react";
+  } from "lucide-react";  
   import Button  from "@/components/button"
   import { X, Save } from "lucide-react";
 
