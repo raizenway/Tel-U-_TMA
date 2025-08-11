@@ -2,16 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import Sidebar from '@/components/sidebar';
-import TopbarHeader from '@/components/TopbarHeader';
 
 export default function AddUserPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || '';
 
-  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
+  const [logoPreview, setLogoPreview] = useState<string>(''); // base64 image
   const pathname = usePathname();
   const [tab, setTab] = useState("welcome");
 
@@ -28,10 +26,8 @@ export default function AddUserPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-
-    // Filter hanya angka untuk userId dan nomorHp
     if (name === 'userId' || name === 'nomorHp') {
-      const numericValue = value.replace(/\D/g, ''); // hapus semua non angka
+      const numericValue = value.replace(/\D/g, '');
       setForm({ ...form, [name]: numericValue });
     } else {
       setForm({ ...form, [name]: value });
@@ -42,8 +38,7 @@ export default function AddUserPage() {
     router.push('/user-management');
   };
 
-  // Form wajib isi semua field
-  const isFormValid = 
+  const isFormValid =
     form.userId.trim() !== '' &&
     form.username.trim() !== '' &&
     form.password.trim() !== '' &&
@@ -53,7 +48,7 @@ export default function AddUserPage() {
     form.nomorHp.trim() !== '';
 
   const handleSave = () => {
-    if (!isFormValid) return; // proteksi tambahan
+    if (!isFormValid) return;
 
     const newUser = {
       userId: form.userId,
@@ -65,7 +60,8 @@ export default function AddUserPage() {
       namaPIC: form.namaPIC,
       email: form.email,
       nomorHp: form.nomorHp,
-      logoFile: role !== 'Non SSO' && logoFileName !== 'Cari Lampiran...' ? logoFileName : '',
+      logoFileName: role !== 'Non SSO' && logoPreview ? logoFileName : '',
+      logoPreview: role !== 'Non SSO' && logoPreview ? logoPreview : '',
     };
 
     const storedUsers = localStorage.getItem('users');
@@ -77,9 +73,15 @@ export default function AddUserPage() {
     router.push('/user-management');
   };
 
-  const handleNavClick = (item: any) => {
-    if (item.path) {
-      router.push(`/${item.path}`);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFileName(file.name);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string); // base64
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -88,10 +90,9 @@ export default function AddUserPage() {
     setTab(path || "welcome");
   }, [pathname]);
 
-  return ( 
-    <div className="flex min-h-screen bg-gray-200">
-      <Sidebar onItemClick={handleNavClick} />
-      <div className="flex-1 p-8">
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      <div className="min-h-screen w-full p-8 mt-20">
         <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl">
           <form
             onSubmit={(e) => {
@@ -100,7 +101,7 @@ export default function AddUserPage() {
             }}
             className="grid grid-cols-2 gap-4"
           >
-            {/* User ID (hanya angka) */}
+            {/* User ID */}
             <div>
               <label className="block mb-1 text-sm font-medium">User ID</label>
               <input
@@ -154,7 +155,7 @@ export default function AddUserPage() {
               />
             </div>
 
-            {/* Logo & Nama PIC (jika bukan Non SSO) */}
+            {/* Logo & Nama PIC */}
             {role !== 'Non SSO' && (
               <>
                 <div>
@@ -165,23 +166,17 @@ export default function AddUserPage() {
                       id="logo"
                       name="logo"
                       accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setLogoFile(file);
-                          setLogoFileName(file.name);
-                        }
-                      }}
+                      onChange={handleFileChange}
                       className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
                     />
                     <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-100 px-3 py-2 text-gray-700">
                       <span className="truncate">{logoFileName}</span>
                       <div className="flex items-center gap-2">
-                        {logoFile && (
+                        {logoPreview && (
                           <button
                             type="button"
                             onClick={() => {
-                              setLogoFile(null);
+                              setLogoPreview('');
                               setLogoFileName('Cari Lampiran...');
                             }}
                             className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
@@ -189,12 +184,13 @@ export default function AddUserPage() {
                             ✕
                           </button>
                         )}
-                        {!logoFile && (
+                        {!logoPreview && (
                           <span className="text-sm font-semibold text-gray-400">Upload</span>
                         )}
                       </div>
                     </div>
                   </div>
+                  
                 </div>
 
                 <div>
@@ -224,7 +220,7 @@ export default function AddUserPage() {
               />
             </div>
 
-            {/* Nomor HP (hanya angka) */}
+            {/* Nomor HP */}
             <div>
               <label className="block mb-1 text-sm font-medium">Nomor Handphone</label>
               <input
@@ -256,7 +252,7 @@ export default function AddUserPage() {
             </div>
           </form>
 
-          {/* Tombol Aksi */}
+          {/* Tombol */}
           <div className="flex justify-end mt-6 gap-4">
             <button
               onClick={handleCancel}
