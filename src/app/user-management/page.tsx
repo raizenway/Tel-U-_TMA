@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
-import Sidebar from '@/components/sidebar';
 import { FaCopy, FaPrint, FaDownload, FaSearch, FaEdit, FaTimes, FaRedo } from 'react-icons/fa';
 import SuccessNotification from '@/components/SuccessNotification';
 
@@ -174,17 +173,12 @@ export default function UserManagementPage() {
     link.click();
   };
 
-  const handleNavClick = (item: any) => {
-    if (item.path) {
-      router.push(`/${item.path}`);
-    }
-  };
+  
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar onItemClick={handleNavClick} />
+      <main className="min-h-screen w-full p-8 mt-20">
 
-      <main className="min-h-screen w-full p-8">
         {showSuccess && (
           <SuccessNotification
             isOpen={showSuccess}
@@ -366,13 +360,13 @@ export default function UserManagementPage() {
           onConfirm={handleConfirm}
           title={
             targetStatus === 'inactive'
-              ? 'Apakah kamu yakin ingin menonaktifkan user ini?'
-              : 'Apakah kamu yakin ingin mengaktifkan kembali user ini?'
+              ? 'Apakah kamu yakin, ingin mengnonaktifkan user ini?'
+              : 'Apakah kamu yakin, kamu ingin mengaktifkan kembali data ini?'
           }
           header={
             targetStatus === 'inactive'
               ? 'Non Aktifkan User'
-              : 'Aktifkan Kembali User'
+              : 'Aktifkan Kembali Data'
           }
           confirmLabel="Ya, lakukan"
           cancelLabel="Batal"
@@ -385,8 +379,8 @@ export default function UserManagementPage() {
               <div className="font-semibold text-base mb-1">Informasi</div>
               <div className="pl-1">
                 {targetStatus === 'inactive'
-                  ? 'User yang dinonaktifkan tidak akan bisa login sampai diaktifkan kembali.'
-                  : 'User yang diaktifkan kembali akan bisa login seperti biasa.'}
+                  ? 'Kamu bisa mengembalikan kembali data yang sudah dihilangkan'
+                  : 'kamu bisa menghapus kembali data yang sudah dipulihkan'}
               </div>
             </div>
           </div>
