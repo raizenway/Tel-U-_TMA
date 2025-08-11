@@ -24,7 +24,7 @@ const Table: React.FC<TableProps> = ({
   return (
     <div className="w-full overflow-x-auto">
       <div className="min-w-max inline-block align-middle">
-        <table className="overflow-x-auto w-full border border-gray-300 text-sm">
+        <table className="min-w-max border border-gray-300 text-sm">
           <thead className="bg-gray-100">
             <tr>
               {columns.map((col, index) => (
