@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { X, Save} from "lucide-react";
+import Button  from "@/components/button";
 
 export default function AddUserPage() {
   const router = useRouter();
@@ -254,20 +256,27 @@ export default function AddUserPage() {
 
           {/* Tombol */}
           <div className="flex justify-end mt-6 gap-4">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
-            >
-              ❌ Batal
-            </button>
-            <button
-              onClick={handleSave}
+            <Button
+                variant="ghost"
+                icon={() => <X size={18} className="text-red-600" />}
+                iconPosition="left"
+                onClick={handleCancel}
+                className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
+
+            <Button disabled
+                variant="simpan"
+                icon={Save}
+                iconPosition="left"
+                onClick={handleSave}
               disabled={!isFormValid}
               className={`px-4 py-2 rounded-md text-white 
-                ${isFormValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`}
-            >
-              💾 Simpan
-            </button>
+                ${isFormValid ? 'bg-[#263859] text-white px-12' : 'bg-gray-400 cursor-not-allowed px-12'}`}
+              >
+                Simpan
+              </Button>  
           </div>
         </div>
       </div>
