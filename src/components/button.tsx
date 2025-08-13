@@ -19,6 +19,7 @@ type ButtonType = "button" | "submit" | "reset" | "link";
     fullWidth?: boolean;
     children: React.ReactNode;
     download?: boolean;
+    
   }
 
 const Button: React.FC<ButtonProps> = ({

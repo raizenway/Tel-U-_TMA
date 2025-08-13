@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaWhatsapp } from 'react-icons/fa';
 import Image from 'next/image';
+import { UsersRound,Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ export default function LoginPage() {
       <div className="w-full md:w-1/2 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-md">
           {/* Dua Logo di Atas Judul */}
-          <div className="flex justify-center items-center gap-6 mb-6">
+          <div className="flex justify-center items-center gap-6 mb-10">
             {/* Logo Kiri: Misalnya Logo Telkom University */}
             <Image
               src="/image 2.png"
@@ -48,10 +50,10 @@ export default function LoginPage() {
           </div>
 
           {/* Judul */}
-          <h2 className="text-xl font-semibold text-center text-black mb-4">
+          <h2 className="text-xl font-semibold  text-black mb-4">
             Log In An Account
           </h2>
-          <p className="text-sm text-center text-gray-500 mb-11">
+          <p className="text-sm  text-gray-500 mb-11">
             Enter your Username and Password to log in to our dashboard
           </p>
 
@@ -73,34 +75,46 @@ export default function LoginPage() {
             </div>
 
             {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
-                placeholder="••••••••"
-              />
-            </div>
+            {/* Password */}
+                  <div className="relative">  {/* ✅ Tambahkan 'relative' di sini */}
+                    <label className="block text-sm font-medium text-gray-700">
+                      Password
+                    </label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="mt-1 w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
+                      placeholder="••••••••"
+                    />
+                    {/* Tombol toggle password */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 mt-5"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
 
             {/* Tombol Login */}
-            <button
-              type="submit"
-              className="w-full bg-[#3c5bff] text-white py-2 rounded-md font-semibold"
-            >
-              Log In SSO
-            </button>
+            <div className="flex items-center justify-center">
+              <button
+                type="submit"
+                className="w-80 bg-[#3c5bff] text-white py-2 rounded-md font-semibold flex justify-center"
+              >
+                Log In SSO
+              </button>
+            </div>
+
           </form>
 
           {/* Lupa Password */}
           <div className="flex items-center justify-center mt-4 text-sm text-red-500 gap-2">
-            <span>🔐</span>
+             <UsersRound />
             <a href="#" className="hover:underline">
-              Forgot Password SSO ?
+              Forgot Password SSO 
             </a>
           </div>
 

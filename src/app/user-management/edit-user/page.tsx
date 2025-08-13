@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import Sidebar from "@/components/sidebar";
+import { X, Save} from "lucide-react";
+import Button  from "@/components/button";
 
 export default function EditUserPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function EditUserPage() {
     nomorHp: '',
     status: '',
     role: '',
-    logoPreview: '',
+    logoPreview: '', // base64 image
   });
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function EditUserPage() {
             nomorHp: user.nomorHp || '',
             status: user.status || '',
             role: user.role || '',
-            logoPreview: user.logoPreview || '',
+            logoPreview: user.logoPreview || '', // foto lama
           });
           setLogoFileName(user.logoFileName || 'Cari Lampiran...');
         }
@@ -70,7 +71,9 @@ export default function EditUserPage() {
     let users = storedUsers ? JSON.parse(storedUsers) : [];
 
     users = users.map((user: any) =>
-      user.userId === form.userId ? { ...user, ...form, logoFileName } : user
+      user.userId === form.userId
+        ? { ...user, ...form, logoFileName, logoPreview: form.logoPreview }
+        : user
     );
 
     localStorage.setItem('users', JSON.stringify(users));
@@ -86,17 +89,9 @@ export default function EditUserPage() {
     setTab(path || "welcome");
   }, [pathname]);
 
-  const handleNavClick = (item: any) => {
-    if (item.path) {
-      router.push(`/${item.path}`);
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar onItemClick={handleNavClick} />
-
-      <main className="min-h-screen bg-gray-200 p-8 w-full">
+      <main className="min-h-screen w-full p-8 mt-20">
         <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto">
           <form
             onSubmit={(e) => {
@@ -180,7 +175,7 @@ export default function EditUserPage() {
                     <div className="flex items-center justify-between border border-gray-300 rounded-md bg-white-200 px-3 py-2 text-gray-700">
                       <span className="truncate">{logoFileName}</span>
                       <div className="flex items-center gap-2">
-                        {logoFile ? (
+                        {(logoFile || form.logoPreview) ? (
                           <button
                             type="button"
                             onClick={() => {
@@ -197,13 +192,6 @@ export default function EditUserPage() {
                         )}
                       </div>
                     </div>
-                    {form.logoPreview && (
-                      <img
-                        src={form.logoPreview}
-                        alt="Preview Logo"
-                        className="mt-2 max-h-24 object-contain"
-                      />
-                    )}
                   </div>
                 </div>
 
@@ -259,20 +247,25 @@ export default function EditUserPage() {
           </form>
 
           <div className="flex justify-end mt-8 gap-6">
-            <button
-              onClick={handleCancel}
-              className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
-            >
-              ❌ Batal
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!isFormValid}
-              className={`px-6 py-2 rounded-md text-white 
-                ${isFormValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`}
-            >
-              💾 Simpan
-            </button>
+           <Button
+                variant="ghost"
+                icon={() => <X size={18} className="text-red-600" />}
+                iconPosition="left"
+                onClick={handleCancel}
+                className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
+
+              <Button
+                variant="simpan"
+                icon={Save}
+                iconPosition="left"
+                onClick={handleSave}
+                className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+              >
+                Simpan
+              </Button>
           </div>
         </div>
       </main>
