@@ -41,11 +41,18 @@ const WelcomeTab = () => {
   </div>
 
   {/* Teks: geser 4px ke bawah */}
-   <div className="text-right max-w-xs">
-   <h2 className="text-xl lg:text-2xl font-semibold text-white relative -translate-x-150 top-2">
+   <div className="text-right text-center">
+   <h2 className="text-xl lg:text-2xl font-semibold text-white relative -translate-x-150"
+   style={{ 
+      transform: 'translateX(10px) translateY(4px)' // Atur: X = kiri/kanan, Y = atas/bawah
+    }}>
   Hallo, Wilson Curtis
 </h2>
-    <p className="text-sm lg:text-base text-white relative -translate-x-150 mt-4  ">
+
+    <p className="text-sm lg:text-base text-white relative -translate-x-150 mt-4 text-center"
+    style={{ 
+      transform: 'translateX(90px)', // Bisa berbeda dari h2
+    }}>
   Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
 </p>
   </div>
