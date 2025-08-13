@@ -163,6 +163,21 @@ export default function PilihJawabanPage() {
   const handleRadioClick = (value: string) => {
     setJumlahPertanyaan(prev => prev === value ? '' : value);
   };
+const isFormValid = () => {
+  // Field wajib
+  if (!namaVariabel.trim()) return false;
+  if (!indikator.trim()) return false;
+  if (!pertanyaan1.trim()) return false;
+  if (!status) return false;
+  if (!jumlahPertanyaan) return false;
+
+  // Jika 2 pertanyaan, pastikan pertanyaan2 terisi
+  if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) {
+    return false;
+  }
+
+  return true;
+};
 
   return (
     <div className="flex min-h-screen">
@@ -429,6 +444,7 @@ export default function PilihJawabanPage() {
               Batal
             </Button>
             <Button
+              disabled={!isFormValid()}
               variant="simpan"
               icon={Save}
               iconPosition="left"
@@ -436,7 +452,7 @@ export default function PilihJawabanPage() {
               className="rounded-[12px] px-17 py-2 text-sm font-semibold"
             >
               Simpan
-            </Button>
+            </Button> 
           </div>
         </div>
       </main>

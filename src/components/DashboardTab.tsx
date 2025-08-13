@@ -19,9 +19,12 @@ import {
   Legend,
 } from "recharts";
 import ProgressAssessment from "@/components/ProgressAssessment";
-import { Pencil, Download, X } from "lucide-react";
+import { Pencil, Download, BookCheckIcon } from "lucide-react";
 import AssessmentTable from "./AssessmentTable";
-import Button from "@/components/button";
+import ModalConfirm from "./StarAssessment/ModalConfirm";
+import Button from "./button";
+import { Building2,  ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
+
 
 // Data Chart
 const radarData = [
@@ -33,14 +36,6 @@ const radarData = [
   { subject: "Publikasi", A: 95 },
 ];
 
-// ✅ Data awal akreditasi
-const initialAccreditationData = [
-  { tahun: "2021", Jakarta: 80, Bandung: 70, Purwokerto: 60, Surabaya: 90 },
-  { tahun: "2022", Jakarta: 90, Bandung: 75, Purwokerto: 65, Surabaya: 95 },
-  { tahun: "2023", Jakarta: 95, Bandung: 85, Purwokerto: 75, Surabaya: 98 },
-  { tahun: "2024", Jakarta: 98, Bandung: 90, Purwokerto: 80, Surabaya: 99 },
-];
-
 // ✅ Daftar kampus
 const CAMPUS_LIST = [
   "Tel-U Jakarta",
@@ -48,14 +43,6 @@ const CAMPUS_LIST = [
   "Tel-U Purwokerto",
   "Tel-U Bandung",
 ] as const;
-
-// ✅ Mapping kampus ke nama kolom
-const campusToKey: Record<string, string> = {
-  "Tel-U Jakarta": "Jakarta",
-  "Tel-U Surabaya": "Surabaya",
-  "Tel-U Purwokerto": "Purwokerto",
-  "Tel-U Bandung": "Bandung",
-};
 
 // ✅ Tipe data
 interface CampusData {
@@ -65,7 +52,7 @@ interface CampusData {
   "Tel-U Bandung": number[];
 }
 
-interface AccreditationRow {
+interface StudentRow {
   tahun: string;
   Jakarta: number;
   Bandung: number;
@@ -75,7 +62,6 @@ interface AccreditationRow {
 
 export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"student" | "accreditation">("student");
 
   // ✅ Student Body Data
   const [studentYears, setStudentYears] = useState(["2021", "2022", "2023", "2024"]);
@@ -85,7 +71,8 @@ export default function DashboardTab() {
     "Tel-U Purwokerto": [110, 115, 130, 140],
     "Tel-U Bandung": [140, 135, 160, 170],
   });
-  const [studentData, setStudentData] = useState(() =>
+
+  const [studentData, setStudentData] = useState<StudentRow[]>(() =>
     studentYears.map((year, idx) => ({
       tahun: year,
       Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
@@ -95,111 +82,179 @@ export default function DashboardTab() {
     }))
   );
 
-  // ✅ Akreditasi Data
-  const [accreditationYears, setAccreditationYears] = useState(["2021", "2022", "2023", "2024"]);
-  const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
-    "Tel-U Jakarta": [80, 90, 95, 98],
-    "Tel-U Surabaya": [90, 95, 98, 99],
-    "Tel-U Purwokerto": [60, 65, 75, 80],
-    "Tel-U Bandung": [70, 75, 85, 90],
-  });
-  const [accreditationData, setAccreditationData] = useState<AccreditationRow[]>(initialAccreditationData);
+  // ✅ Akreditasi: dihitung dari jumlah mahasiswa
+  const [accreditationData, setAccreditationData] = useState(() =>
+    studentYears.map((year, idx) => {
+      const base = 60;
+      return {
+        tahun: year,
+        Jakarta: Math.min(100, base + (studentInputData["Tel-U Jakarta"][idx] || 0) / 10),
+        Bandung: Math.min(100, base + (studentInputData["Tel-U Bandung"][idx] || 0) / 10),
+        Purwokerto: Math.min(100, base + (studentInputData["Tel-U Purwokerto"][idx] || 0) / 10),
+        Surabaya: Math.min(100, base + (studentInputData["Tel-U Surabaya"][idx] || 0) / 10),
+      };
+    })
+  );
 
-  // 📥 Download CSV
-  const handleDownload = () => {
-    const csv = [
-      ["Tahun", "Jakarta", "Bandung", "Purwokerto", "Surabaya"],
-      ...accreditationData.map((row) => [row.tahun, row.Jakarta, row.Bandung, row.Purwokerto, row.Surabaya]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pertumbuhan_akreditasi.csv";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  // ✅ Handle Add Year - Student
-  const handleAddStudentYear = () => {
-    const last = studentYears[studentYears.length - 1];
-    const next = String(Number(last) + 1);
-    setStudentYears([...studentYears, next]);
-    CAMPUS_LIST.forEach((kampus) => {
+  // ✅ Tambah Tahun
+  const handleAddYear = () => {
+    const nextYear = String(Number(studentYears[studentYears.length - 1]) + 1);
+    setStudentYears((prev) => [...prev, nextYear]);
+    (Object.keys(studentInputData) as Array<keyof CampusData>).forEach((campus) => {
       setStudentInputData((prev) => ({
         ...prev,
-        [kampus]: [...prev[kampus], 0],
+        [campus]: [...prev[campus], 0],
       }));
     });
   };
 
-  // ✅ Handle Add Year - Accreditation
-  const handleAddAccreditationYear = () => {
-    const last = accreditationYears[accreditationYears.length - 1];
-    const next = String(Number(last) + 1);
-    setAccreditationYears([...accreditationYears, next]);
-    CAMPUS_LIST.forEach((kampus) => {
-      setAccreditationInputData((prev) => ({
-        ...prev,
-        [kampus]: [...prev[kampus], 0],
-      }));
-    });
-  };
-
-  // ✅ Handle Change - Student
-  const handleStudentChange = (kampus: keyof CampusData, yearIndex: number, value: string) => {
+  // ✅ Ubah Nilai Mahasiswa
+  const handleInputChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
+    const num = value === "" ? 0 : Number(value);
+    if (isNaN(num)) return;
     setStudentInputData((prev) => ({
       ...prev,
-      [kampus]: prev[kampus].map((v, i) => (i === yearIndex ? Number(value) || 0 : v)),
+      [campus]: prev[campus].map((val, i) => (i === yearIndex ? num : val)),
     }));
   };
 
-  // ✅ Handle Change - Accreditation
-  const handleAccreditationChange = (kampus: keyof CampusData, yearIndex: number, value: string) => {
-    setAccreditationInputData((prev) => ({
-      ...prev,
-      [kampus]: prev[kampus].map((v, i) => (i === yearIndex ? Number(value) || 0 : v)),
-    }));
-  };
-
-  // ✅ Generate - Student
-  const handleGenerateStudent = () => {
-    const newData = studentYears.map((year, idx) => ({
+  // ✅ Simpan & Update Data
+  const handleGenerate = () => {
+    // Update studentData
+    const newStudentData = studentYears.map((year, idx) => ({
       tahun: year,
       Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
       Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
       Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
       Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
     }));
-    setStudentData(newData);
+    setStudentData(newStudentData);
+
+    // Update accreditationData
+    const newAccreditationData = studentYears.map((year, idx) => {
+      const base = 60;
+      return {
+        tahun: year,
+        Jakarta: Math.min(100, base + (studentInputData["Tel-U Jakarta"][idx] || 0) / 10),
+        Bandung: Math.min(100, base + (studentInputData["Tel-U Bandung"][idx] || 0) / 10),
+        Purwokerto: Math.min(100, base + (studentInputData["Tel-U Purwokerto"][idx] || 0) / 10),
+        Surabaya: Math.min(100, base + (studentInputData["Tel-U Surabaya"][idx] || 0) / 10),
+      };
+    });
+    setAccreditationData(newAccreditationData);
+
     setShowModal(false);
   };
 
-  // ✅ Generate - Accreditation
-  const handleGenerateAccreditation = () => {
-    const newData = accreditationYears.map((year, idx) => ({
-      tahun: year,
-      Jakarta: accreditationInputData["Tel-U Jakarta"][idx] || 0,
-      Bandung: accreditationInputData["Tel-U Bandung"][idx] || 0,
-      Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] || 0,
-      Surabaya: accreditationInputData["Tel-U Surabaya"][idx] || 0,
-    }));
-    setAccreditationData(newData);
-    setShowModal(false);
+  // ✅ Download CSV Akreditasi
+  const handleDownload = () => {
+    const csv = [
+      ["Tahun", "Jakarta", "Bandung", "Purwokerto", "Surabaya"],
+      ...accreditationData.map((row) => [
+        row.tahun,
+        row.Jakarta.toFixed(1),
+        row.Bandung.toFixed(1),
+        row.Purwokerto.toFixed(1),
+        row.Surabaya.toFixed(1),
+      ]),
+    ]
+      .map((r) => r.join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "akreditasi_dari_mahasiswa.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="space-y-8">
-      {/* Statistik Ringkas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-red-700 text-white p-5 rounded-xl shadow text-center">📋 UPPS/Kampus Cabang</div>
-        <div className="bg-amber-500 text-white p-5 rounded-xl shadow text-center">📄 Jumlah Variabel & Pertanyaan</div>
-        <div className="bg-[#263859] text-white p-5 rounded-xl shadow text-center">ℹ️ Assessment Submitted</div>
-        <div className="bg-emerald-600 text-white p-5 rounded-xl shadow text-center">✅ Assessment Approved</div>
+    <div className="space-y-8 px-4 py-6">
+     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+  {/* 1. UPPS/Kampus Cabang */}
+  <div
+    className="relative h-32  bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center gap-4"
+    style={{ backgroundImage: "url('/KC.png')" }}
+  >
+    {/* Overlay gelap agar teks jelas */}
+    <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+
+    {/* Konten: Ikon dalam bulatan + teks */}
+    <div className="relative flex items-center space-x-2  text-white p-4 rounded-lg ">
+  {/* Bulatan dengan ikon */}
+  <div 
+    className="flex items-center justify-center w-10 h-10  bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md"
+  >
+    <Building2 className="text-white w-6 h-6" />
+  </div>
+
+  {/* Teks di tengah */}
+  <span className="text-sm font-semibold">UPPS/Kampus Cabang</span>
+
+  {/* Overlay angka di pojok kanan atas */}
+  <div 
+  className="absolute top-0 right-0 w-6 h-6  text-white text-sm font-bold rounded-full flex items-center justify-center"
+  style={{ 
+    marginTop: '45px', 
+    marginRight: '90px' 
+  }}
+>
+  8
+</div>
+</div>
+  </div>
+
+  {/* 2. Jumlah Variabel & Pertanyaan */}
+  <div
+    className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+    style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
+  >
+    <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+    <div className="relative flex flex-col items-center space-y-2 z-10">
+      <div 
+        className="flex items-center justify-center w-12 h-12  bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md"
+      >
+        <BookOpenCheckIcon className="text-white w-6 h-6" />
       </div>
+      <span className="text-sm font-semibold">Jumlah Variabel & Pertanyaan</span>
+    </div>
+  </div>
+
+  {/* 3. Assessment Submitted */}
+  <div
+    className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+    style={{ backgroundImage: "url('/Assessment Submitted.png')" }}
+  >
+    <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+    <div className="relative flex flex-col items-center space-y-2 z-10">
+      <div 
+        className="flex items-center justify-center w-12 h-12  bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md"
+      >
+        <ClipboardList className="text-white w-6 h-6" />
+      </div>
+      <span className="text-sm font-semibold">Assessment Submitted</span>
+    </div>
+  </div>
+
+  {/* 4. Assessment Approved */}
+  <div
+    className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+    style={{ backgroundImage: "url('/Assessment Approve.png')" }}
+  >
+    <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+    <div className="relative flex flex-col items-center space-y-2 z-10">
+      <div 
+        className="flex items-center justify-center w-12 h-12  bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md"
+      >
+        <ClipboardCheck 
+        className="text-white w-6 h-6" />
+      </div>
+      <span className="text-sm font-semibold">Assessment Approved</span>
+    </div>
+  </div>
+</div>
 
       {/* Progress + Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -222,23 +277,20 @@ export default function DashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ✅ Student Body */}
+        {/* Student Body */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
             <div className="flex space-x-3">
               <button
-                onClick={() => {
-                  setModalType("student");
-                  setShowModal(true);
-                }}
-                className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                onClick={() => setShowModal(true)}
+                className="text-gray-500 hover:text-gray-700"
                 title="Edit Data"
               >
                 <Pencil size={18} />
               </button>
               <button
-                className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                className="text-gray-500 hover:text-gray-700"
                 title="Unduh Data"
               >
                 <Download size={18} />
@@ -247,7 +299,7 @@ export default function DashboardTab() {
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={studentData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
               <YAxis />
               <Tooltip />
@@ -260,25 +312,22 @@ export default function DashboardTab() {
           </ResponsiveContainer>
         </div>
 
-        {/* ✅ Pertumbuhan Akreditasi */}
+        {/* Pertumbuhan Akreditasi */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
+            <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi (dari Jumlah Mahasiswa)</h3>
             <div className="flex space-x-3">
               <button
-                onClick={() => {
-                  setModalType("accreditation");
-                  setShowModal(true);
-                }}
-                className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                title="Edit Data"
+                onClick={() => setShowModal(true)}
+                className="text-gray-500 hover:text-gray-700"
+                title="Edit Data Mahasiswa"
               >
                 <Pencil size={18} />
               </button>
               <button
                 onClick={handleDownload}
-                className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                title="Unduh Data"
+                className="text-gray-500 hover:text-gray-700"
+                title="Unduh Data Akreditasi"
               >
                 <Download size={18} />
               </button>
@@ -288,8 +337,8 @@ export default function DashboardTab() {
             <LineChart data={accreditationData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
-              <YAxis />
-              <Tooltip />
+              <YAxis domain={[0, 100]} />
+              <Tooltip formatter={(v) => Number(v).toFixed(1)} />
               <Legend />
               <Line type="monotone" dataKey="Jakarta" stroke="#8884d8" />
               <Line type="monotone" dataKey="Bandung" stroke="#82ca9d" />
@@ -302,90 +351,76 @@ export default function DashboardTab() {
 
       {/* Tabel Assessment */}
       <div className="mt-6">
-        <AssessmentTable />
+        <AssessmentTable hideStartButton={true} />
       </div>
 
-      {/* ✅ Modal Dinamis */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-none bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-lg w-[600px] p-6">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h2 className="text-lg font-semibold">
-                {modalType === "student" ? "Ubah Data Student Body" : "Ubah Data Akreditasi"}
-              </h2>
-             
-            </div>
-
-            <div className="flex justify-end my-3">
-              <Button
-                variant="primary"
-                onClick={
-                  modalType === "student"
-                    ? handleAddStudentYear
-                    : handleAddAccreditationYear
-                }
-              >
-                Tambah Tahun
-              </Button>
-            </div>
-
-            <table className="w-full border-collapse text-center">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th></th>
-                  {(modalType === "student" ? studentYears : accreditationYears).map((year, i) => (
-                    <th key={i}>{year}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {CAMPUS_LIST.map((kampus) => (
-                  <tr key={kampus}>
-                    <td className="text-left p-2">{kampus}</td>
-                    {(modalType === "student"
-                      ? studentInputData[kampus]
-                      : accreditationInputData[kampus]
-                    ).map((val, j) => (
-                      <td key={j}>
-                        <input
-                          type="number"
-                          value={val}
-                          onChange={(e) =>
-                            modalType === "student"
-                              ? handleStudentChange(kampus, j, e.target.value)
-                              : handleAccreditationChange(kampus, j, e.target.value)
-                          }
-                          className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="flex justify-center space-x-4 mt-6">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-6 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition font-medium"
-              >
-                Batal
-              </button>
-              <Button
-                variant="primary"
-                className="px-6 py-2 font-medium"
-                onClick={
-                  modalType === "student"
-                    ? handleGenerateStudent
-                    : handleGenerateAccreditation
-                }
-              >
-                Generate
-              </Button>
-            </div>
-          </div>
+      {/* ✅ Modal dengan ModalConfirm */}
+      <ModalConfirm
+        isOpen={showModal}
+        onCancel={() => setShowModal(false)}
+        onConfirm={handleGenerate}
+        header="Ubah data"
+        title=""
+        confirmLabel="Generate"
+        cancelLabel="Batal"
+        hideDefaultButtons
+      >
+        {/* Tombol Tambah Tahun */}
+        <div className="flex justify-end mb-4">
+          <Button
+            onClick={handleAddYear}
+            className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 text-sm font-medium"
+          >
+            + Tambah Tahun
+          </Button>
         </div>
-      )}
+
+        {/* Tabel Input */}
+        <table className="w-full border-collapse text-center mb-4">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="text-left pl-2">Kampus</th>
+              {studentYears.map((year, i) => (
+                <th key={i}>{year}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {CAMPUS_LIST.map((campus) => (
+              <tr key={campus} className="border-b border-gray-200">
+                <td className="text-left pl-2 py-2 font-medium">{campus}</td>
+                {studentInputData[campus].map((value, j) => (
+                  <td key={j}>
+                    <input
+                      type="number"
+                      value={value === 0 ? "" : value}
+                      onChange={(e) => handleInputChange(campus, j, e.target.value)}
+                      className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
+                      placeholder="0"
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Tombol Aksi */}
+        <div className="flex justify-center gap-4 mt-6">
+          <button
+            onClick={() => setShowModal(false)}
+            className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 font-medium"
+          >
+            Batal
+          </button>
+          <button
+            onClick={handleGenerate}
+            className="px-6 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 font-medium"
+          >
+            Generate
+          </button>
+        </div>
+      </ModalConfirm>
     </div>
   );
 }
