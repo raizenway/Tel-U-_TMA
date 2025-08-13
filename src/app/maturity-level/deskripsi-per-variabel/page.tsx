@@ -12,6 +12,15 @@ export default function DeskripsiVariabelTable() {
     const saved = localStorage.getItem("deskripsiPerVariabelTemp");
     if (saved) {
       setDeskripsi(JSON.parse(saved));
+    } else {
+      // kalau belum ada, coba ambil dari maturityTempForm
+      const savedForm = localStorage.getItem("maturityTempForm");
+      if (savedForm) {
+        const parsed = JSON.parse(savedForm);
+        if (Array.isArray(parsed.deskripsiPerVariabel)) {
+          setDeskripsi(parsed.deskripsiPerVariabel);
+        }
+      }
     }
   }, []);
 
@@ -19,10 +28,15 @@ export default function DeskripsiVariabelTable() {
   const allFilled = deskripsi.every((desc) => desc.trim() !== "");
 
   const handleSave = () => {
-    // simpan ke localStorage sementara
+    // simpan data deskripsi terpisah
     localStorage.setItem("deskripsiPerVariabelTemp", JSON.stringify(deskripsi));
 
-    // setelah simpan, kembali ke halaman sebelumnya
+    // update juga di maturityTempForm
+    const savedForm = JSON.parse(localStorage.getItem("maturityTempForm") || "{}");
+    savedForm.deskripsiPerVariabel = deskripsi;
+    localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
+
+    // kembali ke halaman sebelumnya
     router.back();
   };
 
