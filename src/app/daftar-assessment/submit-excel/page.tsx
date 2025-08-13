@@ -2,19 +2,22 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
-import Sidebar from '@/components/sidebar';
-import TopbarHeader from '@/components/TopbarHeader';
+import Button from '@/components/button';
+import { X, Save } from 'lucide-react';
 
-// ✅ Tipe data assessment
+// Struktur data untuk assessment
 interface AssessmentItem {
   nomor: number;
   variable: string;
-  bobot: number;
   indikator: string;
   pertanyaan: string;
   tipeSoal: string;
   status: 'Active' | 'Inactive';
-  [key: string]: any; // fleksibel untuk properti tambahan
+  deskripsiSkor0: string;
+  deskripsiSkor1: string;
+  deskripsiSkor2: string;
+  deskripsiSkor3: string;
+  deskripsiSkor4: string;
 }
 
 export default function SubmitExcelPage() {
@@ -22,15 +25,15 @@ export default function SubmitExcelPage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 🔁 Redirect otomatis saat ganti tipe soal
+  // Redirect otomatis saat ganti tipe soal
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assesment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/submit-excel');
+      router.push('/daftar-assesment/submit-excel');
     }
   };
 
@@ -80,7 +83,7 @@ export default function SubmitExcelPage() {
         const headers = json[0] as string[];
         const rows = json.slice(1);
 
-        // 🔍 Cek mode edit
+        // Cek mode edit
         const editDataRaw = localStorage.getItem('editData');
         const isEditMode = !!editDataRaw;
         let editData: AssessmentItem | null = null;
@@ -101,21 +104,47 @@ export default function SubmitExcelPage() {
           }
         }
 
-        // ✅ Validasi: hanya 1 baris saat edit
+        // Validasi: hanya 1 baris saat edit
         if (isEditMode && rows.length !== 1) {
           alert('Dalam mode edit, hanya boleh ada 1 baris data.');
           setLoading(false);
           return;
         }
 
-        // 🔎 Ambil indeks kolom
-        const nomorIdx = Math.max(headers.indexOf('Nomor'), 0);
-        const variableIdx = Math.max(headers.indexOf('Variable'), 1);
-        const bobotIdx = Math.max(headers.indexOf('Bobot'), 2);
-        const indikatorIdx = Math.max(headers.indexOf('Indikator'), 3);
-        const pertanyaanIdx = Math.max(headers.indexOf('Pertanyaan'), 4);
+        // Ambil indeks kolom — sesuai template
+        const variableIdx = Math.max(headers.indexOf('Variable'), 0);
+        const indikatorIdx = Math.max(headers.indexOf('Indikator'), 1);
+        const pertanyaanIdx = Math.max(headers.indexOf('Pertanyaan'), 2);
+        const deskripsi0Idx = Math.max(headers.indexOf('Deskripsi Skor 0'), 3);
+        const deskripsi1Idx = Math.max(headers.indexOf('Deskripsi Skor 1'), 4);
+        const deskripsi2Idx = Math.max(headers.indexOf('Deskripsi Skor 2'), 5);
+        const deskripsi3Idx = Math.max(headers.indexOf('Deskripsi Skor 3'), 6);
+        const deskripsi4Idx = Math.max(headers.indexOf('Deskripsi Skor 4'), 7);
 
-        // 📦 Ambil data dari localStorage
+        // Validasi: pastikan semua kolom ditemukan
+        const requiredColumns = [
+          'Variable',
+          'Indikator',
+          'Pertanyaan',
+          'Deskripsi Skor 0',
+          'Deskripsi Skor 1',
+          'Deskripsi Skor 2',
+          'Deskripsi Skor 3',
+          'Deskripsi Skor 4',
+        ];
+
+        const missingColumns = requiredColumns.filter((col, idx) => {
+          const index = headers.indexOf(col);
+          return index === -1 || index !== idx;
+        });
+
+        if (missingColumns.length > 0) {
+          alert(`Kolom berikut tidak ditemukan atau urutannya salah:\n${missingColumns.join(', ')}\n\nPastikan template Excel digunakan dengan benar.`);
+          setLoading(false);
+          return;
+        }
+
+        // Ambil data dari localStorage
         const saved = localStorage.getItem('assessmentList');
         let list: AssessmentItem[] = [];
         if (saved) {
@@ -130,29 +159,28 @@ export default function SubmitExcelPage() {
           }
         }
 
-        // 🔢 Hitung nomor terakhir
+        // Hitung nomor terakhir
         const lastNomor = list.length > 0 ? Math.max(...list.map((i) => i.nomor)) : 0;
 
-        // 🔄 Konversi baris ke objek
+        // Konversi baris ke objek
         const importedItems: AssessmentItem[] = rows
           .map((row: any, index: number) => {
             const nomor = isEditMode ? editData!.nomor : lastNomor + index + 1;
-            const variable = row[variableIdx] || `V${nomor}`;
-            const bobot = Number(row[bobotIdx]) || 1;
-            const indikator = row[indikatorIdx] || 'Indikator tidak tersedia';
-            const pertanyaan = row[pertanyaanIdx] || 'Pertanyaan tidak tersedia';
-
             return {
               nomor,
-              variable,
-              bobot,
-              indikator,
-              pertanyaan,
+              variable: row[variableIdx]?.toString().trim() || 'Variable tidak tersedia',
+              indikator: row[indikatorIdx]?.toString().trim() || 'Indikator tidak tersedia',
+              pertanyaan: row[pertanyaanIdx]?.toString().trim() || 'Pertanyaan tidak tersedia',
               tipeSoal: 'Submit Jawaban Excel',
               status: 'Active' as const,
+              deskripsiSkor0: row[deskripsi0Idx]?.toString().trim() || 'Tidak ada deskripsi',
+              deskripsiSkor1: row[deskripsi1Idx]?.toString().trim() || 'Tidak ada deskripsi',
+              deskripsiSkor2: row[deskripsi2Idx]?.toString().trim() || 'Tidak ada deskripsi',
+              deskripsiSkor3: row[deskripsi3Idx]?.toString().trim() || 'Tidak ada deskripsi',
+              deskripsiSkor4: row[deskripsi4Idx]?.toString().trim() || 'Tidak ada deskripsi',
             };
           })
-          .filter((item) => item.variable && item.indikator);
+          .filter((item) => item.variable && item.indikator && item.pertanyaan);
 
         if (importedItems.length === 0) {
           alert('Tidak ada data valid yang ditemukan di file Excel.');
@@ -160,14 +188,14 @@ export default function SubmitExcelPage() {
           return;
         }
 
-        // 📥 Update atau tambah data
+        // Update atau tambah data
         const updatedList = isEditMode && editData
           ? list.map((item) =>
               item.nomor === editData!.nomor ? { ...item, ...importedItems[0] } : item
             )
           : [...list, ...importedItems];
 
-        // 💾 Simpan ke localStorage
+        // Simpan ke localStorage
         try {
           localStorage.setItem('assessmentList', JSON.stringify(updatedList));
         } catch (err) {
@@ -177,12 +205,12 @@ export default function SubmitExcelPage() {
           return;
         }
 
-        // 🧹 Bersihkan editData jika dalam mode edit
+        // Bersihkan editData jika dalam mode edit
         if (isEditMode) {
           localStorage.removeItem('editData');
         }
 
-        // ✅ Berhasil
+        // Berhasil
         alert(`Data berhasil ${isEditMode ? 'diperbarui' : 'ditambahkan'} dari Excel!`);
         router.push('/daftar-assessment');
       } catch (error) {
@@ -270,6 +298,11 @@ export default function SubmitExcelPage() {
                   </button>
                 )}
               </div>
+              {file && (
+                <p className="text-sm text-green-600 mt-1">
+                  ✅ File terpilih: <span className="font-medium">{file.name}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -284,32 +317,22 @@ export default function SubmitExcelPage() {
 
           {/* Buttons */}
           <div className="flex justify-end space-x-4 mt-6">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="flex items-center px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            <Button
+              variant="ghost"
+              icon={X}
+              iconPosition="left"
+              onClick={() => router.push('/daftar-assessment/tambah-assessment')}
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
               Batal
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="simpan"
+              icon={Save}
+              iconPosition="left"
               onClick={handleSimpan}
-              disabled={loading}
-              className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
+              disabled={!file}
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold"
             >
               {loading ? (
                 <>
@@ -336,25 +359,9 @@ export default function SubmitExcelPage() {
                   Memproses...
                 </>
               ) : (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Simpan
-                </>
+                'Simpan'
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </main>

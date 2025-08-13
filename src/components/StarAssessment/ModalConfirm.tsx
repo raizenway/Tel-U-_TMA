@@ -1,18 +1,19 @@
 'use client';
 
 import { Dialog } from '@headlessui/react';
+import Button from "@/components/button";
 
 interface ModalConfirmProps {
   isOpen: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-  title: string; // ini tampilnya di bawah header
-  message?:string;
-  header?: string; 
+  title: string;
+  message?: string;
+  header?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  hideDefaultButtons?: boolean; // ← Tambahkan ini
-  hideHeader?: boolean; //menambahkan ini
+  hideDefaultButtons?: boolean;
+  hideHeader?: boolean;
   children: React.ReactNode;
 }
 
@@ -21,7 +22,7 @@ export default function ModalConfirm({
   onCancel,
   onConfirm,
   title,
-  header, 
+  header,
   confirmLabel = 'Ya',
   cancelLabel = 'Batal',
   children,
@@ -31,14 +32,16 @@ export default function ModalConfirm({
     <Dialog open={isOpen} onClose={onCancel} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center">
-        <Dialog.Panel className="bg-white rounded-md shadow-xl w-full max-w-md overflow-hidden">
-
+        {/* 🔹 Lebar sedikit lebih kecil */}
+        <Dialog.Panel className="bg-white rounded-md shadow-xl w-full max-w-xl mx-4 overflow-hidden">
+          
           {/* 🔵 HEADER BIRU */}
-          <div className="bg-blue-800 text-white px-6 py-3 font-bold">{header}</div>
+          <div className="bg-blue-800 text-white px-6 py-3 font-bold">
+            {header}
+          </div>
 
           {/* ⚪ ISI MODAL */}
-          <div className="px-6 py-5 text-center space-y-4">
-
+          <div className="px-16 py-5 text-center space-y-4">
             {/* 🟢 JUDUL UTAMA */}
             <Dialog.Title
               as="h3"
@@ -47,27 +50,27 @@ export default function ModalConfirm({
               {title}
             </Dialog.Title>
 
-            
-
             {/* 🟡 ISI DINAMIS */}
             <div>{children}</div>
 
             {/* 🔘 BUTTON */}
             {!hideDefaultButtons && (
-            <div className="flex justify-center gap-4 mt-4">
-              <button
-                onClick={onCancel}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
-              >
-                {cancelLabel}
-              </button>
-              <button
-                onClick={onConfirm}
-                className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800"
-              >
-                {confirmLabel}
-              </button>
-            </div>
+              <div className="flex justify-center gap-4 mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={onCancel}
+                  className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+                >
+                  {cancelLabel}
+                </Button>
+                <Button
+                  className="px-8"
+                  variant="primary"
+                  onClick={onConfirm}
+                >
+                  {confirmLabel}
+                </Button>
+              </div>
             )}
           </div>
         </Dialog.Panel>

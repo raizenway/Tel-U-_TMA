@@ -29,6 +29,18 @@ export default function EditAssessmentPage() {
     'Submit Jawaban Excel',
   ];
 
+  interface AssessmentItem {
+  nomor: number;
+  variable: string;
+  bobot: number;
+  indikator: string;
+  tipeSoal: string;
+  status: 'Active' | 'Inactive';
+  pertanyaan: string;
+  pertanyaan2?: string; // opsional
+  skor: { [key: number]: string };
+}
+
   // Ambil data dari localStorage
   useEffect(() => {
     const saved = localStorage.getItem('assessmentList');
@@ -39,7 +51,7 @@ export default function EditAssessmentPage() {
     }
 
     const list = JSON.parse(saved);
-    const item = list.find((item: any) => item.nomor === Number(id));
+    const item = list.find((item: AssessmentItem) => item.nomor === Number(id));
 
     if (!item) {
       alert('Data tidak ditemukan');
@@ -50,19 +62,19 @@ export default function EditAssessmentPage() {
     // 🔁 Redirect ke halaman spesifik berdasarkan tipe soal
     if (item.tipeSoal === 'API dari iGracias') {
       localStorage.setItem('editData', JSON.stringify(item));
-      router.push('/api-igracias');
+      router.push('/daftar-assessment/api-igracias');
       return;
     }
 
     if (item.tipeSoal === 'Pilihan Jawaban') {
       localStorage.setItem('editData', JSON.stringify(item));
-      router.push('/pilih-jawaban');
+      router.push('/daftar-assessment/pilih-jawaban');
       return;
     }
 
     if (item.tipeSoal === 'Submit Jawaban Excel') {
       localStorage.setItem('editData', JSON.stringify(item));
-      router.push('/submit-excel');
+      router.push('/daftar-assessment/submit-excel');
       return;
     }
 
@@ -105,7 +117,7 @@ export default function EditAssessmentPage() {
     if (!saved) return;
 
     const list = JSON.parse(saved);
-    const updated = list.map((item: any) =>
+    const updated = list.map((item: AssessmentItem) => 
       item.nomor === Number(id)
         ? {
             ...item,
