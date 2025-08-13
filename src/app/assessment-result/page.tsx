@@ -368,10 +368,11 @@ export default function WelcomePage() {
 
    return (
     <div className="flex min-h-screen bg-gray-100">
-       <main className="p-6 space-y-6">
+       <main className="p-6 space-y-6 w-full">
+        <div className="space-y-6">
        {/* ASSESSMENT RESULT */}
           {tab === 'assessment-result' && (
-            <div className="bg-white p-6 rounded shadow space-y-6">
+            <div className="bg-white p-6 rounded shadow space-y-6 mt-20">
               <div>
                 <h2 className="text-lg font-bold text-gray-700">Data Assessment Result</h2>
                 <p className="text-sm text-gray-500">
@@ -605,6 +606,7 @@ export default function WelcomePage() {
               )}
             </div>
           )}
+          </div>
         </main>
     </div>
   );
