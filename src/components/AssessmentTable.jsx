@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaSchool } from "react-icons/fa";
-import { MdRemoveRedEye, MdEdit } from "react-icons/md";
+import { MdRemoveRedEye,  } from "react-icons/md";
 import Table from "@/components/Table";
 import { HiDownload } from "react-icons/hi";
 import { IoIosPaperPlane } from "react-icons/io";
@@ -11,15 +11,13 @@ import { IoNotifications } from "react-icons/io5";
 import SuccessNotification from "@/components/SuccessNotification";
 import Button from "@/components/button";
 import ModalConfirm from "./StarAssessment/ModalConfirm";
-import { MessageCircleWarning } from 'lucide-react';
+import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from 'lucide-react';
 import {
-    Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
-    DoorOpen,
-    ArrowLeft,
-    Printer,
-    Search,
-    ChevronDown
-  } from "lucide-react";
+  Search,
+  Copy,
+  Printer,
+  ChevronDown,
+} from "lucide-react";
 
 const AssessmentTable = ({ hideStartButton = false }) => {
   const [data, setData] = useState([
@@ -30,7 +28,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       tanggal: "12/04/2025",
       skor: [3, 3, 3, 3],
       hasil: 3,
-      status: "Lulus",
+      status: "Submitted", // ✅ Ganti jadi status baru
       aksi: "edit",
     },
     {
@@ -40,7 +38,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       tanggal: "19/01/2025",
       skor: [3, 3, 3, 3],
       hasil: 3,
-      status: "Lulus",
+      status: "Approved", // ✅ Status baru
       aksi: "view",
     },
     {
@@ -50,7 +48,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       tanggal: "On Progress",
       skor: ["-", "-", "-", "-"],
       hasil: "-",
-      status: "Belum Selesai",
+      status: "Belum Selesai", // ✅ Tetap
       aksi: "progress",
     },
   ]);
@@ -58,6 +56,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const router = useRouter();
+
   useEffect(() => {
     const savedMessage = localStorage.getItem("showSuccessNotification");
     if (savedMessage) {
@@ -66,9 +65,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     }
 
     const saved = localStorage.getItem("assessment_submission_purwokerto");
-    const hasPurwokerto = data.some(
-      (item) => item.nama === "Tel-U Purwokerto"
-    );
+    const hasPurwokerto = data.some((item) => item.nama === "Tel-U Purwokerto");
 
     if (saved && !hasPurwokerto) {
       try {
@@ -84,7 +81,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
           skor: purwokertoData.skor || [3, 3, 3, 3],
           hasil: purwokertoData.hasil || 3,
           tanggal: new Date().toLocaleDateString("id-ID"),
-          status: "Lulus",
+          status: "Submitted", // ✅ Status default saat masuk
           aksi: "view",
         });
 
@@ -96,18 +93,16 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   }, []);
 
   const handleApprove = () => {
-  setData((prevData) => {
-    const newData = prevData.map((item) =>
-      item.nama === "Tel-U Purwokerto"
-        ? { ...item, aksi: "edit", status: "Edit" }
-        : item
+    setData((prevData) =>
+      prevData.map((item) =>
+        item.nama === "Tel-U Purwokerto"
+          ? { ...item, aksi: "edit", status: "Edit" } // ✅ Ubah status ke "Edit"
+          : item
+      )
     );
-    console.log("Updated data after approve:", newData); // debug
-    return newData;
-  });
-  setShowModal(false);
-  setShowSuccess(true);
-};
+    setShowModal(false);
+    setShowSuccess(true);
+  };
 
   const columns = [
     { header: "No", key: "nomor", width: "50px" },
@@ -132,18 +127,18 @@ const AssessmentTable = ({ hideStartButton = false }) => {
           <div className="relative">
             <MessageCircleWarning
               onClick={() => setShowModal(true)}
-              className="text-yellow-500  cursor-pointer"
+              className="text-yellow-500 cursor-pointer"
               size={18}
             />
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 
-            hidden group-hover:block bg-black text-white text-[15px] rounded-lg 
-            px-4 py-2 whitespace-normal w-[220px] shadow-lg z-50 text-center">
-            User mengajukan untuk mengubah data. Klik ikon untuk approve.
-            {/* Triangle pointer (segitiga hitam) */}
-           <div className="absolute left-1/2 bottom-full -translate-x-1/2  w-2 h-2 bg-black rotate-45"></div>
-            {/* Garis merah tipis di atas segitiga */}
-            <div className="absolute left-1/2 top-[calc(100%+2px)] -translate-x-1/2 w-2 h-1 bg-red-600"></div>
-          </div>
+              hidden group-hover:block bg-black text-white text-[15px] rounded-lg 
+              px-4 py-2 whitespace-normal w-[220px] shadow-lg z-50 text-center">
+              User mengajukan untuk mengubah data. Klik ikon untuk approve.
+              {/* Triangle pointer */}
+              <div className="absolute left-1/2 bottom-full -translate-x-1/2 w-2 h-2 bg-black rotate-45"></div>
+              {/* Garis merah tipis di atas segitiga */}
+              <div className="absolute left-1/2 top-[calc(100%+2px)] -translate-x-1/2 w-2 h-1 bg-red-600"></div>
+            </div>
           </div>
         )}
       </div>
@@ -157,150 +152,158 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     hasil: item.hasil,
     status: (
       <span
-        className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-          item.status === "Edit"
-            ? "bg-blue-500 text-white"
-            : item.status === "Lulus"
-            ? "bg-green-500 text-white"
-            : "bg-red-500 text-white"
+        className={`inline-block px-3 py-1 text-xs font-semibold text-white rounded-full capitalize ${
+          item.status === "Submitted"
+            ? "bg-blue-800"
+            : item.status === "Approved"
+            ? "bg-green-500"
+            : item.status === "Belum Selesai"
+            ? "bg-red-500"
+            : item.status === "Edit"
+            ? "bg-orange-500"
+            : "bg-gray-500"
         }`}
       >
         {item.status}
       </span>
     ),
-    aksi:
-      item.aksi === "edit" ? (
-        <button className="text-orange-600 hover:text-blue-800 mx-auto block">
-          <MdEdit size={20} />
-        </button>
-      ) : item.aksi === "view" ? (
-        <button className="text-gray-600 hover:text-gray-800 mx-auto block">
-          <MdRemoveRedEye size={20} />
-        </button>
-      ) : item.aksi === "progress" ? (
-        <div className="text-red-499 mx-auto">
-          <IoIosPaperPlane size={20} />
-        </div>
-      ) : null,
-  }));
+  aksi: (
+  <div className="flex items-center justify-between w-full max-w-[120px] mx-auto">
+    {/* Baris 1, 2, 3 pakai Pencil */}
+    {index !== 3 && (
+      <button
+        className="text-blue-600 hover:text-blue-800 transition"
+        onClick={() => handleEdit(item.id)}
+        title="Edit"
+      >
+        <Pencil size={20} />
+      </button>
+    )}
 
-  // Fungsi untuk menyalin data tabel ke clipboard
-const handleCopy = () => {
-  const headers = columns.map(col => col.header).join('\t');
-  const rows = tableData.map(row => 
-    [
+    {/* Spasi */}
+    {index !== 3 && <div className="w-2" />}
+
+    {/* Ikon kedua sesuai baris */}
+    {index === 0 && (
+      <button
+        className="text-green-600 hover:text-green-800 transition"
+        onClick={() => handleApprove(item.id)}
+        title="Approve"
+      >
+        <BookOpenCheck size={20} />
+      </button>
+    )}
+    {(index === 1 || index === 2) && (
+      <button
+        className="text-gray-600 hover:text-green-800 transition"
+        onClick={() => handleView(item.id)}
+        title="Lihat Detail"
+      >
+        <Eye size={20} />
+      </button>
+    )}
+    {index === 3 && (
+      <div className="text-red-600">
+        <Play size={20} />
+      </div>
+    )}
+  </div>
+),
+}));
+  // Fungsi: Copy
+  const handleCopy = () => {
+    const headers = columns.map(col => col.header).join('\t');
+    const rows = tableData.map(row => 
+      [
+        row.nomor,
+        row.nama,
+        row.tanggal,
+        row.skor1,
+        row.skor2,
+        row.skor3,
+        row.skor4,
+        row.hasil,
+        row.status.props.children,
+      ].join('\t')
+    );
+    const content = [headers, ...rows].join('\n');
+
+    navigator.clipboard.writeText(content)
+      .then(() => alert('Data berhasil disalin!'))
+      .catch(() => alert('Gagal menyalin.'));
+  };
+
+  // Fungsi: Print
+  const handlePrint = () => {
+    const printWindow = window.open('', '', 'height=600,width=800');
+    if (!printWindow) return alert('Pop-up diblokir.');
+
+    const headers = columns.map(col => `<th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">${col.header}</th>`).join('');
+    const rows = tableData.map(row => `
+      <tr>
+        <td>${row.nomor}</td>
+        <td>${row.nama}</td>
+        <td>${row.tanggal}</td>
+        <td>${row.skor1}</td>
+        <td>${row.skor2}</td>
+        <td>${row.skor3}</td>
+        <td>${row.skor4}</td>
+        <td>${row.hasil}</td>
+        <td>${row.status.props.children}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Assessment</title>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h2>Pengisian Assessment</h2>
+          <table>
+            <thead><tr>${headers}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  // Fungsi: Download CSV
+  const handleDownload = () => {
+    const headers = columns.map(col => col.header).join(',');
+    const rows = tableData.map(row => [
       row.nomor,
-      row.nama,
-      row.tanggal,
-      row.skor1,
-      row.skor2,
-      row.skor3,
-      row.skor4,
-      row.hasil,
-      row.status.props.children, // karena status adalah JSX
-    ].join('\t')
-  );
-  const content = [headers, ...rows].join('\n');
-
-  navigator.clipboard.writeText(content)
-    .then(() => {
-      alert('Data berhasil disalin ke clipboard!');
-    })
-    .catch(err => {
-      console.error('Gagal menyalin:', err);
-      alert('Gagal menyalin data.');
-    });
-};
-
-// Fungsi untuk mencetak tabel
-const handlePrint = () => {
-  const printWindow = window.open('', '', 'height=600,width=800');
-  if (!printWindow) {
-    alert('Pop-up blocker mungkin menghalangi pencetakan.');
-    return;
-  }
-
-  const headers = columns.map(col => `<th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">${col.header}</th>`).join('');
-  const rows = tableData.map(row => `
-    <tr>
-      <td>${row.nomor}</td>
-      <td>${row.nama}</td>
-      <td>${row.tanggal}</td>
-      <td>${row.skor1}</td>
-      <td>${row.skor2}</td>
-      <td>${row.skor3}</td>
-      <td>${row.skor4}</td>
-      <td>${row.hasil}</td>
-      <td>${row.status.props.children}</td>
-    </tr>
-  `).join('');
-
-  const printContent = `
-    <html>
-      <head>
-        <title>Print Assessment Table</title>
-        <style>
-          body { font-family: Arial, sans-serif; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-        </style>
-      </head>
-      <body>
-        <h2>Pengisian Assessment</h2>
-        <table>
-          <thead>
-            <tr>${headers}</tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </body>
-    </html>
-  `;
-
-  printWindow.document.write(printContent);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  printWindow.close();
-};
-
-// Fungsi untuk mengunduh data sebagai file CSV
-const handleDownload = () => {
-  const headers = columns
-    .map(col => col.header)
-    .join(',');
-
-  const rows = tableData.map(row => {
-    // Ambil teks dari status (karena status adalah JSX)
-    const statusText = typeof row.status === 'object' 
-      ? row.status.props.children 
-      : row.status;
-
-    return [
-      row.nomor,
-      `"${row.nama}"`, // Gunakan tanda kutip agar aman jika ada koma
+      `"${row.nama}"`,
       `"${row.tanggal}"`,
       row.skor1,
       row.skor2,
       row.skor3,
       row.skor4,
       row.hasil,
-      `"${statusText}"`,
-    ].join(',');
-  });
+      `"${row.status.props.children}"`
+    ].join(',')).join('\n');
 
-  const csvContent = [headers, ...rows].join('\n');
-  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM untuk Unicode/UTF-8
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `assessment-data-${new Date().toISOString().slice(0, 10)}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+    const csv = [headers, rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `assessment-data-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="p-3 bg-white rounded-lg shadow-md border border-gray-200 mx-auto w-full max-w-5xl min-h-90 max-h-96 overflow-y-auto relative mt-25">
@@ -321,62 +324,52 @@ const handleDownload = () => {
         onCancel={() => setShowModal(false)}
       />
 
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-        Pengisian Assessment
-      </h2>
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6">Pengisian Assessment</h2>
+      <p className="text-sm text-gray-600 mb-4">Berikut adalah daftar UPPS/KC yang sudah melakukan assessment</p>
 
-      <p className="text-sm text-gray-600 mb-4">
-        Berikut adalah daftar UPPS/KC yang sudah melakukan assessment
-      </p>
-
-    <div className="flex flex-col gap-4 w-full max-w-4xl mx-auto">
-  {/* Header */}
-  <div className="flex items-center justify-between mb-4">
-    {/* 🔍 Search Bar */}
-    <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white shadow-sm w-80">
-      <Search className="w-4 h-4 text-gray-500" />
-      <input
-        type="text"
-        placeholder="Cari UPPS/KC..."
-        className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-        onChange={(e) => console.log("Search:", e.target.value)}
-      />
-    </div>
-
-    {/* 🛠️ Action Buttons */}
-    <div className="flex items-center gap-3">
-      <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy} className="h-10 px-4 py-2 text-sm">
-        Copy
-      </Button>
-      <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint} className="h-10 px-4 py-2 text-sm">
-        Print
-      </Button>
-      <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload} className="h-10 px-4 py-2 text-sm">
-        Download
-      </Button>
-
-      {/* 🔹 TOMBOL START ASSESSMENT: Hanya muncul jika tidak di-hide */}
-        {!hideStartButton && (
-          <div className="flex justify-end">
-            <Button
-              variant="primary"
-              onClick={() => router.push("/assessment")}
-              className="h-10 px-8 py-2 text-white text-sm font-semibold rounded flex items-center gap-2 transition"
-            >
-              Start Assessment
-            </Button>
+      <div className="flex flex-col gap-4 w-full max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-4">
+          {/* Search Bar */}
+          <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white shadow-sm w-80">
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Cari UPPS/KC..."
+              className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+              onChange={(e) => console.log("Search:", e.target.value)}
+            />
           </div>
-        )}
-    </div>
-  </div>
-</div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy} className="h-10 px-4 py-2 text-sm">
+              Copy
+            </Button>
+            <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint} className="h-10 px-4 py-2 text-sm">
+              Print
+            </Button>
+            <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload} className="h-10 px-4 py-2 text-sm">
+              Download
+            </Button>
+
+            {!hideStartButton && (
+              <Button
+                variant="primary"
+                onClick={() => router.push("/assessment")}
+                className="h-10 px-8 py-2 text-sm font-semibold rounded flex items-center gap-2"
+              >
+                Start Assessment
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
 
       <Table
         columns={columns}
         data={tableData}
         currentPage={1}
         rowsPerPage={10}
-        // className="w-full"
       />
     </div>
   );
