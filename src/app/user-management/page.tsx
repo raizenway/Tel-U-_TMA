@@ -2,8 +2,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
-import { FaCopy, FaPrint, FaDownload, FaSearch, FaEdit, FaTimes, FaRedo } from 'react-icons/fa';
 import SuccessNotification from '@/components/SuccessNotification';
+ import Button  from "@/components/button";
+import { Download, Printer, ChevronDown, Copy, } from "lucide-react";
+import { FaSearch, FaEdit,FaTimes, FaRedo } from "react-icons/fa";
+
+
+
+
 
 interface User {
   userId: string;
@@ -35,6 +41,8 @@ export default function UserManagementPage() {
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  
 
   // Ambil data dari localStorage saat mount
   useEffect(() => {
@@ -159,19 +167,36 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleDownload = () => {
-    const header = 'User ID,User Name,Nama User,Role,Status\n';
-    const rows = filteredUsers.map(
+// Tambahkan fungsi ini di dalam component UserManagementPage
+const handleDownload = () => {
+  if (typeof window === 'undefined') return;
+
+  // Header CSV/TSV
+  const header = "User ID\tUser Name\tNama User\tRole\tStatus\n";
+
+  // Buat baris dari data langsung (bukan dari DOM)
+  const rows = filteredUsers
+    .map(
       (user) =>
-        `${user.userId},${user.username},${user.namaUser},${user.role},${user.status}`
-    );
-    const csv = header + rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'user_list.csv');
-    link.click();
-  };
+        `${user.userId}\t${user.username}\t${user.namaUser}\t${user.role}\t${user.status}`
+    )
+    .join("\n");
+
+  const tsv = header + rows;
+
+  const blob = new Blob([tsv], { type: "text/tab-separated-values;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "user_list.tsv"; // Ganti .csv jika mau CSV
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+
 
   
 
@@ -202,32 +227,44 @@ export default function UserManagementPage() {
             </div>
 
             <div className="flex gap-2 relative" ref={dropdownRef}>
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
-              >
-                <FaCopy /> Copy
-              </button>
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
-              >
-                <FaPrint /> Print
-              </button>
-              <button
-                onClick={handleDownload}
-                className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
-              >
-                <FaDownload /> Download
-              </button>
+              <Button
+               variant="outline"
+               icon={Copy}
+              iconPosition="left" 
+              onClick={handleCopy}
+               >
+                Copy
+                </Button>
+
+              <Button
+                             variant="outline"
+                             icon={Printer}
+                            iconPosition="left" 
+                            onClick={handlePrint}
+                             >
+                              Print
+                              </Button>
+
+              <Button
+               variant="outline"
+               icon={ChevronDown}
+              iconPosition="right" 
+                  onClick={handleDownload}
+               >
+                Download
+                </Button>
+                
 
               <div className="relative">
-                <button
-                  onClick={handleTambahUserClick}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  Tambah User
-                </button>
+
+                <Button 
+                
+                className="px-8"
+                onClick={handleTambahUserClick}
+                >    
+                Tambah User
+              </Button>
+                
                 {showRoleDropdown && (
                   <div className="absolute right-0 mt-1 w-36 bg-white border border-gray-300 rounded shadow-md z-[9999]">
                     <button
@@ -249,16 +286,16 @@ export default function UserManagementPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto relative w-full max-h-[600px] ">
-            <table id="user-table" className="w-full text-left border border-gray-300 text-sm bg-white">
+          <div className="overflow-x-auto relative w-full max-h-[600px] max-w-screen-lg">
+            <table id="user-table" className="w-full text-left border border-gray-300 text-sm bg-white min-w-max">
               <thead className="bg-gray-200 sticky top-0 z-50">
                 <tr>
-                  <th className="px-4 py-3 border w-28">User ID</th>
-                  <th className="px-4 py-3 border w-40">User Name</th>
-                  <th className="px-4 py-3 border w-32">Password</th>
-                  <th className="px-4 py-3 border w-48">Nama User</th>
-                  <th className="px-4 py-3 border w-32">Role</th>
-                  <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-24">Aksi</th>
+                  <th className="px-4 py-3 border w-112px">User ID</th>
+                  <th className="px-4 py-3 border w-160px">User Name</th>
+                  <th className="px-4 py-3 border w-226px">Password</th>
+                  <th className="px-4 py-3 border w-226px">Nama User</th>
+                  <th className="px-4 py-3 border w-226px">Role</th>
+                  <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-199px">Aksi</th>
                 </tr>
               </thead>
               <tbody>
