@@ -31,7 +31,8 @@ import {
     ArrowLeft,
     Printer,
     Search,
-    ChevronDown
+    ChevronDown,
+    ChevronRight
   } from "lucide-react";
   import Button  from "@/components/button"
   import { X, Save} from "lucide-react";
@@ -135,8 +136,11 @@ import {
             
 
             <Section title="4. Icon + Label">
-              <Button className="px-8">
-                Tambah User
+              <Button variant="simpan"
+               icon={ChevronDown}
+              iconPosition="right"
+              className="px-5">
+              Tambah User
               </Button>
             </Section>
 
@@ -341,7 +345,7 @@ import {
                >
                 Print
                 </Button>
-                 <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
+                 <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-gray-100">
                 <Search className="w-4 h-4 text-gray-500" />
                 <input
                   type="text"
@@ -358,6 +362,16 @@ import {
                >
                 Download
                 </Button>
+            </Section>
+            
+            <Section title="25. Lihat Details">
+             <Button
+              variant="outline"
+              icon={ChevronRight}
+              iconPosition="right" 
+              onClick={handleDownload}              >
+                Lihat detail
+              </Button>
             </Section>
 
           </div>

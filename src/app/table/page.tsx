@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Table from "@/components/Table";
 import { Download, Printer, ChevronDown, Copy } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
-import Sidebar from "@/components/sidebar";
 import Button  from "@/components/button";
 
 
@@ -28,14 +27,16 @@ const TablePage = () => {
   ];
   
 const columns = [
-  { header: "No", key: "nomor", width: "2.84%" },
-  { header: "Variable", key: "variable", width: "11.08%" },
-  { header: "Indikator", key: "indikator", width: "22.09%" },
-  { header: "Pertanyaan", key: "pertanyaan", width: "22.09%" },
-  { header: "Jawaban", key: "jawaban", width: "8.73%" },
-  { header: "Skor", key: "skor", width: "22.09%" },
-  { header: "Tipe Soal", key: "tipeSoal", width: "11.08%" },
+  { header: "No", key: "nomor", width: "112px", }, 
+  { header: "Variable", key: "variable", width: "160px" },
+  { header: "Indikator", key: "indikator", width: "319px" },
+  { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
+  { header: "Jawaban", key: "jawaban", width: "126px" },
+  { header: "Skor", key: "skor", width: "319px" },
+  { header: "Tipe Soal", key: "tipeSoal", width: "160px" },
 ];
+
+
 
 
 
@@ -276,12 +277,12 @@ const columns = [
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      
+
 
         {tab === "approval-assessment" && (
-          <div className="p-6 bg-white rounded-xl shadow m-6 space-y-4">
+          <div className="p-6 bg-white rounded-xl shadow m-6 space-y- p-8 mt-20">
             {/* Filter dan tombol kanan */}
-            <div className="flex flex-wrap justify-between items-center gap-4">
+            <div className="flex flex-wrap justify-between items-center bg-gray gap-4 mb-4">
               <input
                 type="text"
                 placeholder="Cari"
@@ -291,29 +292,31 @@ const columns = [
               />
 
               <div className="flex gap-2 items-center">
-                <Button
-                  variant="outline"
-                  onClick={handleCopy}
-                  className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-                >
-                  <Copy size={16} className="inline-block"/>
-                  <span className="text-sm leading-none">Copy</span>
+               <Button
+               variant="outline"
+               icon={Copy}
+              iconPosition="left" 
+              onClick={handleCopy}
+               >
+                Copy
                 </Button>
-                <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-                >
-                  <Printer size={16} />
-                  Print
-                </button>
+                  <Button
+               variant="outline"
+               icon={Printer}
+              iconPosition="left" 
+              onClick={handlePrint}
+               >
+                Print
+                </Button>
 
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-                >
-                  <Download size={16} />
-                  Download
-                </button>
+                 <Button
+               variant="outline"
+               icon={ChevronDown}
+              iconPosition="right" 
+              onClick={handleDownload}
+               >
+                Download
+                </Button>
 
                 <div className="relative">
                   <button
@@ -344,18 +347,17 @@ const columns = [
               </div>
             </div>
 
-           {/* Table Scrollable */}
-<div className="w-full overflow-x-auto">
-  <div className="max-h-[350px] min-w-[800px] overflow-y-auto">
-    <Table
-      columns={columns}
-      data={paginatedData}
-      currentPage={currentPage}
-      rowsPerPage={rowsPerPage}
-    />
-  </div>
+              {/* Table Scrollable */}
+<div className="w-full overflow-x-auto max-w[800px] max-h-[400px]">
+  <Table
+    columns={columns}
+    data={paginatedData}
+    currentPage={currentPage}
+    rowsPerPage={rowsPerPage}
+  />
 </div>
 
+        
 
 
             {/* Pagination & Action */}

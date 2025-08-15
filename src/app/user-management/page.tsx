@@ -146,26 +146,144 @@ export default function UserManagementPage() {
   };
 
   const handlePrint = () => {
-    const printContents = document.getElementById('user-table')?.outerHTML;
-    if (!printContents) return;
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Print Users</title>
-            <style>
-              table { width: 100%; border-collapse: collapse; }
-              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            </style>
-          </head>
-          <body>${printContents}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
+  const table = document.getElementById('user-table');
+  if (!table) return;
+
+  // Ambil konten tabel
+  const tableHTML = table.outerHTML;
+
+  // Buka jendela baru
+  const printWindow = window.open('', '', 'width=1000,height=800');
+  if (!printWindow) return;
+
+  // CSS khusus untuk print (termasuk media print)
+  const printCSS = `
+    <style>
+      body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        padding: 20px;
+        color: #000;
+        background: #fff;
+      }
+      .print-header {
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 3px double #000;
+        padding-bottom: 10px;
+      }
+      .print-header h1 {
+        margin: 0;
+        font-size: 1.8em;
+        font-weight: bold;
+      }
+      .print-header p {
+        margin: 5px 0;
+        color: #333;
+        font-size: 1em;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: auto;
+        margin-top: 20px;
+        border: 1px solid #000;
+      }
+      th, td {
+        border: 1px solid #000;
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 0.85em;
+        word-wrap: break-word;
+      }
+      th {
+        background-color: #eee;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+      img {
+        max-height: 30px;
+        max-width: 120px;
+        object-fit: contain;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-right {
+        text-align: right;
+      }
+      .text-gray {
+        color: #666;
+      }
+      .no-data {
+        text-align: center;
+        font-style: italic;
+        color: #777;
+      }
+
+      /* Aturan khusus saat print */
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          margin: 0;
+        }
+        @page {
+          margin: 1.5cm;
+          size: landscape;
+          orientation: landscape;
+        }
+        table {
+          page-break-inside: auto;
+        }
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+        thead {
+          display: table-header-group;
+        }
+        tfoot {
+          display: table-footer-group;
+        }
+      }
+    </style>
+  `;
+
+  // Header cetak
+  const headerHTML = `
+    <div class="print-header">
+      <h1>Daftar Pengguna</h1>
+      <p>Sistem Manajemen User - ${new Date().toLocaleDateString('id-ID')}</p>
+    </div>
+  `;
+
+  // Tulis ke jendela print
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Print - User Management</title>
+        ${printCSS}
+      </head>
+      <body>
+        ${headerHTML}
+        ${tableHTML}
+        <script>
+          // Tunggu gambar termuat, lalu langsung print
+          setTimeout(() => {
+            window.print();
+            // Optional: tutup jendela setelah print
+            window.onafterprint = () => window.close();
+          }, 500);
+        </script>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+};
 
 // Tambahkan fungsi ini di dalam component UserManagementPage
 const handleDownload = () => {
@@ -426,3 +544,4 @@ const handleDownload = () => {
     </div>
   );
 }
+

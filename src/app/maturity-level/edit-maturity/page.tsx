@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditMaturityPage() {
@@ -14,6 +14,14 @@ export default function EditMaturityPage() {
   });
 
   const router = useRouter();
+
+  // Ambil data dari localStorage saat load halaman
+  useEffect(() => {
+    const savedForm = localStorage.getItem("maturityTempForm");
+    if (savedForm) {
+      setFormData(JSON.parse(savedForm));
+    }
+  }, []);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -103,12 +111,16 @@ export default function EditMaturityPage() {
             </label>
             <button
               type="button"
-              onClick={() =>
-                router.push("/maturity-level/deskripsi-per-variabel")
-              }
-              className="w-full border border-blue-500 rounded-md px-4 py-3 text-blue-700 font-medium hover:bg-blue-50"
+              onClick={() => {
+                localStorage.setItem("maturityTempForm", JSON.stringify(formData));
+                router.push("/maturity-level/deskripsi-per-variabel");
+              }}
+              className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
-              Lihat Deskripsi
+              {formData.deskripsiPerVariabel &&
+              formData.deskripsiPerVariabel.length > 0
+                ? "Lihat Deskripsi"
+                : "+ Tambah Deskripsi"}
             </button>
           </div>
         </div>
