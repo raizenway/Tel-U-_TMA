@@ -243,7 +243,7 @@ export default function TambahPage() {
           </div>
 
           {/* Footer Buttons */}
-          <div className="p-8 border-t bg-gray-50 flex justify-end gap-4">
+          <div className="p-8  flex justify-end gap-4">
             <Button
               variant="ghost"
               icon={X}
@@ -259,8 +259,8 @@ export default function TambahPage() {
               icon={Save}
               iconPosition="left"
               onClick={handleSimpan}
-              className={`rounded-[12px] px-16 py-2 text-sm font-semibold text-white ${
-                isFormValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
+              className={`rounded-[12px] px-10 py-2 text-sm font-semibold text-white ${
+                isFormValid ? '' : 'bg-gray-400'
               }`}
             >
               {isEdit ? 'Simpan Perubahan' : 'Simpan'}

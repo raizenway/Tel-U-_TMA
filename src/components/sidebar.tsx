@@ -195,16 +195,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
         </div>
       </nav>
 
-      {/* Logout */}
-      <div className="px-6 py-4 border-t">
-        <div
-          className="flex items-center gap-3 px-4 py-3 text-red-600 font-semibold hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition"
-          onClick={() => router.push("/login")}
-        >
-          <LogOut size={18} />
-          {!collapsed && <span>Keluar</span>}
-        </div>
-      </div>
     </aside>
   );
 }
