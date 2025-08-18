@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   RadarChart,
   Radar,
@@ -61,7 +61,7 @@ interface StudentRow {
 
 export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student'); // Mode modal
+  const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
 
   // ✅ Student Body Data
   const [studentYears, setStudentYears] = useState(["2021", "2022", "2023", "2024"]);
@@ -82,10 +82,31 @@ export default function DashboardTab() {
     }))
   );
 
-  // ✅ Akreditasi Prodi: KOSONG dulu, TIDAK ambil dari data mahasiswa
+  // ✅ Akreditasi Prodi - Data Input
+  const [accreditationYears, setAccreditationYears] = useState(["2021", "2022", "2023", "2024"]);
+  const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
+    "Tel-U Jakarta": [85, 87, 89, 90],
+    "Tel-U Surabaya": [80, 82, 85, 88],
+    "Tel-U Purwokerto": [78, 80, 83, 85],
+    "Tel-U Bandung": [90, 91, 92, 93],
+  });
+
+  // ✅ Data untuk ditampilkan di grafik
   const [accreditationData, setAccreditationData] = useState<{ tahun: string; Jakarta: number; Bandung: number; Purwokerto: number; Surabaya: number }[]>([]);
 
-  // ✅ Tambah Tahun (hanya untuk Student)
+  // ✅ Inisialisasi data akreditasi saat pertama kali
+  useEffect(() => {
+    const initialData = accreditationYears.map((year, idx) => ({
+      tahun: year,
+      Jakarta: accreditationInputData["Tel-U Jakarta"][idx],
+      Bandung: accreditationInputData["Tel-U Bandung"][idx],
+      Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx],
+      Surabaya: accreditationInputData["Tel-U Surabaya"][idx],
+    }));
+    setAccreditationData(initialData);
+  }, []);
+
+  // ✅ Tambah Tahun - Mahasiswa
   const handleAddYear = () => {
     const nextYear = String(Number(studentYears[studentYears.length - 1]) + 1);
     setStudentYears((prev) => [...prev, nextYear]);
@@ -107,10 +128,31 @@ export default function DashboardTab() {
     }));
   };
 
-  // ✅ Simpan & Update Data
+  // ✅ Tambah Tahun - Akreditasi Prodi
+  const handleAddAccreditationYear = () => {
+    const nextYear = String(Number(accreditationYears[accreditationYears.length - 1]) + 1);
+    setAccreditationYears((prev) => [...prev, nextYear]);
+    (Object.keys(accreditationInputData) as Array<keyof CampusData>).forEach((campus) => {
+      setAccreditationInputData((prev) => ({
+        ...prev,
+        [campus]: [...prev[campus], 0],
+      }));
+    });
+  };
+
+  // ✅ Ubah Nilai Akreditasi
+  const handleAccreditationChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
+    const num = value === "" ? 0 : Math.max(0, Math.min(100, Number(value))); // Batasi 0–100
+    if (isNaN(num)) return;
+    setAccreditationInputData((prev) => ({
+      ...prev,
+      [campus]: prev[campus].map((val, i) => (i === yearIndex ? num : val)),
+    }));
+  };
+
+  // ✅ Simpan Data
   const handleGenerate = () => {
     if (modalMode === 'student') {
-      // Update studentData
       const newStudentData = studentYears.map((year, idx) => ({
         tahun: year,
         Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
@@ -120,15 +162,19 @@ export default function DashboardTab() {
       }));
       setStudentData(newStudentData);
     } else if (modalMode === 'prodi') {
-      // Di sini nanti bisa update accreditationData dari input modal
-      // Untuk sekarang: kosong
-      console.log("Data prodi disimpan (belum ada input)");
+      const newData = accreditationYears.map((year, idx) => ({
+        tahun: year,
+        Jakarta: accreditationInputData["Tel-U Jakarta"][idx] || 0,
+        Surabaya: accreditationInputData["Tel-U Surabaya"][idx] || 0,
+        Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] || 0,
+        Bandung: accreditationInputData["Tel-U Bandung"][idx] || 0,
+      }));
+      setAccreditationData(newData);
     }
-
     setShowModal(false);
   };
 
-  // ✅ Download CSV Akreditasi (kosong jika data tidak ada)
+  // ✅ Download CSV Akreditasi
   const handleDownload = () => {
     if (accreditationData.length === 0) {
       alert("Belum ada data akreditasi prodi untuk diunduh.");
@@ -157,7 +203,7 @@ export default function DashboardTab() {
     URL.revokeObjectURL(url);
   };
 
-  // Buka modal dengan mode
+  // Buka modal
   const openStudentModal = () => {
     setModalMode('student');
     setShowModal(true);
@@ -310,11 +356,11 @@ export default function DashboardTab() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={accreditationData}> {/* ✅ Data kosong */}
+            <LineChart data={accreditationData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
               <YAxis domain={[0, 100]} />
-              <Tooltip />
+              <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
               <Legend />
               <Line type="monotone" dataKey="Jakarta" stroke="#8884d8" />
               <Line type="monotone" dataKey="Bandung" stroke="#82ca9d" />
@@ -330,7 +376,7 @@ export default function DashboardTab() {
         <AssessmentTable hideStartButton={true} />
       </div>
 
-      {/* ✅ Modal Dinamis: Judul berdasarkan mode */}
+      {/* ✅ Modal Dinamis: Ubah Data Mahasiswa atau Prodi */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -343,7 +389,7 @@ export default function DashboardTab() {
       >
         {modalMode === 'student' ? (
           <>
-            {/* Tombol Tambah Tahun */}
+            {/* Tambah Tahun - Mahasiswa */}
             <div className="flex justify-end mb-4">
               <Button
                 onClick={handleAddYear}
@@ -353,41 +399,84 @@ export default function DashboardTab() {
               </Button>
             </div>
 
-            {/* Tabel Input Mahasiswa */}
-            <table className="w-full border-collapse text-center mb-4">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left pl-2">Kampus</th>
-                  {studentYears.map((year, i) => (
-                    <th key={i}>{year}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {CAMPUS_LIST.map((campus) => (
-                  <tr key={campus} className="border-b border-gray-200">
-                    <td className="text-left pl-2 py-2 font-medium">{campus}</td>
-                    {studentInputData[campus].map((value, j) => (
-                      <td key={j}>
-                        <input
-                          type="number"
-                          value={value === 0 ? "" : value}
-                          onChange={(e) => handleInputChange(campus, j, e.target.value)}
-                          className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
-                          placeholder="0"
-                        />
-                      </td>
+            {/* Tabel Mahasiswa dengan Scroll Horizontal */}
+            <div className="overflow-x-auto max-w-full">
+              <table className="w-full border-collapse text-center min-w-max">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="text-left pl-2">Kampus</th>
+                    {studentYears.map((year, i) => (
+                      <th key={i} className="px-2 py-1">{year}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {CAMPUS_LIST.map((campus) => (
+                    <tr key={campus} className="border-b border-gray-200">
+                      <td className="text-left pl-2 py-2 font-medium">{campus}</td>
+                      {studentInputData[campus].map((value, j) => (
+                        <td key={j} className="px-2 py-1">
+                          <input
+                            type="number"
+                            value={value === 0 ? "" : value}
+                            onChange={(e) => handleInputChange(campus, j, e.target.value)}
+                            className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
+                            placeholder="0"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         ) : (
-          <div className="p-6 text-center">
-            <p className="text-gray-700 font-medium">Form input data prodi akan segera tersedia.</p>
-            <p className="text-sm text-gray-500 mt-2">Silakan siapkan data prodi Anda.</p>
-          </div>
+          <>
+            {/* Tambah Tahun - Akreditasi Prodi */}
+            <div className="flex justify-end mb-4">
+              <Button
+                onClick={handleAddAccreditationYear}
+                className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 text-sm font-medium"
+              >
+                + Tambah Tahun
+              </Button>
+            </div>
+
+            {/* Tabel Akreditasi Prodi dengan Scroll Horizontal */}
+            <div className="overflow-x-auto max-w-full">
+              <table className="w-full border-collapse text-center min-w-max">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="text-left pl-2">Kampus</th>
+                    {accreditationYears.map((year, i) => (
+                      <th key={i} className="px-2 py-1">{year}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {CAMPUS_LIST.map((campus) => (
+                    <tr key={campus} className="border-b border-gray-200">
+                      <td className="text-left pl-2 py-2 font-medium">{campus}</td>
+                      {accreditationInputData[campus].map((value, j) => (
+                        <td key={j} className="px-2 py-1">
+                          <input
+                            type="number"
+                            value={value === 0 ? "" : value}
+                            onChange={(e) => handleAccreditationChange(campus, j, e.target.value)}
+                            className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
+                            placeholder="0"
+                            min="0"
+                            max="100"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {/* Tombol Aksi */}
