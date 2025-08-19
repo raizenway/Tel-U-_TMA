@@ -341,8 +341,8 @@ export default function PilihJawabanPage() {
                 onChange={(e) => setStatus(e.target.value as StatusInput)}
               >
                 <option value="">Pilih Status</option>
-                <option value="Aktif">Aktif</option>
-                <option value="Non-Aktif">Non-Aktif</option>
+                <option value="Non-Aktif">Aktif</option>
+                <option value="Aktif">Non-Aktif</option>
               </select>
               {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
             </div>
@@ -481,7 +481,7 @@ export default function PilihJawabanPage() {
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border border-gray-300 px-3 py-2">
+                        <td className="border  px-3 py-2">
                           <input
                             type="text"
                             className="w-full border border-gray-300 rounded-md p-2"
