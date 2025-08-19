@@ -66,7 +66,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       submenu: [
         {
           name: "Approval Assessment",
-          path: "table",
+          path: "approvall",
           icon: <ClipboardList size={18} className="text-gray-600" />,
         },
       ],
