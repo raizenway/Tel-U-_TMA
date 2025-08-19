@@ -71,7 +71,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     },
     {
       name: "Assessment Result",
-      path: "table",
+      path: "approvall",
       icon: <ChartLine size={20} />, // ❌ DIHAPUS
       submenu: [
         {
