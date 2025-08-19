@@ -173,7 +173,7 @@ import {
                 variant="simpan"
                 icon={Save}
                 iconPosition="left"
-                className="rounded-[12px] px-10 py-2 text-sm font-semibold"
+                className="rounded-[12px] px-10 py-2 text-sm font-semibold "
               >
                 Simpan
               </Button>            

@@ -76,8 +76,8 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       submenu: [
         {
           name: "Approval Assessment",
-          path: "table",
-          icon: <ClipboardList size={18} />, // ❌ DIHAPUS: className="text-gray-600"
+          path: "approvall",
+          icon: <ClipboardList size={18} className="text-gray-600" />,
         },
       ],
     },
