@@ -240,7 +240,7 @@ export default function AssessmentPage() {
             Download
           </Button>
           <Button variant="primary" onClick={handleTambah}>
-            Tambah Assessment
+            Tambah Variable
           </Button>
         </div>
       </div>
@@ -272,7 +272,7 @@ export default function AssessmentPage() {
                 Logo UPPS/KC
               </th>
               <th
-                className="sticky right-0 bg-gray-200 z-10 border border-gray-300 text-center whitespace-nowrap"
+                className="sticky right-0 bg-gray-100 z-10 border border-gray-100 text-center whitespace-nowrap"
                 style={{ width: '150px', minWidth: '150px' }}
               >
                 Aksi

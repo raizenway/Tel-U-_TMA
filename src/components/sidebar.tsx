@@ -37,6 +37,15 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
   const [collapsed, setCollapsed] = useState(false);
 
+  // ✅ TAMBAHAN BARU: State untuk menu aktif
+  const [activeItem, setActiveItem] = useState<NavItem | null>(null);
+
+  // ✅ TAMBAHAN BARU: Fungsi klik yang juga set active
+  const handleItemClick = (item: NavItem) => {
+    setActiveItem(item);
+    onItemClick(item);
+  };
+
   const toggleSubmenu = (name: string) => {
     setOpenSubmenus((prev) => ({ ...prev, [name]: !prev[name] }));
   };
@@ -48,21 +57,22 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     }
   };
 
+  // 🔁 DIUBAH: HAPUS className pada semua ikon agar warna bisa berubah saat hover/aktif
   const navItems: NavItem[] = [
     {
       name: "Home",
       path: "welcome",
-      icon: <Home size={20} className="text-gray-700" />,
+      icon: <Home size={20} />, // ❌ DIHAPUS: className="text-gray-700"
     },
     {
       name: "Start Assessment",
       path: "assessment",
-      icon: <FileText size={20} className="text-gray-700" />,
+      icon: <FileText size={20} />, // ❌ DIHAPUS
     },
     {
       name: "Assessment Result",
       path: "table",
-      icon: <ChartLine size={20} className="text-gray-700" />,
+      icon: <ChartLine size={20} />, // ❌ DIHAPUS
       submenu: [
         {
           name: "Approval Assessment",
@@ -73,29 +83,29 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     },
     {
       name: "About TMA",
-      icon: <Info size={20} className="text-gray-700" />,
+      icon: <Info size={20} />, // ❌ DIHAPUS
       submenu: [
         {
           name: "Daftar Assessment",
           path: "daftar-assessment",
-          icon: <ClipboardList size={18} className="text-gray-600" />,
+          icon: <ClipboardList size={18} />, // ❌ DIHAPUS
         },
         {
           name: "Maturity Level",
           path: "maturity-level",
-          icon: <ChartLine size={18} className="text-gray-600" />,
+          icon: <ChartLine size={18} />, // ❌ DIHAPUS
         },
         {
           name: "Transformation Variable",
           path: "transformation-variable",
-          icon: <BookOpen size={18} className="text-gray-600" />,
+          icon: <BookOpen size={18} />, // ❌ DIHAPUS
         },
       ],
     },
     {
       name: "User Management",
       path: "user-management",
-      icon: <Users size={20} className="text-gray-700" />,
+      icon: <Users size={20} />, // ❌ DIHAPUS
     },
   ];
 
@@ -142,21 +152,27 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
             const isOpen = openSubmenus[item.name];
+            // ✅ TAMBAHAN BARU: Cek apakah menu ini aktif
+            const isActive = activeItem?.path === item.path;
+
             return (
               <div key={item.name} className="transition-all duration-200">
                 {/* Main Item */}
                 <div
                   className={`
                     w-full flex items-center px-4 py-3 rounded-lg 
-                    text-black hover:bg-gradient-to-r from-[#F34440] to-[#818C9F]
+                    text-black 
+                    hover:bg-gradient-to-r hover:from-[#F34440] hover:to-[#818C9F] hover:text-white
+                    ${isActive ? "bg-gradient-to-r from-[#F34440] to-[#818C9F] text-white" : ""}
                     transition-all duration-300 ease-in-out cursor-pointer select-none font-medium
                     ${collapsed ? "justify-center" : "justify-between"}
                   `}
                   onClick={() => {
                     if (item.submenu) {
                       toggleSubmenu(item.name);
+                      handleItemClick(item); // 🔁 DIUBAH: pakai handleItemClick agar bisa aktif
                     } else {
-                      onItemClick(item);
+                      handleItemClick(item); // 🔁 DIUBAH: ganti onItemClick → handleItemClick
                     }
                   }}
                 >
@@ -169,7 +185,9 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   {item.submenu && !collapsed && (
                     <ChevronDown
                       size={18}
-                      className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      className={`transition-transform duration-200 ${
+                        isOpen ? "rotate-180" : ""
+                      } ${isActive ? "text-white" : "text-gray-400"}`} // ✅ WARNA CHEVRON ikut aktif
                     />
                   )}
                 </div>
@@ -177,16 +195,29 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                 {/* Submenu */}
                 {item.submenu && isOpen && !collapsed && (
                   <div className="ml-4 mt-1 flex flex-col gap-1">
-                    {item.submenu.map((subItem) => (
-                      <div
-                        key={subItem.name}
-                        className="px-4 py-2 text-gray-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-gray-600 rounded-md cursor-pointer flex items-center"
-                        onClick={() => onItemClick(subItem)}
-                      >
-                        <span className="mr-2">{subItem.icon}</span>
-                        {subItem.name}
-                      </div>
-                    ))}
+                    {item.submenu.map((subItem) => {
+                      // ✅ TAMBAHAN BARU: Cek apakah submenu aktif
+                      const isSubActive = activeItem?.path === subItem.path;
+                      return (
+                        <div
+                          key={subItem.name}
+                          className={`
+                            px-4 py-2 rounded-md cursor-pointer flex items-center
+                            ${isSubActive
+                              ? "bg-gradient-to-r from-red-500 to-gray-600 text-white"
+                              : "text-gray-600 hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-600 hover:text-white"
+                            }
+                          `}
+                          onClick={(e) => {
+                            e.stopPropagation(); // ✅ Cegah memicu toggle submenu
+                            handleItemClick(subItem); // 🔁 DIUBAH: pakai handleItemClick
+                          }}
+                        >
+                          <span className="mr-2">{subItem.icon}</span>
+                          {subItem.name}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -195,16 +226,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
         </div>
       </nav>
 
-      {/* Logout */}
-      <div className="px-6 py-4 border-t">
-        <div
-          className="flex items-center gap-3 px-4 py-3 text-red-600 font-semibold hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition"
-          onClick={() => router.push("/login")}
-        >
-          <LogOut size={18} />
-          {!collapsed && <span>Keluar</span>}
-        </div>
-      </div>
     </aside>
   );
 }
