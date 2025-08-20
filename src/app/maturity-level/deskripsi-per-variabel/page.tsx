@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { X, Save } from "lucide-react";
+import Button from "@/components/button";
+import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 
 export default function DeskripsiVariabelTable() {
   const router = useRouter();
   const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill(""));
+  const [showCancel, setShowCancel] = useState(false);
 
   // ambil data sementara kalau sudah pernah diisi
   useEffect(() => {
@@ -13,7 +17,6 @@ export default function DeskripsiVariabelTable() {
     if (saved) {
       setDeskripsi(JSON.parse(saved));
     } else {
-      // kalau belum ada, coba ambil dari maturityTempForm
       const savedForm = localStorage.getItem("maturityTempForm");
       if (savedForm) {
         const parsed = JSON.parse(savedForm);
@@ -28,16 +31,16 @@ export default function DeskripsiVariabelTable() {
   const allFilled = deskripsi.every((desc) => desc.trim() !== "");
 
   const handleSave = () => {
-    // simpan data deskripsi terpisah
     localStorage.setItem("deskripsiPerVariabelTemp", JSON.stringify(deskripsi));
-
-    // update juga di maturityTempForm
     const savedForm = JSON.parse(localStorage.getItem("maturityTempForm") || "{}");
     savedForm.deskripsiPerVariabel = deskripsi;
     localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
-
-    // kembali ke halaman sebelumnya
     router.back();
+  };
+
+  const handleCancel = () => {
+    router.push("/maturity-level");
+    setShowCancel(false);
   };
 
   return (
@@ -68,25 +71,46 @@ export default function DeskripsiVariabelTable() {
 
         {/* Tombol */}
         <div className="flex justify-end gap-4 mt-8">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center px-6 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+          <Button
+            variant="outline"
+            icon={X}
+            iconPosition="left"
+            className="rounded-[12px] px-17 py-2"
+            onClick={() => setShowCancel(true)}
           >
-            <span className="text-red-500 mr-2">✗</span> Batal
-          </button>
-          <button
-            onClick={handleSave}
+            Batal
+          </Button>
+
+          <Button
+            variant="simpan"
+            icon={Save}
+            iconPosition="left"
             disabled={!allFilled}
-            className={`flex items-center px-6 py-2 rounded-md ${
-              allFilled
-                ? "bg-blue-500 text-white hover:bg-blue-600"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            className={`rounded-[12px] px-17 py-2 text-sm font-semibold ${
+              allFilled ? "" : "opacity-50 cursor-not-allowed"
             }`}
+            onClick={handleSave}
           >
             Simpan
-          </button>
+          </Button>
         </div>
       </div>
+
+      {/* Modal konfirmasi Batal */}
+      <ModalConfirm
+        isOpen={showCancel}
+        onConfirm={handleCancel}
+        onCancel={() => setShowCancel(false)}
+        title="Apakah kamu yakin ingin membatalkan perubahan?"
+        header="Konfirmasi"
+        confirmLabel="Ya, Batalkan"
+        cancelLabel="Kembali"
+      >
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md text-left text-sm">
+          <div className="font-bold mb-1">⚠ Peringatan</div>
+          <div>Perubahan yang belum disimpan akan hilang jika kamu keluar.</div>
+        </div>
+      </ModalConfirm>
     </div>
   );
 }

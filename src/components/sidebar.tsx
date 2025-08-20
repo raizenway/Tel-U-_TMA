@@ -15,7 +15,6 @@ import {
   BookOpen,
   Users,
   FileText,
-  CheckSquare,
   Info,
 } from "lucide-react";
 
@@ -36,6 +35,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
   const router = useRouter();
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
   const [collapsed, setCollapsed] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const toggleSubmenu = (name: string) => {
     setOpenSubmenus((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -101,7 +101,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
 
   return (
     <aside
-      className={`${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}
+      className={`${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out relative flex flex-col`}
     >
       {/* Logo */}
       <div className="px-6 py-8 flex items-center">
@@ -138,10 +138,10 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 mt-4 text-sm font-medium">
+      <nav className="flex-1 px-4 mt-4 text-sm font-medium overflow-y-auto">
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
-            const isOpen = openSubmenus[item.name];
+            const open = openSubmenus[item.name];
             return (
               <div key={item.name} className="transition-all duration-200">
                 {/* Main Item */}
@@ -169,13 +169,13 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   {item.submenu && !collapsed && (
                     <ChevronDown
                       size={18}
-                      className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
                     />
                   )}
                 </div>
 
                 {/* Submenu */}
-                {item.submenu && isOpen && !collapsed && (
+                {item.submenu && open && !collapsed && (
                   <div className="ml-4 mt-1 flex flex-col gap-1">
                     {item.submenu.map((subItem) => (
                       <div

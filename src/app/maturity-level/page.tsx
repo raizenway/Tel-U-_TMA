@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Table from "@/components/Table";
-import { Copy, Printer, Download, Pencil, Trash2 } from "lucide-react";
+import { Copy, Printer, Download, Pencil, Trash2, Plus, Eye, ChevronDown, Search } from "lucide-react";
 import Button from "@/components/button";
-import { useRouter } from "next/navigation";
+import { useRouter,useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
-import { Plus, Eye } from "lucide-react";
-
 
 const TablePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,6 +14,12 @@ const TablePage = () => {
   const router = useRouter();
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [showDelete, setShowDelete] = useState(false);
+  const searchParams = useSearchParams();
+  const [showNotif, setShowNotif] = useState(false);
+
+  // modal lihat deskripsi
+  const [showModal, setShowModal] = useState(false);
+  const [selectedDeskripsiList, setSelectedDeskripsiList] = useState<string[]>([]);
 
   // Ambil data dari localStorage atau dummy data
   useEffect(() => {
@@ -29,28 +33,43 @@ const TablePage = () => {
           namaLevel: "Very Low Maturity",
           skorMin: "0%",
           skorMax: "24.9%",
-          deskripsiUmum:
-            "Sangat belum siap otonomi dan perlu ada perubahan signifikan segera",
-          deskripsiPerVariabel: "Lihat Deskripsi",
+          deskripsiUmum: "Sangat belum siap otonomi dan perlu ada perubahan signifikan segera",
+          deskripsiPerVariabel: [
+            "Deskripsi Skor 0...",
+            "Deskripsi Skor 1...",
+            "Deskripsi Skor 2...",
+            "Deskripsi Skor 3...",
+            "Deskripsi Skor 4..."
+          ]
         },
         {
           level: "2",
           namaLevel: "Low Maturity",
           skorMin: "25%",
           skorMax: "49.9%",
-          deskripsiUmum:
-            "Belum siap otonomi dan ada yang harus ditingkatkan segera",
-          deskripsiPerVariabel: "Lihat Deskripsi",
+          deskripsiUmum: "Belum siap otonomi dan ada yang harus ditingkatkan segera",
+          deskripsiPerVariabel: [
+            "Deskripsi Skor 0...",
+            "Deskripsi Skor 1...",
+            "Deskripsi Skor 2...",
+            "Deskripsi Skor 3...",
+            "Deskripsi Skor 4..."
+          ]
         },
         {
           level: "3",
           namaLevel: "Medium Maturity",
           skorMin: "50%",
           skorMax: "74.9%",
-          deskripsiUmum:
-            "Sudah siap otonomi level 2, dan masih ada yang perlu ditingkatkan",
-          deskripsiPerVariabel: "Lihat Deskripsi",
-        },
+          deskripsiUmum: "Sudah siap otonomi level 2, dan masih ada yang perlu ditingkatkan",
+          deskripsiPerVariabel: [
+            "Deskripsi Skor 0...",
+            "Deskripsi Skor 1...",
+            "Deskripsi Skor 2...",
+            "Deskripsi Skor 3...",
+            "Deskripsi Skor 4..."
+          ]
+        }
       ];
       setData(defaultData);
       localStorage.setItem("maturityData", JSON.stringify(defaultData));
@@ -62,6 +81,13 @@ const TablePage = () => {
       localStorage.setItem("maturityData", JSON.stringify(data));
     }
   }, [data]);
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      setShowNotif(true);
+      setTimeout(() => setShowNotif(false), 3000); // auto hide 3 detik
+    }
+  }, [searchParams]);
 
   // Filter pencarian
   const filteredData = data.filter((row) =>
@@ -76,13 +102,14 @@ const TablePage = () => {
     currentPage * 10
   );
 
-  // Fungsi tombol aksi
   const handleTambah = () => {
     router.push("/maturity-level/add-maturity");
   };
 
   const handleEdit = (index: number) => {
     const realIndex = (currentPage - 1) * 10 + index;
+    const selectedData = data[realIndex];
+    localStorage.setItem("editMaturityData", JSON.stringify(selectedData));
     router.push(`/maturity-level/edit-maturity/${realIndex}`);
   };
 
@@ -106,14 +133,16 @@ const TablePage = () => {
       "Deskripsi Per Variabel",
     ];
     const rows = filteredData
-      .map((row) => [
-        row.level,
-        row.namaLevel,
-        row.skorMin,
-        row.skorMax,
-        row.deskripsiUmum,
-        row.deskripsiPerVariabel,
-      ].join("\t"))
+      .map((row) =>
+        [
+          row.level,
+          row.namaLevel,
+          row.skorMin,
+          row.skorMax,
+          row.deskripsiUmum,
+          row.deskripsiPerVariabel.join(" | "),
+        ].join("\t")
+      )
       .join("\n");
 
     const tsv = headers.join("\t") + "\n" + rows;
@@ -136,14 +165,16 @@ const TablePage = () => {
       "Deskripsi Per Variabel",
     ];
     const rows = filteredData
-      .map((row) => [
-        row.level,
-        row.namaLevel,
-        row.skorMin,
-        row.skorMax,
-        row.deskripsiUmum,
-        row.deskripsiPerVariabel,
-      ].join("\t"))
+      .map((row) =>
+        [
+          row.level,
+          row.namaLevel,
+          row.skorMin,
+          row.skorMax,
+          row.deskripsiUmum,
+          row.deskripsiPerVariabel.join(" | "),
+        ].join("\t")
+      )
       .join("\n");
 
     const textToCopy = headers.join("\t") + "\n" + rows;
@@ -156,6 +187,18 @@ const TablePage = () => {
   const dataDenganAksi = paginatedData.map((row, index) => ({
     ...row,
     level: (currentPage - 1) * 10 + index + 1,
+    deskripsiPerVariabel: (
+      <button
+        className="flex items-center gap-2 text-gray-700 hover:underline"
+        onClick={() => {
+          setSelectedDeskripsiList(row.deskripsiPerVariabel);
+          setShowModal(true);
+        }}
+      >
+        <Eye size={18} strokeWidth={1} /> {/* lebih tipis, mirip outline */}
+        Lihat Deskripsi
+      </button>
+    ),
     aksi: (
       <div className="flex justify-center gap-4 text-xs">
         <button
@@ -188,79 +231,95 @@ const TablePage = () => {
   ];
 
   return (
-    <div className="bg-white p-2 max-w-fit mx-auto rounded">
-      <div className="p-6 bg-white rounded-xl shadow m-6 space-y-4 mt-20 p-8">
+    <div className="min-h-screen bg-gray-100 p-6 mt-16">
+      <div className="bg-white rounded-4xl shadow p-6 w-full">
         {/* Search & Actions */}
-        <div className="flex flex-wrap justify-between items-center gap-4">
-          <input
-            type="text"
-            placeholder="Cari..."
-            className="border px-3 py-2 rounded-md w-full max-w-xs"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
+                <Search className="w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Cari"
+                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+                  onChange={(e) => console.log("Search:", e.target.value)}
+                 />
+                </div>
 
-          <div className="flex gap-2">
-            <button
+          <div className="flex items-center gap-2">
+              <Button
+               variant="outline"
+               icon={Copy}
+              iconPosition="left" 
               onClick={handleCopy}
-              className="flex items-center gap-1 border px-2 py-2 rounded hover:bg-gray-100 text-xs"
-            >
-              <Copy size={14} /> Copy
-            </button>
-            <button
+               >
+                Copy
+                </Button>
+                 <Button
+               variant="outline"
+               icon={Printer}
+              iconPosition="left" 
               onClick={handlePrint}
-              className="flex items-center gap-1 border px-2 py-2 rounded hover:bg-gray-100 text-xs"
+               >
+                Print
+                </Button>
+                 <Button
+               variant="outline"
+               icon={ChevronDown}
+              iconPosition="right" 
+                  onClick={handleDownload}
+               >
+                Download
+                </Button>
+            <Button className="px-8"
+            onClick={() => router.push("/maturity-level/add-maturity")}
             >
-              <Printer size={14} /> Print
-            </button>
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-1 border px-2 py-2 rounded hover:bg-gray-100 text-xs"
-            >
-              <Download size={14} /> Download
-            </button>
-            <Button onClick={handleTambah}>Tambah Maturity</Button>
+                Tambah Maturity Level
+              </Button>
+              </div>
+         </div>
+         
+         {/* Notifikasi */}
+         {showNotif && (
+               <div className="absolute bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-md flex items-center justify-between min-w-[280px]">
+               <span className="font-medium">Data Berhasil Disimpan</span>
+              </div>
+            )}
+                {/*Table*/}
+                <div className="overflow-x-auto w-full">
+            <Table
+              columns={columns}
+              data={dataDenganAksi.map((row) => {
+                const newRow: any = {};
+                Object.keys(row).forEach((key) => {
+                  newRow[key] = (
+                    <div className="whitespace-normal break-words max-w-xs">
+                      {row[key]}
+                    </div>
+                  );
+                });
+                return newRow;
+              })}
+              currentPage={currentPage}
+              rowsPerPage={10}
+            />
           </div>
-        </div>
-
-        {/* Tabel */}
-        <div className="overflow-x-auto w-full">
-          <Table
-            columns={columns}
-            data={dataDenganAksi}
-            currentPage={currentPage}
-            rowsPerPage={10}
-          />
-        </div>
 
         {/* Pagination */}
         <div className="flex justify-between items-center mt-4 flex-wrap gap-2">
           <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="w-8 h-8 border rounded-full disabled:opacity-50"
-            >
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-8 h-8 border rounded-full disabled:opacity-50">
               {"<"}
             </button>
             {Array.from({ length: totalPages }, (_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`w-8 h-8 border rounded-full ${
-                  currentPage === i + 1 ? "bg-blue-100 font-bold" : ""
-                }`}
+                className={`w-8 h-8 border rounded-full ${currentPage === i + 1 ? "bg-blue-100 font-bold" : ""}`}
               >
                 {i + 1}
               </button>
             ))}
-            <button
-              onClick={() =>
-                setCurrentPage((p) => Math.min(totalPages, p + 1))
-              }
-              disabled={currentPage === totalPages}
-              className="w-8 h-8 border rounded-full disabled:opacity-50"
-            >
+            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-8 h-8 border rounded-full disabled:opacity-50">
               {">"}
             </button>
           </div>
@@ -286,6 +345,30 @@ const TablePage = () => {
           <div>Data yang sudah dihapus tidak akan bisa dipulihkan.</div>
         </div>
       </ModalConfirm>
+
+      {/* Modal Lihat Deskripsi */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6">
+            <h2 className="text-lg font-semibold mb-4 bg-blue-700 text-white p-3 rounded">
+              Deskripsi per Variabel
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {selectedDeskripsiList.map((desc, i) => (
+                <div key={i} className="bg-purple-50 border rounded p-3">
+                  <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
+                  <p className="text-sm text-gray-700">{desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center mt-6">
+              <Button onClick={() => setShowModal(false)} variant="simpan" className="px-30 py-2 text-lg rounded-md">
+                Tutup
+                </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
