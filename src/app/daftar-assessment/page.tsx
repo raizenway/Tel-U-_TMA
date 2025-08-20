@@ -208,7 +208,6 @@
                             icon={Copy}
                             iconPosition="left"
                             onClick={handleCopy}
-                            className="border px-9 py-2 rounded-lg bg-white shadow hover:bg-gray-100 transition text-xs"
                             >
                               Copy
                             </Button>
@@ -217,7 +216,6 @@
                               icon={Printer}
                               iconPosition="left" 
                               onClick={handlePrint}
-                              className="border px-9 py-2 rounded-lg bg-white shadow hover:bg-gray-100 transition text-xs"
                             >
                               Print
                             </Button>
@@ -226,7 +224,6 @@
                             icon={ChevronDown}
                             iconPosition="right" 
                             onClick={handleDownload}
-                            className="border px-12 py-2 rounded-lg bg-white shadow hover:bg-gray-100 transition text-xs"
                             >
                               Download
                             </Button>
