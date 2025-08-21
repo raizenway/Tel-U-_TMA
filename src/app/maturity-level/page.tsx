@@ -353,8 +353,6 @@ const TablePage = () => {
           onCancel={() => setShowModal(false)}
           title=""
           header="Deskripsi per Variabel"
-          confirmLabel="Tutup"
-          cancelLabel=""
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {selectedDeskripsiList.map((desc, i) => (
@@ -364,6 +362,15 @@ const TablePage = () => {
               </div>
             ))}
           </div>
+           <div className="flex justify-center mt-6">
+    <Button
+      variant="simpan"
+      className="px-30 py-2 text-lg rounded-md"
+      onClick={() => setShowModal(false)}
+    >
+      Tutup
+    </Button>
+  </div>
         </ModalConfirm>
 
     </div>
