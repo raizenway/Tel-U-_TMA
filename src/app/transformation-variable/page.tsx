@@ -21,6 +21,7 @@ export default function AssessmentPage() {
   const rowsPerPage = 5;
   const router = useRouter();
   const [tableData, setTableData] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
 
   // State untuk modal konfirmasi
   const [showModal, setShowModal] = useState(false);
@@ -220,15 +221,16 @@ export default function AssessmentPage() {
     <div className="p-6 bg-white rounded-lg shadow-md border mx-auto w-full max-w-6xl mt-18">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white shadow-sm w-80">
-          <Search className="w-4 h-4 text-gray-500" />
-          <input
+        <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
             type="text"
             placeholder="Cari..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-          />
-        </div>
-
+            />
+          </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
             Copy

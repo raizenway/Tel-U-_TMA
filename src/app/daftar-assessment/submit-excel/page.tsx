@@ -1,14 +1,16 @@
 'use client';
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
 
-// Struktur data untuk assessment
+// Interface untuk data assessment
 interface AssessmentItem {
   nomor: number;
   variable: string;
+  bobot: number;
   indikator: string;
   pertanyaan: string;
   tipeSoal: string;
@@ -18,22 +20,53 @@ interface AssessmentItem {
   deskripsiSkor2: string;
   deskripsiSkor3: string;
   deskripsiSkor4: string;
+  urutan: number;
 }
+
+// Type untuk status input (UI)
+type StatusInput = 'Aktif' | 'Non-Aktif';
 
 export default function SubmitExcelPage() {
   const router = useRouter();
+
+  // Form state
   const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<StatusInput | ''>('');
   const [loading, setLoading] = useState(false);
+
+  // Mode edit
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editNomor, setEditNomor] = useState<number | null>(null);
+
+  // Load data dari editData
+  useEffect(() => {
+    const editData = localStorage.getItem('editData');
+    if (!editData) return;
+
+    try {
+      const data = JSON.parse(editData);
+
+      setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
+      setEditNomor(data.nomor ?? null);
+
+      // Tentukan mode: hanya edit jika ada nomor
+      if (data.nomor !== undefined && data.nomor !== null && data.nomor !== '') {
+        setIsEditMode(true);
+      }
+    } catch (error) {
+      console.error('Gagal parsing editData:', error);
+    }
+  }, []);
 
   // Redirect otomatis saat ganti tipe soal
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (selected === 'pilihan-jawaban') {
-      router.push('/daftar-assesment/pilih-jawaban');
+      router.push('/daftar-assessment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
       router.push('/daftar-assessment/api-igracias');
     } else if (selected === 'submit-excel') {
-      router.push('/daftar-assesment/submit-excel');
+      router.push('/daftar-assessment/submit-excel');
     }
   };
 
@@ -54,6 +87,11 @@ export default function SubmitExcelPage() {
       alert('Harap unggah file Excel terlebih dahulu.');
       return;
     }
+    if (!status) {
+      alert('Harap pilih status terlebih dahulu.');
+      return;
+    }
+
     setLoading(true);
 
     const reader = new FileReader();
@@ -83,27 +121,6 @@ export default function SubmitExcelPage() {
         const headers = json[0] as string[];
         const rows = json.slice(1);
 
-        // Cek mode edit
-        const editDataRaw = localStorage.getItem('editData');
-        const isEditMode = !!editDataRaw;
-        let editData: AssessmentItem | null = null;
-
-        if (isEditMode) {
-          try {
-            editData = JSON.parse(editDataRaw!);
-            if (!editData || !editData.nomor) {
-              alert('Data edit tidak valid: nomor tidak ditemukan.');
-              setLoading(false);
-              return;
-            }
-          } catch (err) {
-            alert('Data edit rusak. Harap coba lagi.');
-            console.error('Parse editData error:', err);
-            setLoading(false);
-            return;
-          }
-        }
-
         // Validasi: hanya 1 baris saat edit
         if (isEditMode && rows.length !== 1) {
           alert('Dalam mode edit, hanya boleh ada 1 baris data.');
@@ -112,16 +129,17 @@ export default function SubmitExcelPage() {
         }
 
         // Ambil indeks kolom — sesuai template
-        const variableIdx = Math.max(headers.indexOf('Variable'), 0);
-        const indikatorIdx = Math.max(headers.indexOf('Indikator'), 1);
-        const pertanyaanIdx = Math.max(headers.indexOf('Pertanyaan'), 2);
-        const deskripsi0Idx = Math.max(headers.indexOf('Deskripsi Skor 0'), 3);
-        const deskripsi1Idx = Math.max(headers.indexOf('Deskripsi Skor 1'), 4);
-        const deskripsi2Idx = Math.max(headers.indexOf('Deskripsi Skor 2'), 5);
-        const deskripsi3Idx = Math.max(headers.indexOf('Deskripsi Skor 3'), 6);
-        const deskripsi4Idx = Math.max(headers.indexOf('Deskripsi Skor 4'), 7);
+        const variableIdx = headers.indexOf('Variable');
+        const indikatorIdx = headers.indexOf('Indikator');
+        const pertanyaanIdx = headers.indexOf('Pertanyaan');
+        const deskripsi0Idx = headers.indexOf('Deskripsi Skor 0');
+        const deskripsi1Idx = headers.indexOf('Deskripsi Skor 1');
+        const deskripsi2Idx = headers.indexOf('Deskripsi Skor 2');
+        const deskripsi3Idx = headers.indexOf('Deskripsi Skor 3');
+        const deskripsi4Idx = headers.indexOf('Deskripsi Skor 4');
+        const urutanIdx = headers.indexOf('Urutan');
 
-        // Validasi: pastikan semua kolom ditemukan
+        // Validasi kolom wajib
         const requiredColumns = [
           'Variable',
           'Indikator',
@@ -131,33 +149,26 @@ export default function SubmitExcelPage() {
           'Deskripsi Skor 2',
           'Deskripsi Skor 3',
           'Deskripsi Skor 4',
+          'Urutan',
         ];
 
-        const missingColumns = requiredColumns.filter((col, idx) => {
-          const index = headers.indexOf(col);
-          return index === -1 || index !== idx;
+        const missingColumns = requiredColumns.filter((col) => {
+          const idx = headers.indexOf(col);
+          return idx === -1;
         });
 
         if (missingColumns.length > 0) {
-          alert(`Kolom berikut tidak ditemukan atau urutannya salah:\n${missingColumns.join(', ')}\n\nPastikan template Excel digunakan dengan benar.`);
+          alert(`Kolom berikut tidak ditemukan:\n${missingColumns.join(', ')}\n\nPastikan template Excel digunakan dengan benar.`);
           setLoading(false);
           return;
         }
 
+        // Konversi status UI → status data
+        const finalStatus: 'Active' | 'Inactive' = status === 'Aktif' ? 'Active' : 'Inactive';
+
         // Ambil data dari localStorage
         const saved = localStorage.getItem('assessmentList');
-        let list: AssessmentItem[] = [];
-        if (saved) {
-          try {
-            list = JSON.parse(saved);
-            if (!Array.isArray(list)) throw new Error('Format data tidak valid');
-          } catch (err) {
-            alert('Data lokal rusak.');
-            console.error('Parse error:', err);
-            setLoading(false);
-            return;
-          }
-        }
+        let list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
 
         // Hitung nomor terakhir
         const lastNomor = list.length > 0 ? Math.max(...list.map((i) => i.nomor)) : 0;
@@ -165,19 +176,22 @@ export default function SubmitExcelPage() {
         // Konversi baris ke objek
         const importedItems: AssessmentItem[] = rows
           .map((row: any, index: number) => {
-            const nomor = isEditMode ? editData!.nomor : lastNomor + index + 1;
+            const nomor = isEditMode && editNomor !== null ? editNomor : lastNomor + index + 1;
+            const urutanVal = parseInt(row[urutanIdx], 10);
             return {
               nomor,
               variable: row[variableIdx]?.toString().trim() || 'Variable tidak tersedia',
+              bobot: 1,
               indikator: row[indikatorIdx]?.toString().trim() || 'Indikator tidak tersedia',
               pertanyaan: row[pertanyaanIdx]?.toString().trim() || 'Pertanyaan tidak tersedia',
               tipeSoal: 'Submit Jawaban Excel',
-              status: 'Active' as const,
+              status: finalStatus,
               deskripsiSkor0: row[deskripsi0Idx]?.toString().trim() || 'Tidak ada deskripsi',
               deskripsiSkor1: row[deskripsi1Idx]?.toString().trim() || 'Tidak ada deskripsi',
               deskripsiSkor2: row[deskripsi2Idx]?.toString().trim() || 'Tidak ada deskripsi',
               deskripsiSkor3: row[deskripsi3Idx]?.toString().trim() || 'Tidak ada deskripsi',
               deskripsiSkor4: row[deskripsi4Idx]?.toString().trim() || 'Tidak ada deskripsi',
+              urutan: isNaN(urutanVal) ? 1 : urutanVal,
             };
           })
           .filter((item) => item.variable && item.indikator && item.pertanyaan);
@@ -189,25 +203,22 @@ export default function SubmitExcelPage() {
         }
 
         // Update atau tambah data
-        const updatedList = isEditMode && editData
+        const updatedList = isEditMode && editNomor !== null
           ? list.map((item) =>
-              item.nomor === editData!.nomor ? { ...item, ...importedItems[0] } : item
+              item.nomor === editNomor ? { ...item, ...importedItems[0] } : item
             )
           : [...list, ...importedItems];
 
         // Simpan ke localStorage
         try {
           localStorage.setItem('assessmentList', JSON.stringify(updatedList));
+          localStorage.setItem('newDataAdded', 'true');
+          localStorage.removeItem('editData'); // ✅ Hapus setelah simpan
         } catch (err) {
           alert('Gagal menyimpan data. Storage penuh atau dibatasi.');
           console.error('localStorage error:', err);
           setLoading(false);
           return;
-        }
-
-        // Bersihkan editData jika dalam mode edit
-        if (isEditMode) {
-          localStorage.removeItem('editData');
         }
 
         // Berhasil
@@ -224,10 +235,14 @@ export default function SubmitExcelPage() {
     reader.readAsArrayBuffer(file);
   };
 
+  const handleCancel = () => {
+    localStorage.removeItem('editData');
+    router.push('/daftar-assessment');
+  };
+
   return (
     <div className="flex min-h-screen">
-      {/* Page Content */}
-      <main className="p-6 bg-gray-100 flex-1 overflow-y-auto">
+      <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
         <div
           className="bg-white p-8 rounded-xl shadow-md mx-auto"
           style={{
@@ -240,7 +255,9 @@ export default function SubmitExcelPage() {
             overflowY: 'auto',
           }}
         >
-          <h1 className="text-2xl font-bold mb-6 text-gray-800">Submit Jawaban Excel</h1>
+          <h1 className="text-2xl font-bold mb-6 text-gray-800">
+            {isEditMode ? 'Edit Soal: Submit Jawaban Excel' : 'Soal Baru: Submit Jawaban Excel'}
+          </h1>
 
           {/* Notifikasi */}
           <div className="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded-lg mb-6">
@@ -250,7 +267,6 @@ export default function SubmitExcelPage() {
 
           {/* Type Soal & Dokumen */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Dropdown Type Soal */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Type Soal</label>
               <select
@@ -265,7 +281,21 @@ export default function SubmitExcelPage() {
               </select>
             </div>
 
-            {/* Dokumen */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as StatusInput)}
+              >
+                <option value="">Pilih Status</option>
+                <option value="Aktif">Active</option>
+                <option value="Non-Aktif">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen</label>
               <div className="flex items-center space-x-2">
@@ -281,19 +311,8 @@ export default function SubmitExcelPage() {
                     onClick={() => setFile(null)}
                     className="text-red-500 hover:text-red-700"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 )}
@@ -321,40 +340,24 @@ export default function SubmitExcelPage() {
               variant="ghost"
               icon={X}
               iconPosition="left"
-              onClick={() => router.push('/daftar-assessment/tambah-assessment')}
-              className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              onClick={handleCancel}
+              className="rounded-[12px] px-4 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
               Batal
             </Button>
             <Button
-              variant="simpan"
+              variant="primary"
               icon={Save}
               iconPosition="left"
               onClick={handleSimpan}
-              disabled={!file}
-              className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+              disabled={!file || !status}
+              className="rounded-[12px] px-4 py-2 text-sm font-semibold"
             >
               {loading ? (
                 <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Memproses...
                 </>
