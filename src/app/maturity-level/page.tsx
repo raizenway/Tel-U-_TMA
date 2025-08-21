@@ -186,7 +186,7 @@ const TablePage = () => {
   // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
     ...row,
-    level: (currentPage - 1) * 10 + index + 1,
+    level: row.level,
     deskripsiPerVariabel: (
       <button
         className="flex items-center gap-2 text-gray-700 hover:underline"
@@ -346,29 +346,26 @@ const TablePage = () => {
         </div>
       </ModalConfirm>
 
-      {/* Modal Lihat Deskripsi */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6">
-            <h2 className="text-lg font-semibold mb-4 bg-blue-700 text-white p-3 rounded">
-              Deskripsi per Variabel
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {selectedDeskripsiList.map((desc, i) => (
-                <div key={i} className="bg-purple-50 border rounded p-3">
-                  <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-                  <p className="text-sm text-gray-700">{desc}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-center mt-6">
-              <Button onClick={() => setShowModal(false)} variant="simpan" className="px-30 py-2 text-lg rounded-md">
-                Tutup
-                </Button>
-            </div>
+      {/* Modal Deskripsi per Variabel */}
+        <ModalConfirm
+          isOpen={showModal}
+          onConfirm={() => setShowModal(false)}
+          onCancel={() => setShowModal(false)}
+          title=""
+          header="Deskripsi per Variabel"
+          confirmLabel="Tutup"
+          cancelLabel=""
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {selectedDeskripsiList.map((desc, i) => (
+              <div key={i} className="bg-purple-50 border rounded p-3">
+                <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
+                <p className="text-sm text-gray-700">{desc}</p>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        </ModalConfirm>
+
     </div>
   );
 };
