@@ -2,6 +2,7 @@ import React from "react";
 import clsx from "clsx";
 import { LucideIcon } from "lucide-react";
 
+
 type ButtonType = "button" | "submit" | "reset" | "link";
 
   interface ButtonProps {
@@ -16,6 +17,7 @@ type ButtonType = "button" | "submit" | "reset" | "link";
     isLoading?: boolean;
     icon?: LucideIcon;
     iconPosition?: "left" | "right" | "star";
+    iconColor?: string; // 👈 tambahkan baris ini
     fullWidth?: boolean;
     children: React.ReactNode;
     download?: boolean;
@@ -33,6 +35,7 @@ const Button: React.FC<ButtonProps> = ({
   isLoading = false,
   icon: Icon,
   iconPosition = "left",
+  iconColor, // 👈 tambahkan ini
   fullWidth = false,
   children,
   download = false,
@@ -66,9 +69,18 @@ const Button: React.FC<ButtonProps> = ({
   );
 
   const renderIcon = () => {
-    if (!Icon || isLoading) return null;
-    return <Icon size={18} />;
-  };
+  if (!Icon || isLoading) return null;
+
+  return (
+    <Icon
+      size={18}
+      className={clsx(
+        iconColor, // 👈 gunakan iconColor dari prop
+        "transition-colors" // 👈 opsional: animasi halus saat hover
+      )}
+    />
+  );
+};
 
   // Jika type === "link", render <a>
   if (type === "link" && href) {

@@ -33,7 +33,7 @@ export default function ModalConfirm({
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center">
         {/* 🔹 Lebar sedikit lebih kecil */}
-        <Dialog.Panel className="bg-white rounded-md shadow-xl w-full max-w-xl mx-4 overflow-hidden">
+        <Dialog.Panel className="bg-white rounded-md shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
           
           {/* 🔵 HEADER BIRU */}
           <div className="bg-blue-800 text-white px-6 py-3 font-bold">

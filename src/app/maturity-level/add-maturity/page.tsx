@@ -2,20 +2,22 @@
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Button from "@/components/button";
+import { X, Save } from "lucide-react";
 
-export default function MaturityLevelPage() {
+export default function AddMaturityLevelPage() {
   const [formData, setFormData] = useState({
     level: "",
     namaLevel: "",
     skorMin: "",
     skorMax: "",
     deskripsiUmum: "",
-    deskripsiPerVariabel: "",
+    deskripsiPerVariabel: [] as string[],
   });
 
+  const [showNotif, setShowNotif] = useState(false); // state untuk notifikasi
   const router = useRouter();
 
-  // Ambil data form sementara dari localStorage saat halaman pertama kali dibuka
   useEffect(() => {
     const savedForm = localStorage.getItem("maturityTempForm");
     if (savedForm) {
@@ -23,7 +25,6 @@ export default function MaturityLevelPage() {
     }
   }, []);
 
-  // handle input change
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -34,39 +35,58 @@ export default function MaturityLevelPage() {
     }));
   };
 
-  // handle submit
+  const isFormValid =
+    formData.level.trim() !== "" &&
+    formData.namaLevel.trim() !== "" &&
+    formData.skorMin.trim() !== "" &&
+    formData.skorMax.trim() !== "" &&
+    formData.deskripsiUmum.trim() !== "";
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    router.push("/maturity-level?success=true");
 
-    // Ambil data lama dari localStorage
+
     const existingData =
       JSON.parse(localStorage.getItem("maturityData") || "[]");
 
-    // Tambahkan data baru
     const updatedData = [...existingData, formData];
-
-    // Simpan lagi ke localStorage
     localStorage.setItem("maturityData", JSON.stringify(updatedData));
 
-    // Hapus data form sementara
     localStorage.removeItem("maturityTempForm");
 
-    // Reset form
     setFormData({
       level: "",
       namaLevel: "",
       skorMin: "",
       skorMax: "",
       deskripsiUmum: "",
-      deskripsiPerVariabel: "",
+      deskripsiPerVariabel: [],
     });
 
-    // Pindah ke halaman tabel
-    router.push("/maturity-level");
+    // ✅ Tampilkan notifikasi sukses
+    setShowNotif(true);
+    setTimeout(() => {
+      setShowNotif(false);
+      router.push("/maturity-level"); // pindah ke tabel setelah notif hilang
+    }, 2000);
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
+    <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center relative">
+      {/* Notifikasi */}
+      {showNotif && (
+        <div className="absolute bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-md flex items-center justify-between min-w-[280px]">
+          <span className="font-medium">Data Berhasil Disimpan</span>
+          <button
+            onClick={() => setShowNotif(false)}
+            className="ml-4 text-white hover:text-gray-200"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Form */}
       <form
         onSubmit={handleSubmit}
@@ -134,7 +154,6 @@ export default function MaturityLevelPage() {
             <button
               type="button"
               onClick={() => {
-                // Simpan form sementara sebelum pindah ke halaman deskripsi
                 localStorage.setItem(
                   "maturityTempForm",
                   JSON.stringify(formData)
@@ -151,19 +170,26 @@ export default function MaturityLevelPage() {
           </div>
         </div>
         <div className="flex justify-end gap-4 mt-4">
-          <button
-            type="button"
+          <Button
             onClick={() => router.push("/maturity-level")}
-            className="px-4 py-2 border border-red-500 text-red-500 rounded-md"
-          >
-            ✕ Batal
-          </button>
-          <button
+            variant="outline"
+            icon={X}
+            iconPosition="left"
+            className="rounded-[12px] px-17 py-2"
+            >
+            Batal
+          </Button>
+
+          <Button
+            variant="primary"
             type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            icon={Save}
+            iconPosition="left"
+            className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+            disabled={!isFormValid}
           >
             Simpan
-          </button>
+          </Button>
         </div>
       </form>
     </div>

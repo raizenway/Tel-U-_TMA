@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import Button from "@/components/button";
+import { X, Save } from "lucide-react";
 
 export default function EditMaturityPage() {
+  const { id } = useParams();
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     level: "",
     namaLevel: "",
@@ -13,15 +18,17 @@ export default function EditMaturityPage() {
     deskripsiPerVariabel: "",
   });
 
-  const router = useRouter();
-
-  // Ambil data dari localStorage saat load halaman
+  // Ambil data dari localStorage berdasarkan ID dari URL
   useEffect(() => {
-    const savedForm = localStorage.getItem("maturityTempForm");
-    if (savedForm) {
-      setFormData(JSON.parse(savedForm));
+    const savedData = localStorage.getItem("maturityData");
+    if (savedData && id !== undefined) {
+      const parsed = JSON.parse(savedData);
+      const record = parsed[Number(id)];
+      if (record) {
+        setFormData(record);
+      }
     }
-  }, []);
+  }, [id]);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -35,7 +42,15 @@ export default function EditMaturityPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    console.log("Data tersimpan:", formData);
+
+    const savedData = localStorage.getItem("maturityData");
+    if (savedData && id !== undefined) {
+      const parsed = JSON.parse(savedData);
+      parsed[Number(id)] = formData;
+      localStorage.setItem("maturityData", JSON.stringify(parsed));
+    }
+
+    router.push("/maturity-level");
   };
 
   return (
@@ -44,7 +59,7 @@ export default function EditMaturityPage() {
         onSubmit={handleSubmit}
         className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl"
       >
-        {/* Row 1: Level & Nama Level */}
+        {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Level</label>
@@ -68,7 +83,7 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Row 2: Skor Minimum & Skor Maximum */}
+        {/* Row 2 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Skor Minimum</label>
@@ -92,12 +107,10 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Row 3: Deskripsi Umum & Deskripsi Per Variabel */}
+        {/* Row 3 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Deskripsi Umum
-            </label>
+            <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
               name="deskripsiUmum"
               value={formData.deskripsiUmum}
@@ -127,18 +140,25 @@ export default function EditMaturityPage() {
 
         {/* Buttons */}
         <div className="flex justify-end gap-4 mt-6">
-          <button
-            type="button"
-            className="px-5 py-2 border border-red-500 text-red-500 rounded-md hover:bg-red-50"
-          >
-            ✕ Batal
-          </button>
-          <button
-            type="submit"
-            className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Simpan
-          </button>
+           <Button
+                onClick={() => router.push("/maturity-level")}
+                variant="outline"
+                icon={X}
+                iconPosition="left"
+                className="rounded-[12px] px-17 py-2"
+              >
+                Batal
+              </Button>
+
+              <Button
+                variant="primary"
+                type="submit"
+                icon={Save}
+                iconPosition="left"
+                className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+              >
+                Simpan
+              </Button>
         </div>
       </form>
     </div>
