@@ -5,10 +5,10 @@ import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export default function TambahPage() {
+export default function VariabelFormPage() {
   const router = useRouter();
 
-  // Form state
+  // State form
   const [namaVariabel, setNamaVariabel] = useState('');
   const [bobot, setBobot] = useState('');
   const [pertanyaan, setPertanyaan] = useState('');
@@ -18,47 +18,63 @@ export default function TambahPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  // Cek apakah sedang dalam mode edit
+  // Mode edit
   const [isEdit, setIsEdit] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
 
-  // State untuk mengatur tombol simpan aktif/tidak
+  // Validasi form
   const [isFormValid, setIsFormValid] = useState(false);
 
-  // Cek kelengkapan form setiap kali state berubah
   useEffect(() => {
-    if (
-      namaVariabel.trim() &&
-      bobot.trim() &&
-      pertanyaan.trim() &&
-      deskripsi.trim() &&
-      referensi.trim() &&
-      status
-    ) {
-      setIsFormValid(true);
-    } else {
-      setIsFormValid(false);
-    }
+    setIsFormValid(
+      !!(
+        namaVariabel.trim() &&
+        bobot.trim() &&
+        pertanyaan.trim() &&
+        deskripsi.trim() &&
+        referensi.trim() &&
+        status
+      )
+    );
   }, [namaVariabel, bobot, pertanyaan, deskripsi, referensi, status]);
 
-  // Load data jika mode edit
+  // Prefill jika mode edit
   useEffect(() => {
+    if (typeof window === 'undefined') return; // cegah mismatch SSR
+
     const editData = localStorage.getItem('editData');
     if (editData) {
-      const parsed = JSON.parse(editData);
-      setNamaVariabel(parsed.namaVariabel || '');
-      setBobot(parsed.bobot?.toString() || '');
-      setPertanyaan(parsed.pertanyaan || '');
-      setDeskripsi(parsed.deskripsi || '');
-      setReferensi(parsed.referensi || '');
-      setStatus(parsed.status || '');
-      setLogoPreview(parsed.logoUrl || '/logo-telu.png');
-      setEditId(parsed.id);
-      setIsEdit(true);
+      try {
+        const parsed = JSON.parse(editData);
+
+        setNamaVariabel(parsed.namaVariabel || parsed.variable || '');
+        setBobot(parsed.bobot?.toString() || '');
+        setPertanyaan(parsed.pertanyaan || '');
+        setDeskripsi(parsed.deskripsi || '');
+        setReferensi(parsed.referensi || '');
+
+        // Pastikan status berupa string sebelum .toLowerCase
+        const parsedStatus =
+          typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
+
+        if (parsedStatus === 'active' || parsedStatus === 'aktif') {
+          setStatus('Active');
+        } else if (parsedStatus === 'inactive' || parsedStatus === 'non-aktif') {
+          setStatus('Inactive');
+        } else {
+          setStatus('');
+        }
+
+        setLogoPreview(parsed.logoUrl || '/logo-telu.png');
+        setEditId(parsed.id ?? null);
+        setIsEdit(true);
+      } catch (err) {
+        console.error('Gagal parse editData:', err);
+      }
     }
   }, []);
 
-  // Handle upload file + preview
+  // Upload logo
   const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -67,7 +83,6 @@ export default function TambahPage() {
       alert('Ukuran file maksimal 1 MB');
       return;
     }
-
     if (!file.type.startsWith('image/')) {
       alert('Hanya file gambar yang diperbolehkan');
       return;
@@ -96,9 +111,7 @@ export default function TambahPage() {
     const arr = saved ? JSON.parse(saved) : [];
 
     if (isEdit && editId !== null) {
-      const updated = arr.map((item: any) =>
-        item.id === editId ? newRow : item
-      );
+      const updated = arr.map((item: any) => (item.id === editId ? newRow : item));
       localStorage.setItem('transformationVariables', JSON.stringify(updated));
       alert('Data berhasil diperbarui!');
     } else {
@@ -139,12 +152,14 @@ export default function TambahPage() {
             </h1>
           </div>
 
-          {/* Form Content */}
+          {/* Form */}
           <div className="p-8 space-y-6 overflow-y-auto max-h-[500px]">
             {/* Nama Variabel & Bobot */}
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Variabel
+                </label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded-lg px-4 py-3"
@@ -154,7 +169,9 @@ export default function TambahPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bobot</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bobot
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -171,7 +188,9 @@ export default function TambahPage() {
             {/* Pertanyaan & Deskripsi */}
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pertanyaan</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pertanyaan
+                </label>
                 <textarea
                   className="w-full border border-gray-300 rounded-lg px-4 py-3"
                   value={pertanyaan}
@@ -181,7 +200,9 @@ export default function TambahPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Deskripsi
+                </label>
                 <textarea
                   className="w-full border border-gray-300 rounded-lg px-4 py-3"
                   value={deskripsi}
@@ -195,7 +216,9 @@ export default function TambahPage() {
             {/* Referensi & Status */}
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Referensi</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Referensi
+                </label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded-lg px-4 py-3"
@@ -205,22 +228,26 @@ export default function TambahPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
                 <select
                   className="w-full border border-gray-300 rounded-lg px-4 py-3"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
                   <option value="">Pilih Status</option>
-                  <option value="Active">Deractive</option>
-                  <option value="Inactive">Reactive</option>
+                  <option value="Active">Aktif</option>
+                  <option value="Inactive">Non-Aktif</option>
                 </select>
               </div>
             </div>
 
             {/* Upload Logo */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Upload Logo UPPS/KC</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Logo UPPS/KC
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -242,8 +269,8 @@ export default function TambahPage() {
             </div>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="p-8  flex justify-end gap-4">
+          {/* Footer */}
+          <div className="p-8 flex justify-end gap-4">
             <Button
               variant="ghost"
               icon={X}
@@ -260,7 +287,7 @@ export default function TambahPage() {
               iconPosition="left"
               onClick={handleSimpan}
               className={`rounded-[12px] px-10 py-2 text-sm font-semibold text-white ${
-                isFormValid ? '' : 'bg-gray-400'
+                isFormValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'
               }`}
             >
               {isEdit ? 'Simpan Perubahan' : 'Simpan'}

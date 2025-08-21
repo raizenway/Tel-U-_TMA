@@ -13,12 +13,12 @@ interface Notification {
 }
 
 interface UserIconWithBadgeProps {
-  notifications: Notification[]; // Ganti `count` dengan array notifikasi
+  notifications?: Notification[]; // ✅ Ubah jadi opsional
   className?: string;
 }
 
 export default function UserIconWithBadge({
-  notifications = [],
+  notifications = [], // ✅ Default ke array kosong
   className,
 }: UserIconWithBadgeProps) {
   const hasNotifications = notifications.length > 0;

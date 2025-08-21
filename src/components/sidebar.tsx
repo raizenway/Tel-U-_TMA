@@ -71,7 +71,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     },
     {
       name: "Assessment Result",
-      path: "table",
       icon: <ChartLine size={20} />, // ❌ DIHAPUS
       submenu: [
         {
@@ -183,12 +182,13 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
 
                   {/* Chevron hanya muncul jika tidak collapsed */}
                   {item.submenu && !collapsed && (
-                    <ChevronDown
-                      size={18}
-                      className={`transition-transform duration-200 ${
-                        isOpen ? "rotate-180" : ""
-                      } ${isActive ? "text-white" : "text-gray-400"}`} // ✅ WARNA CHEVRON ikut aktif
-                    />
+                   <ChevronDown
+                suppressHydrationWarning
+                size={18}
+                className={`transition-transform duration-200 ${
+                  isOpen ? "rotate-180" : ""
+                } ${isActive ? "text-white" : "text-gray-400"}`}
+              />
                   )}
                 </div>
 
