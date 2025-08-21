@@ -109,13 +109,23 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     >
       {/* Logo */}
       <div className="px-6 py-8 flex items-center">
-        <Image
-          src="/Logo.png"
-          alt="Logo Telkom University"
-          width={collapsed ? 40 : 190}
-          height={80}
-          priority
-        />
+         {collapsed ? (
+            <Image
+              src="/Logo v1.png"   // logo kecil
+              alt="Logo Telkom University"
+              width={40}
+              height={40}
+              priority
+            />
+          ) : (
+            <Image
+              src="/Logo.png"    // logo full
+              alt="Logo Telkom University"
+              width={190}
+              height={80}
+              priority
+            />
+          )}
         <button
           onClick={toggleCollapse}
           className="ml-auto p-2 text-gray-500 hover:text-gray-700 transition"
