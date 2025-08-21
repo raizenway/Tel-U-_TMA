@@ -6,7 +6,7 @@
         import * as XLSX from "xlsx";
         import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
         import Button from "@/components/button";
-      import { Download, X } from "lucide-react";
+        import { Download, X } from "lucide-react";
         import { useRouter } from "next/navigation";
         import SuccessNotification from "./SuccessNotification";
         import ModalBlockNavigation from "@/components/ModalBlockNavigation";
@@ -209,7 +209,17 @@
       }
     };
 
-
+// Hitung apakah semua soal (1-29) sudah terisi
+const allAnswered = questions.slice(0, 29).every(q => {
+  if (q.id === 1) {
+    // Soal 1: harus ada angka > 0
+    const val = answers["1"];
+    return val != null && val !== "" && !isNaN(Number(val)) && Number(val) >= 0;
+  } else {
+    // Soal 2-29: radio button
+    return answers[q.id] != null && answers[q.id] !== "";
+  }
+});
         
           return (
             <div className="max-w-7xl mx-auto px-6 py-10 min-h-screen bg-gray">
@@ -321,9 +331,9 @@
                     <div className="flex justify-end flex-wrap gap-3 pt-4">
                     <Button
                     variant="outline" 
-                   icon={() => <X className="text-red-600" />}
-                  iconPosition="left"
-                     className="px-14 text-red-600 border-red-500 over:bg-red-100 "
+                    icon={X}
+                    iconPosition="left"
+                    className="px-14 text-red-600 border-red-500 over:bg-red-100 "
                     onClick={() => {
                       setResetQuestionId(current.id);
                       setShowResetModal(true);
@@ -336,18 +346,16 @@
                       
                       <Button 
                         variant="outline"
-                        icon={() => <ArrowLeft className="text-red-600" />}
+                        icon={X}
                         iconPosition="left"
                         className="px-8"
-                      onClick={handlePrevious} >
+                        onClick={handlePrevious} >
                         Previous Question
                       </Button>
-        
-                        
                       )}
                       {currentIndex < questions.length - 1 && (
                         <Button
-                         variant="simpan"
+                          variant="simpan"
                           icon={ArrowRight}
                           iconPosition="right"
                           className="px-8"
@@ -381,18 +389,23 @@
                       })}
                     </div>
                   <button
-        className="mt-4 w-full bg-gray-200 text-gray-800 text-sm py-2 rounded-lg font-medium hover:bg-gray-300 transition"
-        onClick={() => {
-          const summaryData = questions.map((q) => ({
-            no: q.id,
-            answered: !!answers[q.id],
-          }));
-          setModalData(summaryData);
-          setShowPreConfirmModal(true); // BUKAN langsung showModal
-        }}
-      >
-       Finish attempt
-      </button>
+  className={`mt-4 w-full text-sm py-2 rounded-lg font-medium transition
+    ${allAnswered 
+      ? 'bg-[#263859] text-white ' 
+      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+    }
+  `}
+  onClick={() => {
+    const summaryData = questions.map((q) => ({
+      no: q.id,
+      answered: !!answers[q.id],
+    }));
+    setModalData(summaryData);
+    setShowPreConfirmModal(true);
+  }}
+>
+  Finish attempt
+</button>
                   </div>
                 </div>
               </div>

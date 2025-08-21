@@ -270,14 +270,15 @@ import {
             </Section>      
 
             <Section title="19. Button Simpan">
-              <Button
-                variant="ghost"
-                icon={() => <X size={18} className="text-red-600" />}
-                iconPosition="left"
-                className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
-              >
-                Batal
-              </Button>
+<Button
+  variant="ghost"
+  icon={X}
+  iconColor="text-red-600"
+  iconPosition="left"
+  className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+>
+  Batal
+</Button>
 
               <Button
                 variant="simpan"
@@ -304,20 +305,24 @@ import {
              <Section title="23. Start Assessment">
               <Button 
               variant="outline"
-              icon={() => <X className="text-red-600" />}
+              icon={X}
+              iconColor="text-red-600"
               iconPosition="left"
               className="px-14 text-red-600 border-red-500 hover:bg-red-100"
               >
               Batal
               </Button>
+
               <Button 
               variant="outline"
-              icon={() => <ArrowLeft className="text-red-600" />}
+              icon={ArrowLeft}
+              iconColor="text-red-600"
               iconPosition="left"
               className="px-8"
               >
               Previous Question
               </Button>
+
               <Button 
               variant="simpan"
               icon={ArrowRight}

@@ -360,7 +360,7 @@ export default function DashboardTab() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
               <YAxis domain={[0, 100]} />
-              <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
+              <Tooltip formatter={(value) => Number(value).toFixed(2)} />
               <Legend />
               <Line type="monotone" dataKey="Jakarta" stroke="#8884d8" />
               <Line type="monotone" dataKey="Bandung" stroke="#82ca9d" />

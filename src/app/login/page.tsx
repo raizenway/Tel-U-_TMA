@@ -4,117 +4,117 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaWhatsapp } from 'react-icons/fa';
 import Image from 'next/image';
-import { UsersRound,Eye, EyeOff } from 'lucide-react';
+import { UsersRound, Eye, EyeOff } from 'lucide-react';
+import Button from '@/components/button';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
 
-    if (email && password) {
-      router.push('/welcome');
-    } else {
-      alert('Silakan masukkan email dan password.');
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        localStorage.setItem('user', JSON.stringify(result.data));
+        router.push('/welcome');
+      } else {
+        setError(result.message || 'Login gagal');
+      }
+    } catch {
+      setError('Terjadi kesalahan, coba lagi');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* =================== */}
+    <div className="flex max-h-screen">
       {/* KIRI: FORM LOGIN */}
-      {/* =================== */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-white px-6 py-12">
+      <div className="w-full md:w-2/3 flex items-center justify-center bg-white px-6 py-12 rounded-tr-lg rounded-br-lg">
         <div className="w-full max-w-md">
-          {/* Dua Logo di Atas Judul */}
+          {/* Logo */}
           <div className="flex justify-center items-center gap-6 mb-10">
-            {/* Logo Kiri: Misalnya Logo Telkom University */}
-            <Image
-              src="/image 2.png"
-              alt="Logo Telkom University"
-              width={150}
-              height={100}
-              className="object-contain"
-            />
-            {/* Logo Kanan: Misalnya Logo Prodi */}
-            <Image
-              src="/tr.png"
-              alt="Logo Program Studi"
-              width={190}
-              height={100}
-              className="object-contain"
-            />
+            <Image src="/image 2.png" alt="Logo Telkom University" width={150} height={100} />
+            <Image src="/tr.png" alt="Logo Program Studi" width={190} height={100} />
           </div>
 
           {/* Judul */}
-          <h2 className="text-xl font-semibold  text-black mb-4">
-            Log In An Account
-          </h2>
-          <p className="text-sm  text-gray-500 mb-11">
+          <h2 className="text-xl font-semibold text-black mb-4">Log In An Account</h2>
+          <p className="text-sm text-gray-500 mb-11">
             Enter your Username and Password to log in to our dashboard
           </p>
 
           {/* Form Login */}
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* NIM / Email */}
+            {/* Username */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                NIM / Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Username</label>
               <input
                 type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
-                placeholder="example@student.telkomuniversity.ac.id"
+                placeholder="Username"
               />
             </div>
 
             {/* Password */}
-            {/* Password */}
-                  <div className="relative">  {/* ✅ Tambahkan 'relative' di sini */}
-                    <label className="block text-sm font-medium text-gray-700">
-                      Password
-                    </label>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="mt-1 w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
-                      placeholder="••••••••"
-                    />
-                    {/* Tombol toggle password */}
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 mt-5"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-
-            {/* Tombol Login */}
-            <div className="flex items-center justify-center">
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="mt-1 w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
+                placeholder="••••••••"
+              />
               <button
-                type="submit"
-                className="w-80 bg-[#3c5bff] text-white py-2 rounded-md font-semibold flex justify-center"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 mt-5"
               >
-                Log In SSO
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
 
+            {/* Error */}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+            {/* Tombol Login */}
+            <div className="flex items-center justify-center">
+              <Button
+                type="submit"
+                variant="blue"
+                className="w-2/3"
+                isLoading={loading}
+              >
+                Login SSO
+              </Button>
+            </div>
           </form>
 
           {/* Lupa Password */}
           <div className="flex items-center justify-center mt-4 text-sm text-red-500 gap-2">
-             <UsersRound />
+            <UsersRound />
             <a href="#" className="hover:underline">
-              Forgot Password SSO 
+              Forgot Password SSO
             </a>
           </div>
 
@@ -133,15 +133,9 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* =================== */}
       {/* KANAN: BACKGROUND */}
-      {/* =================== */}
       <div className="hidden md:flex w-1/2 relative">
-        <img
-          src="/konten.png"
-          alt="Tel-U Background"
-          className="object-cover w-full h-full"
-        />
+        <img src="/konten.png" alt="Tel-U Background" className="object-cover w-full h-full" />
       </div>
     </div>
   );

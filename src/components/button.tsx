@@ -2,11 +2,12 @@ import React from "react";
 import clsx from "clsx";
 import { LucideIcon } from "lucide-react";
 
+
 type ButtonType = "button" | "submit" | "reset" | "link";
 
   interface ButtonProps {
     type?: ButtonType;
-    variant?: "primary" | "secondary" | "danger" | "success" | "ghost" | "outline" | "outline grey" | "simpan" ;
+    variant?: "primary" | "secondary" | "danger" | "success" | "ghost" | "outline" | "outline grey" | "simpan" | "blue";
     size?: "sm" | "md" | "lg";
     className?: string;
     id?: string;
@@ -16,11 +17,10 @@ type ButtonType = "button" | "submit" | "reset" | "link";
     isLoading?: boolean;
     icon?: LucideIcon;
     iconPosition?: "left" | "right" | "star";
+    iconColor?: string; // 👈 tambahkan baris ini
     fullWidth?: boolean;
     children: React.ReactNode;
     download?: boolean;
-    
-    
   }
 
 const Button: React.FC<ButtonProps> = ({
@@ -35,6 +35,7 @@ const Button: React.FC<ButtonProps> = ({
   isLoading = false,
   icon: Icon,
   iconPosition = "left",
+  iconColor, // 👈 tambahkan ini
   fullWidth = false,
   children,
   download = false,
@@ -47,6 +48,7 @@ const Button: React.FC<ButtonProps> = ({
     ghost: "bg-transparent text-gray-800 hover:bg-gray-100",
     outline: "border border-gray-300 text-gray-800 bg-transparent hover:bg-gray-100",
     simpan: "bg-[#263859] text-white hover:bg-[#1e2e4a] rounded-[16px] font-semibold",
+    blue: "bg-[#3c5bff] text-white",
     };
 
   const sizeClassMap: Record<string, string> = {
@@ -67,9 +69,18 @@ const Button: React.FC<ButtonProps> = ({
   );
 
   const renderIcon = () => {
-    if (!Icon || isLoading) return null;
-    return <Icon size={18} />;
-  };
+  if (!Icon || isLoading) return null;
+
+  return (
+    <Icon
+      size={18}
+      className={clsx(
+        iconColor, // 👈 gunakan iconColor dari prop
+        "transition-colors" // 👈 opsional: animasi halus saat hover
+      )}
+    />
+  );
+};
 
   // Jika type === "link", render <a>
   if (type === "link" && href) {

@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
@@ -23,6 +24,7 @@ interface AssessmentItem {
   deskripsiSkor3: string;
   deskripsiSkor4: string;
   rentangJawaban?: { min: number; max: number };
+  rentangJawaban2?: { min: number; max: number }; // tambah untuk pertanyaan 2
 }
 
 // Type untuk status input (UI)
@@ -37,17 +39,16 @@ export default function PilihJawabanPage() {
   const [indikator, setIndikator] = useState('');
   const [pertanyaan1, setPertanyaan1] = useState('');
   const [pertanyaan2, setPertanyaan2] = useState('');
-  const [status, setStatus] = useState<StatusInput>('');
+  const [status, setStatus] = useState<StatusInput | ''>('');
   const [jumlahPertanyaan, setJumlahPertanyaan] = useState<'1 Pertanyaan' | '2 Pertanyaan' | ''>('');
   const [tipePertanyaan, setTipePertanyaan] = useState<'pg' | 'short-answer'>('pg');
+  const [urutan, setUrutan] = useState<string>('');
 
-  // Rentang jawaban singkat: awalnya kosong
-  const [rentangJawabanSingkat, setRentangJawabanSingkat] = useState({
-    min: '',
-    max: '',
-  });
+  // Rentang jawaban: terpisah untuk setiap pertanyaan
+  const [rentangPertanyaan1, setRentangPertanyaan1] = useState({ min: '', max: '' });
+  const [rentangPertanyaan2, setRentangPertanyaan2] = useState({ min: '', max: '' });
 
-  // ✅ Skor bisa diedit user (string agar bisa kosong saat input)
+  // Skor dan deskripsi
   const [skor, setSkor] = useState<{ [key: number]: { min: string; max: string } }>({
     0: { min: '0', max: '1.9' },
     1: { min: '2', max: '4.9' },
@@ -56,10 +57,7 @@ export default function PilihJawabanPage() {
     4: { min: '9', max: '12' },
   });
 
-  // Deskripsi Skor
-  const [deskripsiSkor, setDeskripsiSkor] = useState<{
-    [key: number]: string;
-  }>({
+  const [deskripsiSkor, setDeskripsiSkor] = useState<{ [key: number]: string }>({
     0: 'Tidak ada dokumentasi.',
     1: 'Ada dokumentasi dasar.',
     2: 'Dokumentasi sebagian lengkap.',
@@ -73,11 +71,14 @@ export default function PilihJawabanPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editNomor, setEditNomor] = useState<number | null>(null);
 
-  // Load data edit
+  // Load data dari editData
   useEffect(() => {
     const editData = localStorage.getItem('editData');
-    if (editData) {
+    if (!editData) return;
+
+    try {
       const data = JSON.parse(editData);
+
       setNamaVariabel(data.variable || '');
       setBobot(data.bobot || 1);
       setIndikator(data.indikator || '');
@@ -88,9 +89,15 @@ export default function PilihJawabanPage() {
       setTipePertanyaan(data.tipePertanyaan || 'pg');
 
       if (data.rentangJawaban) {
-        setRentangJawabanSingkat({
+        setRentangPertanyaan1({
           min: String(data.rentangJawaban.min),
           max: String(data.rentangJawaban.max),
+        });
+      }
+      if (data.rentangJawaban2) {
+        setRentangPertanyaan2({
+          min: String(data.rentangJawaban2.min),
+          max: String(data.rentangJawaban2.max),
         });
       }
 
@@ -98,8 +105,8 @@ export default function PilihJawabanPage() {
         const loadedSkor: { [key: number]: { min: string; max: string } } = {};
         for (let i = 0; i <= 4; i++) {
           loadedSkor[i] = {
-            min: String(data.skor[i].min),
-            max: String(data.skor[i].max),
+            min: String(data.skor[i]?.min ?? ''),
+            max: String(data.skor[i]?.max ?? ''),
           };
         }
         setSkor(loadedSkor);
@@ -117,13 +124,22 @@ export default function PilihJawabanPage() {
         setDeskripsiSkor(data.deskripsiSkor);
       }
 
-      setEditNomor(data.nomor);
-      setIsEditMode(true);
+      // Tentukan mode: hanya edit jika ada nomor
+      if (data.nomor !== undefined && data.nomor !== null && data.nomor !== '') {
+        setEditNomor(data.nomor);
+        setIsEditMode(true);
+      } else {
+        setEditNomor(null);
+        setIsEditMode(false);
+      }
+    } catch (error) {
+      console.error('Gagal parsing editData:', error);
     }
   }, []);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
+
     if (!namaVariabel.trim()) newErrors.namaVariabel = 'Wajib diisi';
     if (!indikator.trim()) newErrors.indikator = 'Wajib diisi';
     if (!pertanyaan1.trim()) newErrors.pertanyaan1 = 'Wajib diisi';
@@ -133,29 +149,41 @@ export default function PilihJawabanPage() {
     if (!status) newErrors.status = 'Wajib dipilih';
     if (!jumlahPertanyaan) newErrors.jumlahPertanyaan = 'Wajib dipilih';
 
-    // Validasi rentang jawaban singkat
+    // Validasi rentang pertanyaan 1
     if (tipePertanyaan === 'short-answer') {
-      if (!rentangJawabanSingkat.min) newErrors.rentangMin = 'Wajib diisi';
-      if (!rentangJawabanSingkat.max) newErrors.rentangMax = 'Wajib diisi';
-      const min = parseFloat(rentangJawabanSingkat.min);
-      const max = parseFloat(rentangJawabanSingkat.max);
+      if (!rentangPertanyaan1.min) newErrors.rentangMin1 = 'Wajib diisi';
+      if (!rentangPertanyaan1.max) newErrors.rentangMax1 = 'Wajib diisi';
+      const min = parseFloat(rentangPertanyaan1.min);
+      const max = parseFloat(rentangPertanyaan1.max);
       if (isNaN(min) || isNaN(max)) {
-        if (!newErrors.rentangMin) newErrors.rentangMin = 'Harus angka';
-        if (!newErrors.rentangMax) newErrors.rentangMax = 'Harus angka';
+        if (!newErrors.rentangMin1) newErrors.rentangMin1 = 'Harus angka';
+        if (!newErrors.rentangMax1) newErrors.rentangMax1 = 'Harus angka';
       } else if (min >= max) {
-        newErrors.rentangMax = 'Max harus lebih besar dari min';
+        newErrors.rentangMax1 = 'Max harus lebih besar dari min';
       }
     }
 
-    // Validasi deskripsi skor
+    // Validasi rentang pertanyaan 2
+    if (jumlahPertanyaan === '2 Pertanyaan' && tipePertanyaan === 'short-answer') {
+      if (!rentangPertanyaan2.min) newErrors.rentangMin2 = 'Wajib diisi';
+      if (!rentangPertanyaan2.max) newErrors.rentangMax2 = 'Wajib diisi';
+      const min2 = parseFloat(rentangPertanyaan2.min);
+      const max2 = parseFloat(rentangPertanyaan2.max);
+      if (isNaN(min2) || isNaN(max2)) {
+        if (!newErrors.rentangMin2) newErrors.rentangMin2 = 'Harus angka';
+        if (!newErrors.rentangMax2) newErrors.rentangMax2 = 'Harus angka';
+      } else if (min2 >= max2) {
+        newErrors.rentangMax2 = 'Max harus lebih besar dari min';
+      }
+    }
+
     Object.keys(deskripsiSkor).forEach((level) => {
       const numLevel = Number(level);
       if (!deskripsiSkor[numLevel]?.trim()) {
-        newErrors[`deskripsiSkor${numLevel}`] = 'Deskripsi skor harus diisi';
+        newErrors[`deskripsiSkor${numLevel}`] = 'Wajib diisi';
       }
     });
 
-    // Validasi rentang skor
     Object.keys(skor).forEach((level) => {
       const numLevel = Number(level);
       const min = parseFloat(skor[numLevel].min);
@@ -183,7 +211,6 @@ export default function PilihJawabanPage() {
       const saved = localStorage.getItem('assessmentList');
       let list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
 
-      // Konversi skor ke number
       const parsedSkor = Object.keys(skor).reduce((acc, key) => {
         const level = Number(key);
         acc[level] = {
@@ -221,8 +248,15 @@ export default function PilihJawabanPage() {
                 rentangJawaban:
                   tipePertanyaan === 'short-answer'
                     ? {
-                        min: parseFloat(rentangJawabanSingkat.min),
-                        max: parseFloat(rentangJawabanSingkat.max),
+                        min: parseFloat(rentangPertanyaan1.min),
+                        max: parseFloat(rentangPertanyaan1.max),
+                      }
+                    : undefined,
+                rentangJawaban2:
+                  jumlahPertanyaan === '2 Pertanyaan' && tipePertanyaan === 'short-answer'
+                    ? {
+                        min: parseFloat(rentangPertanyaan2.min),
+                        max: parseFloat(rentangPertanyaan2.max),
                       }
                     : undefined,
               }
@@ -239,10 +273,15 @@ export default function PilihJawabanPage() {
           pertanyaan2: undefined,
           rentangJawaban:
             tipePertanyaan === 'short-answer'
-              ? {
-                  min: parseFloat(rentangJawabanSingkat.min),
-                  max: parseFloat(rentangJawabanSingkat.max),
-                }
+              ? i === 0
+                ? {
+                    min: parseFloat(rentangPertanyaan1.min),
+                    max: parseFloat(rentangPertanyaan1.max),
+                  }
+                : {
+                    min: parseFloat(rentangPertanyaan2.min),
+                    max: parseFloat(rentangPertanyaan2.max),
+                  }
               : undefined,
         })) as AssessmentItem[];
 
@@ -250,19 +289,17 @@ export default function PilihJawabanPage() {
       }
 
       localStorage.setItem('assessmentList', JSON.stringify(updated));
-      console.log('✅ Data berhasil disimpan:', updated);
-
       localStorage.setItem('newDataAdded', 'true');
       localStorage.removeItem('editData');
       router.push('/daftar-assessment');
     } catch (error) {
-      console.error('❌ Gagal menyimpan data:', error);
+      console.error('Gagal menyimpan data:', error);
     }
   };
 
   const handleCancel = () => {
     localStorage.removeItem('editData');
-    router.push('/daftar-assessment/tambah-assessment');
+    router.push('/daftar-assessment');
   };
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -291,10 +328,14 @@ export default function PilihJawabanPage() {
     if (!jumlahPertanyaan) return false;
     if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) return false;
     if (tipePertanyaan === 'short-answer') {
-      if (!rentangJawabanSingkat.min || !rentangJawabanSingkat.max) return false;
-      const min = parseFloat(rentangJawabanSingkat.min);
-      const max = parseFloat(rentangJawabanSingkat.max);
-      if (isNaN(min) || isNaN(max) || min >= max) return false;
+      const min1 = parseFloat(rentangPertanyaan1.min);
+      const max1 = parseFloat(rentangPertanyaan1.max);
+      if (isNaN(min1) || isNaN(max1) || min1 >= max1) return false;
+    }
+    if (jumlahPertanyaan === '2 Pertanyaan' && tipePertanyaan === 'short-answer') {
+      const min2 = parseFloat(rentangPertanyaan2.min);
+      const max2 = parseFloat(rentangPertanyaan2.max);
+      if (isNaN(min2) || isNaN(max2) || min2 >= max2) return false;
     }
     return true;
   };
@@ -341,8 +382,8 @@ export default function PilihJawabanPage() {
                 onChange={(e) => setStatus(e.target.value as StatusInput)}
               >
                 <option value="">Pilih Status</option>
-                <option value="Aktif">Aktif</option>
-                <option value="Non-Aktif">Non-Aktif</option>
+                <option value="Aktif">Active</option>
+                <option value="Non-Aktif">Inactive</option>
               </select>
               {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
             </div>
@@ -401,6 +442,19 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
+          <div className="flex flex-col space-y-2">
+      <label className="block text-sm font-medium text-gray-700">Urutan</label>
+      <input
+        type="number"
+        value={urutan}
+        onChange={(e) => setUrutan(e.target.value)}
+        className="w-full border border-gray-300 rounded-md p-2 text-sm"
+        placeholder="Masukkan urutan"
+        min="1"
+      />
+      {errors.urutan && <p className="text-red-500 text-xs mt-1">{errors.urutan}</p>}
+    </div>
+
           {/* Jumlah Pertanyaan */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pertanyaan</label>
@@ -422,7 +476,7 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
-          {/* Tipe Pertanyaan (PG / Jawaban Singkat) */}
+          {/* Tipe Pertanyaan */}
           {jumlahPertanyaan && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Pertanyaan</label>
@@ -431,10 +485,7 @@ export default function PilihJawabanPage() {
                   { value: 'pg' as const, label: 'Pilihan Ganda' },
                   { value: 'short-answer' as const, label: 'Jawaban Singkat' },
                 ].map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700"
-                  >
+                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
                     <input
                       type="radio"
                       name="tipePertanyaan"
@@ -450,10 +501,9 @@ export default function PilihJawabanPage() {
             </div>
           )}
 
-          {/* Form Pertanyaan dan Input Dinamis */}
-          {jumlahPertanyaan && tipePertanyaan && (
+          {/* Pertanyaan 1 */}
+          {jumlahPertanyaan && (
             <>
-              {/* Pertanyaan 1 */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 1</label>
                 <textarea
@@ -466,7 +516,6 @@ export default function PilihJawabanPage() {
                 {errors.pertanyaan1 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan1}</p>}
               </div>
 
-              {/* Input berdasarkan tipe soal */}
               {tipePertanyaan === 'pg' ? (
                 <div className="mb-6">
                   <table className="w-full border-collapse border border-gray-300">
@@ -481,202 +530,118 @@ export default function PilihJawabanPage() {
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border border-gray-300 px-3 py-2">
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded-md p-2"
-                            placeholder="0"
-                            defaultValue="0"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2">
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded-md p-2"
-                            placeholder="1"
-                            defaultValue="1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2">
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded-md p-2"
-                            placeholder="2"
-                            defaultValue="2"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2">
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded-md p-2"
-                            placeholder="3"
-                            defaultValue="3"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2">
-                          <input
-                            type="text"
-                            className="w-full border border-gray-300 rounded-md p-2"
-                            placeholder=">3"
-                            defaultValue=">3"
-                          />
-                        </td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="0" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="1" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="2" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="3" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue=">3" /></td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               ) : (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Rentang Jawaban (Jawaban Singkat)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rentang Jawaban (Pertanyaan 1)</label>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-600">Nilai Min</label>
                       <input
                         type="number"
                         step="0.1"
-                        placeholder="0"
-                        className={`w-full border ${errors.rentangMin ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                        value={rentangJawabanSingkat.min}
-                        onChange={(e) => setRentangJawabanSingkat({ ...rentangJawabanSingkat, min: e.target.value })}
+                        className={`w-full border ${errors.rentangMin1 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
+                        value={rentangPertanyaan1.min}
+                        onChange={(e) => setRentangPertanyaan1({ ...rentangPertanyaan1, min: e.target.value })}
                       />
-                      {errors.rentangMin && <p className="text-red-500 text-xs mt-1">{errors.rentangMin}</p>}
+                      {errors.rentangMin1 && <p className="text-red-500 text-xs mt-1">{errors.rentangMin1}</p>}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600">Nilai Max</label>
                       <input
                         type="number"
                         step="0.1"
-                        placeholder="10"
-                        className={`w-full border ${errors.rentangMax ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                        value={rentangJawabanSingkat.max}
-                        onChange={(e) => setRentangJawabanSingkat({ ...rentangJawabanSingkat, max: e.target.value })}
+                        className={`w-full border ${errors.rentangMax1 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
+                        value={rentangPertanyaan1.max}
+                        onChange={(e) => setRentangPertanyaan1({ ...rentangPertanyaan1, max: e.target.value })}
                       />
-                      {errors.rentangMax && <p className="text-red-500 text-xs mt-1">{errors.rentangMax}</p>}
+                      {errors.rentangMax1 && <p className="text-red-500 text-xs mt-1">{errors.rentangMax1}</p>}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Nilai yang dimasukkan user akan dikonversi ke skor berdasarkan tabel di bawah.
-                  </p>
                 </div>
-              )}
-
-              {/* Pertanyaan 2 */}
-              {jumlahPertanyaan === '2 Pertanyaan' && (
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 2</label>
-                    <textarea
-                      className={`w-full border ${errors.pertanyaan2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                      value={pertanyaan2}
-                      onChange={(e) => setPertanyaan2(e.target.value)}
-                      placeholder="Masukkan pertanyaan..."
-                      rows={2}
-                    ></textarea>
-                    {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
-                  </div>
-
-                  {tipePertanyaan === 'pg' ? (
-                    <div className="mb-6">
-                      <table className="w-full border-collapse border border-gray-300">
-                        <thead>
-                          <tr>
-                            <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban A</th>
-                            <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban B</th>
-                            <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban C</th>
-                            <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban D</th>
-                            <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban E</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td className="border border-gray-300 px-3 py-2">
-                              <input
-                                type="text"
-                                className="w-full border border-gray-300 rounded-md p-2"
-                                placeholder="0"
-                                defaultValue="0"
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2">
-                              <input
-                                type="text"
-                                className="w-full border border-gray-300 rounded-md p-2"
-                                placeholder="1"
-                                defaultValue="1"
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2">
-                              <input
-                                type="text"
-                                className="w-full border border-gray-300 rounded-md p-2"
-                                placeholder="2"
-                                defaultValue="2"
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2">
-                              <input
-                                type="text"
-                                className="w-full border border-gray-300 rounded-md p-2"
-                                placeholder="3"
-                                defaultValue="3"
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2">
-                              <input
-                                type="text"
-                                className="w-full border border-gray-300 rounded-md p-2"
-                                placeholder=">3"
-                                defaultValue=">3"
-                              />
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Rentang Jawaban (Pertanyaan 2)
-                      </label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs text-gray-600">Nilai Min</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            placeholder="0"
-                            className={`w-full border ${errors.rentangMin ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                            value={rentangJawabanSingkat.min}
-                            onChange={(e) => setRentangJawabanSingkat({ ...rentangJawabanSingkat, min: e.target.value })}
-                          />
-                          {errors.rentangMin && <p className="text-red-500 text-xs mt-1">{errors.rentangMin}</p>}
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">Nilai Max</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            placeholder="10"
-                            className={`w-full border ${errors.rentangMax ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                            value={rentangJawabanSingkat.max}
-                            onChange={(e) => setRentangJawabanSingkat({ ...rentangJawabanSingkat, max: e.target.value })}
-                          />
-                          {errors.rentangMax && <p className="text-red-500 text-xs mt-1">{errors.rentangMax}</p>}
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Nilai yang dimasukkan user akan dikonversi ke skor berdasarkan tabel di bawah.
-                      </p>
-                    </div>
-                  )}
-                </>
               )}
             </>
           )}
 
-          {/* Edit Rentang Skor (0-4) */}
+          {/* Pertanyaan 2 */}
+          {jumlahPertanyaan === '2 Pertanyaan' && (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 2</label>
+                <textarea
+                  className={`w-full border ${errors.pertanyaan2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                  value={pertanyaan2}
+                  onChange={(e) => setPertanyaan2(e.target.value)}
+                  placeholder="Masukkan pertanyaan..."
+                  rows={2}
+                ></textarea>
+                {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
+              </div>
+
+              {tipePertanyaan === 'pg' ? (
+                <div className="mb-6">
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead>
+                      <tr>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban A</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban B</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban C</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban D</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban E</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="0" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="1" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="2" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="3" /></td>
+                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue=">3" /></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rentang Jawaban (Pertanyaan 2)</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600">Nilai Min</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className={`w-full border ${errors.rentangMin2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
+                        value={rentangPertanyaan2.min}
+                        onChange={(e) => setRentangPertanyaan2({ ...rentangPertanyaan2, min: e.target.value })}
+                      />
+                      {errors.rentangMin2 && <p className="text-red-500 text-xs mt-1">{errors.rentangMin2}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">Nilai Max</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className={`w-full border ${errors.rentangMax2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
+                        value={rentangPertanyaan2.max}
+                        onChange={(e) => setRentangPertanyaan2({ ...rentangPertanyaan2, max: e.target.value })}
+                      />
+                      {errors.rentangMax2 && <p className="text-red-500 text-xs mt-1">{errors.rentangMax2}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Edit Rentang Skor */}
           <div className="mb-6 overflow-x-auto">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Edit Rentang Skor (0-4)</h3>
             <table className="w-full border-collapse border border-gray-300 text-sm">
@@ -728,7 +693,6 @@ export default function PilihJawabanPage() {
                 </tr>
               </tbody>
             </table>
-            <p className="text-xs text-gray-500 mt-1">Edit rentang nilai untuk setiap skor.</p>
           </div>
 
           {/* Buttons */}
