@@ -331,7 +331,7 @@ const allAnswered = questions.slice(0, 29).every(q => {
                     <div className="flex justify-end flex-wrap gap-3 pt-4">
                     <Button
                     variant="outline" 
-                    icon={() => <X className="text-red-600" />}
+                    icon={X}
                     iconPosition="left"
                     className="px-14 text-red-600 border-red-500 over:bg-red-100 "
                     onClick={() => {
@@ -346,14 +346,12 @@ const allAnswered = questions.slice(0, 29).every(q => {
                       
                       <Button 
                         variant="outline"
-                        icon={() => <ArrowLeft className="text-red-600" />}
+                        icon={X}
                         iconPosition="left"
                         className="px-8"
-                      onClick={handlePrevious} >
+                        onClick={handlePrevious} >
                         Previous Question
                       </Button>
-        
-                        
                       )}
                       {currentIndex < questions.length - 1 && (
                         <Button
