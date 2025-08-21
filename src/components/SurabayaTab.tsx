@@ -247,11 +247,15 @@ export default function SurabayaTab() {
           }}
           title="Reset Jawaban"
           message="Apakah kamu yakin ingin menghapus jawaban pada soal ini?"
-          warningTitle="⚠️ Perhatian"
-          warningMessage="Jawaban yang sudah kamu isi akan dihapus dan tidak dapat dikembalikan."
           confirmLabel="Ya, hapus"
           cancelLabel="Batal"
-        />
+        >
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md text-left text-sm">
+    <div className="font-bold mb-1">⚠ Peringatan</div>
+    <div>Data yang sudah diubah tidak akan disimpan.</div>
+  </div>
+
+          </ModalConfirm>
       )}
     </div>
   );
