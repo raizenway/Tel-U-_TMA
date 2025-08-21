@@ -62,12 +62,11 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     { name: "Start Assessment", path: "assessment", icon: <FileText size={20} /> },
     {
       name: "Assessment Result",
-      path: "table",
       icon: <ChartLine size={20} />,
       submenu: [
         {
           name: "Approval Assessment",
-          path: "approvall",
+          path: "approval",
           icon: <ClipboardList size={18} />,
         },
       ],

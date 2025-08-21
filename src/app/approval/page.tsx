@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import Table from "@/components/Table";
-import { Download, Printer, ChevronDown, Copy } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import TableUpdate from "@/components/TableUpdate";
+import { Printer, ChevronDown, Copy } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
+import * as XLSX from "xlsx";
+import { useRouter } from "next/navigation";
 
 const TablePage = () => {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCampus, setSelectedCampus] = useState("Tel-U Jakarta");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -14,6 +17,9 @@ const TablePage = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
   const [tab, setTab] = useState("approval-assessment");
+
+  // ⬇️ state baru untuk sorting
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
   const rowsPerPage = 10;
 
@@ -25,16 +31,16 @@ const TablePage = () => {
   ];
 
   const columns = [
-  { header: "No", key: "nomor", width: "60px" },
-  { header: "Variable", key: "variable", width: "160px" },
-  { header: "Indikator", key: "indikator", width: "320px" },
-  { header: "Pertanyaan", key: "pertanyaan", width: "320px" },
-  { header: "Jawaban", key: "jawaban", width: "120px" },
-  { header: "Skor", key: "skor", width: "320px" },
-];
+    { header: "No", key: "nomor", width: "60px", sortable: true },
+    { header: "Nama Variable", key: "variable", width: "300px", sortable: true },
+    { header: "Indikator", key: "indikator", width: "320px" },
+    { header: "Pertanyaan", key: "pertanyaan", width: "320px" },
+    { header: "Jawaban", key: "jawaban", width: "120px" },
+    { header: "Skor", key: "skor", width: "320px" },
+    { header: "Tipe Soal", key: "tipeSoal", width: "160px" },
+  ];
 
-
-  // Contoh data dummy (biar gampang test)
+  // Data dummy
   const data = Array.from({ length: 20 }, (_, i) => ({
     variable: i % 2 === 0 ? "V1 (Mutu)" : "V4 (Sarana & Prasarana)",
     indikator:
@@ -43,46 +49,78 @@ const TablePage = () => {
         : "Luas perpustakaan di TUNC (m2)",
     pertanyaan:
       i % 2 === 0
-        ? "Jumlah sertifikasi/akreditasi dalam lingkup Direktorat TUNC yang diberikan oleh lembaga internasional bereputasi"
+        ? "Jumlah sertifikasi/akreditasi dalam lingkup Direktorat TUNC oleh lembaga internasional"
         : "Luas perpustakaan di TUNC (m2)",
     jawaban: i % 2 === 0 ? "2" : "300",
     skor: i % 2 === 0 ? "2" : "4",
     tipeSoal: i % 2 === 0 ? "Pilihan Ganda" : "Isian",
   }));
 
+  // 🔍 search
   const filteredData = data.filter((row) =>
     Object.values(row).some((val) =>
       val?.toString().toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-  const paginatedData = filteredData.slice(
+  // 🔽 sorting
+  const sortedData = useMemo(() => {
+    let sortableData = [...filteredData];
+    if (sortConfig !== null) {
+      sortableData.sort((a, b) => {
+        const aVal = sortConfig.key === "nomor"
+          ? filteredData.indexOf(a) + 1
+          : a[sortConfig.key];
+        const bVal = sortConfig.key === "nomor"
+          ? filteredData.indexOf(b) + 1
+          : b[sortConfig.key];
+
+        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableData;
+  }, [filteredData, sortConfig]);
+
+  // 📄 pagination
+  const totalPages = Math.ceil(sortedData.length / rowsPerPage);
+  const paginatedData = sortedData.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
 
+  // ⬇️ handle sort klik header
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
   const handlePrint = () => window.print();
 
   const handleDownload = () => {
-    const tsv =
-      columns.map((col) => col.header).join("\t") +
-      "\n" +
-      filteredData
-        .map((row, i) =>
-          columns
-            .map((col) => (col.key === "nomor" ? i + 1 : row[col.key] || ""))
-            .join("\t")
-        )
-        .join("\n");
+    const worksheetData = [
+      columns.map((col) => col.header),
+      ...paginatedData.map((row, index) =>
+        columns.map((col) => {
+          if (col.key === "nomor")
+            return (currentPage - 1) * rowsPerPage + index + 1;
+          return row[col.key] || "";
+        })
+      ),
+    ];
 
-    const blob = new Blob([tsv], { type: "text/tab-separated-values" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "tabel.tsv";
-    a.click();
-    URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    worksheet["!cols"] = columns.map((col) => ({
+      wch: parseInt(col.width) / 5,
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Assessment Data");
+    XLSX.writeFile(workbook, `assessment_data_page_${currentPage}.xlsx`);
   };
 
   const handleCopy = () => {
@@ -92,7 +130,9 @@ const TablePage = () => {
       filteredData
         .map((row, i) =>
           columns
-            .map((col) => (col.key === "nomor" ? i + 1 : row[col.key] || ""))
+            .map((col) =>
+              col.key === "nomor" ? i + 1 : row[col.key] || ""
+            )
             .join("\t")
         )
         .join("\n");
@@ -127,13 +167,18 @@ const TablePage = () => {
             />
 
             <div className="flex gap-2 items-center">
-              <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
+              <Button variant="outline" icon={Copy} onClick={handleCopy}>
                 Copy
               </Button>
-              <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
+              <Button variant="outline" icon={Printer} onClick={handlePrint}>
                 Print
               </Button>
-              <Button variant="outline" icon={Download} iconPosition="left" onClick={handleDownload}>
+              <Button
+                variant="outline"
+                icon={ChevronDown}
+                iconPosition="right"
+                onClick={handleDownload}
+              >
                 Download
               </Button>
 
@@ -166,21 +211,17 @@ const TablePage = () => {
             </div>
           </div>
 
-          <div className="border rounded-lg" style={{ maxHeight: "500px" }}>
-            {/* Scroll horizontal paling luar */}
-            <div style={{ overflowX: "scroll" }}>
-              {/* Scroll vertical di dalam */}
-              <div style={{ maxHeight: "500px", overflowY: "auto"  }}>
-                <Table
-                  columns={columns}
-                  data={paginatedData}
-                  currentPage={currentPage}
-                  rowsPerPage={rowsPerPage}
-                />
-              </div>
-            </div>
+          {/* ⬇️ Table + Scroll */}
+          <div className="w-full overflow-x-auto border rounded-lg">
+            <TableUpdate
+              columns={columns}
+              data={paginatedData}
+              currentPage={currentPage}
+              rowsPerPage={rowsPerPage}
+              onSort={handleSort}
+              sortConfig={sortConfig}
+            />
           </div>
-
 
           {/* Pagination & Actions */}
           <div className="flex justify-between items-center mt-4 flex-wrap gap-4">
