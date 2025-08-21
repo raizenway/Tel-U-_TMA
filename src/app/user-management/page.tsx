@@ -6,6 +6,7 @@ import SuccessNotification from '@/components/SuccessNotification';
  import Button  from "@/components/button";
 import { Download, Printer, ChevronDown, Copy, } from "lucide-react";
 import { FaSearch, FaEdit,FaTimes, FaRedo } from "react-icons/fa";
+import * as XLSX from 'xlsx';
 
 
 
@@ -74,12 +75,22 @@ export default function UserManagementPage() {
   }, [pathname]);
 
   // ✅ Filter hanya field string agar pencarian tidak error
-  const filteredUsers = userList.filter((user) => {
-    const search = searchTerm.toLowerCase();
-    return Object.values(user).some((value) => 
-      typeof value === 'string' && value.toLowerCase().includes(search)
-    );
-  });
+const filteredUsers = userList.filter((user) => {
+  if (!searchTerm) return true; // Jika kosong, tampilkan semua
+
+  const search = searchTerm.toLowerCase();
+
+  return (
+    user.userId.toLowerCase().includes(search) ||
+    user.username.toLowerCase().includes(search) ||
+    user.namaUser.toLowerCase().includes(search) ||
+    user.role.toLowerCase().includes(search) ||
+    user.status.toLowerCase().includes(search) ||
+    (user.namaPIC && user.namaPIC.toLowerCase().includes(search)) ||
+    (user.email && user.email.toLowerCase().includes(search)) ||
+    (user.nomorHp && user.nomorHp.toLowerCase().includes(search))
+  );
+});
 
   // Pagination
   const totalItems = filteredUsers.length;
@@ -287,31 +298,42 @@ export default function UserManagementPage() {
 
 // Tambahkan fungsi ini di dalam component UserManagementPage
 const handleDownload = () => {
+  // Pastikan kita di browser
   if (typeof window === 'undefined') return;
 
-  // Header CSV/TSV
-  const header = "User ID\tUser Name\tNama User\tRole\tStatus\n";
+  // Siapkan data untuk Excel
+  const worksheetData = [
+    ['User ID', 'User Name', 'Password', 'Nama User', 'Role', 'Status'], // Header
+    ...filteredUsers.map(user => [
+      user.userId,
+      user.username,
+      '••••••••', // Hindari password asli
+      user.namaUser,
+      user.role,
+      user.status === 'active' ? 'Aktif' : 'Nonaktif'
+    ])
+  ];
 
-  // Buat baris dari data langsung (bukan dari DOM)
-  const rows = filteredUsers
-    .map(
-      (user) =>
-        `${user.userId}\t${user.username}\t${user.namaUser}\t${user.role}\t${user.status}`
-    )
-    .join("\n");
+  // Buat worksheet dari array
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
-  const tsv = header + rows;
+  // Styling: Lebar kolom
+  const colWidths = [
+    { wch: 15 }, // User ID
+    { wch: 20 }, // User Name
+    { wch: 15 }, // Password
+    { wch: 25 }, // Nama User
+    { wch: 20 }, // Role
+    { wch: 15 }  // Status
+  ];
+  worksheet['!cols'] = colWidths;
 
-  const blob = new Blob([tsv], { type: "text/tab-separated-values;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+  // Buat workbook dan tambahkan worksheet
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Daftar Pengguna');
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "user_list.tsv"; // Ganti .csv jika mau CSV
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Download file
+  XLSX.writeFile(workbook, 'daftar_pengguna.xlsx');
 };
 
 
@@ -404,64 +426,69 @@ const handleDownload = () => {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto relative w-full max-h-[600px] max-w-screen-lg">
-            <table id="user-table" className="w-full text-left border border-gray-300 text-sm bg-white min-w-max">
-              <thead className="bg-gray-200 sticky top-0 z-50">
-                <tr>
-                  <th className="px-4 py-3 border w-112px">User ID</th>
-                  <th className="px-4 py-3 border w-160px">User Name</th>
-                  <th className="px-4 py-3 border w-226px">Password</th>
-                  <th className="px-4 py-3 border w-226px">Nama User</th>
-                  <th className="px-4 py-3 border w-226px">Role</th>
-                  <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-199px">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center p-4 text-gray-500 bg-white">
-                      Belum ada user yang ditambahkan.
-                    </td>
-                  </tr>
+{/* Table */}
+<div className="overflow-x-auto w-full max-h-[600px]">
+  <table
+    id="user-table"
+    className="w-full border border-gray-300 text-sm bg-white"
+    style={{ tableLayout: 'auto', minWidth: 'max-content' }}
+  >
+    <thead className="bg-gray-200 sticky top-0 z-50">
+      <tr>
+        <th className="px-4 py-3 border w-auto">User ID</th>
+        <th className="px-4 py-3 border w-auto">User Name</th>
+        <th className="px-4 py-3 border w-auto">Password</th>
+        <th className="px-4 py-3 border w-auto">Nama User</th>
+        <th className="px-4 py-3 border w-auto">Role</th>
+        <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-auto">Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {currentUsers.length === 0 ? (
+        <tr>
+          <td colSpan={6} className="text-center p-4 text-gray-500 bg-white">
+            Belum ada user yang ditambahkan.
+          </td>
+        </tr>
+      ) : (
+        currentUsers.map((user, index) => (
+          <tr key={index} className="hover:bg-gray-50 align-top">
+            <td className="px-4 py-3 border">{user.userId}</td>
+            <td className="px-4 py-3 border">{user.username}</td>
+            <td className="px-4 py-3 border">••••••••</td>
+            <td className="px-4 py-3 border">{user.namaUser}</td>
+            <td className="px-4 py-3 border">{user.role}</td>
+            <td className="px-4 py-5 sticky right-0 bg-white z-40 border whitespace-nowrap">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleEditUser(user)}
+                  className="text-blue-500 flex items-center gap-1 hover:underline"
+                >
+                  <FaEdit /> Edit
+                </button>
+                {user.status === 'active' ? (
+                  <button
+                    onClick={() => toggleStatus(index)}
+                    className="text-red-600 flex items-center gap-1 hover:underline"
+                  >
+                    <FaTimes /> Deactivate
+                  </button>
                 ) : (
-                  currentUsers.map((user, index) => (
-                    <tr key={index} className="hover:bg-gray-50 align-top">
-                      <td className="px-4 py-3 border">{user.userId}</td>
-                      <td className="px-4 py-3 border">{user.username}</td>
-                      <td className="px-4 py-3 border">••••••••</td>
-                      <td className="px-4 py-3 border">{user.namaUser}</td>
-                      <td className="px-4 py-3 border">{user.role}</td>
-                      <td className="px-10 py-5 sticky right-0 bg-white z-40 border w-28">
-                        <div className="flex gap-3 relative z-50">
-                          <button
-                            onClick={() => handleEditUser(user)}
-                            className="text-blue-500 flex items-center gap-1 hover:underline"
-                          >
-                            <FaEdit /> Edit
-                          </button>
-                          {user.status === 'active' ? (
-                            <button
-                              onClick={() => toggleStatus(index)}
-                              className="text-red-600 flex items-center gap-1 hover:underline"
-                            >
-                              <FaTimes /> Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => toggleStatus(index)}
-                              className="text-green-500 flex items-center gap-1 hover:underline"
-                            >
-                              <FaRedo /> Reactivate
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  <button
+                    onClick={() => toggleStatus(index)}
+                    className="text-green-500 flex items-center gap-1 hover:underline"
+                  >
+                    <FaRedo /> Reactivate
+                  </button>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
 
           {/* Pagination */}
           <div className="flex justify-between items-center mt-4 px-4">
@@ -516,7 +543,7 @@ const handleDownload = () => {
           title={
             targetStatus === 'inactive'
               ? 'Apakah kamu yakin, ingin mengnonaktifkan user ini?'
-              : 'Apakah kamu yakin, kamu ingin mengaktifkan kembali data ini?'
+              : 'Apakah kamu yakin, kamu akan mengaktifkan kembali data ini?'
           }
           header={
             targetStatus === 'inactive'
