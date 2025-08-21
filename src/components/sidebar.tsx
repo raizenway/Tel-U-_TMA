@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  LogOut,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -15,7 +14,6 @@ import {
   BookOpen,
   Users,
   FileText,
-  CheckSquare,
   Info,
 } from "lucide-react";
 
@@ -34,44 +32,41 @@ type SidebarProps = {
 
 export default function Sidebar({ onItemClick }: SidebarProps) {
   const router = useRouter();
-  const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null); // Hanya satu submenu terbuka
   const [collapsed, setCollapsed] = useState(false);
-
-  // ✅ TAMBAHAN BARU: State untuk menu aktif
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
 
-  // ✅ TAMBAHAN BARU: Fungsi klik yang juga set active
   const handleItemClick = (item: NavItem) => {
-    setActiveItem(item);
-    onItemClick(item);
+    if (item.path) {
+      setActiveItem(item);
+      onItemClick(item);
+    }
+    // ❌ Jangan set activeItem jika tidak punya path
   };
 
   const toggleSubmenu = (name: string) => {
-    setOpenSubmenus((prev) => ({ ...prev, [name]: !prev[name] }));
+    setActiveSubmenu(activeSubmenu === name ? null : name);
   };
 
   const toggleCollapse = () => {
     setCollapsed((prev) => !prev);
-    if (!collapsed) {
-      setOpenSubmenus({});
-    }
+    setActiveSubmenu(null); // Tutup semua submenu saat collapse/expand
   };
 
-  // 🔁 DIUBAH: HAPUS className pada semua ikon agar warna bisa berubah saat hover/aktif
   const navItems: NavItem[] = [
     {
       name: "Home",
       path: "welcome",
-      icon: <Home size={20} />, // ❌ DIHAPUS: className="text-gray-700"
+      icon: <Home size={20} />,
     },
     {
       name: "Start Assessment",
       path: "assessment",
-      icon: <FileText size={20} />, // ❌ DIHAPUS
+      icon: <FileText size={20} />,
     },
     {
       name: "Assessment Result",
-      icon: <ChartLine size={20} />, // ❌ DIHAPUS
+      icon: <ChartLine size={20} />,
       submenu: [
         {
           name: "Approval Assessment",
@@ -82,29 +77,29 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     },
     {
       name: "About TMA",
-      icon: <Info size={20} />, // ❌ DIHAPUS
+      icon: <Info size={20} />,
       submenu: [
         {
           name: "Daftar Assessment",
           path: "daftar-assessment",
-          icon: <ClipboardList size={18} />, // ❌ DIHAPUS
+          icon: <ClipboardList size={18} />,
         },
         {
           name: "Maturity Level",
           path: "maturity-level",
-          icon: <ChartLine size={18} />, // ❌ DIHAPUS
+          icon: <ChartLine size={18} />,
         },
         {
           name: "Transformation Variable",
           path: "transformation-variable",
-          icon: <BookOpen size={18} />, // ❌ DIHAPUS
+          icon: <BookOpen size={18} />,
         },
       ],
     },
     {
       name: "User Management",
       path: "user-management",
-      icon: <Users size={20} />, // ❌ DIHAPUS
+      icon: <Users size={20} />,
     },
   ];
 
@@ -150,9 +145,9 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       <nav className="flex-1 px-4 mt-4 text-sm font-medium">
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
-            const isOpen = openSubmenus[item.name];
-            // ✅ TAMBAHAN BARU: Cek apakah menu ini aktif
-            const isActive = activeItem?.path === item.path;
+            // ✅ Hanya aktif jika punya path dan cocok
+            const isActive = item.path && activeItem?.path === item.path;
+            const isOpen = activeSubmenu === item.name;
 
             return (
               <div key={item.name} className="transition-all duration-200">
@@ -169,9 +164,9 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   onClick={() => {
                     if (item.submenu) {
                       toggleSubmenu(item.name);
-                      handleItemClick(item); // 🔁 DIUBAH: pakai handleItemClick agar bisa aktif
+                      // ❌ Jangan handleItemClick untuk parent
                     } else {
-                      handleItemClick(item); // 🔁 DIUBAH: ganti onItemClick → handleItemClick
+                      handleItemClick(item);
                     }
                   }}
                 >
@@ -182,13 +177,13 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
 
                   {/* Chevron hanya muncul jika tidak collapsed */}
                   {item.submenu && !collapsed && (
-                   <ChevronDown
-                suppressHydrationWarning
-                size={18}
-                className={`transition-transform duration-200 ${
-                  isOpen ? "rotate-180" : ""
-                } ${isActive ? "text-white" : "text-gray-400"}`}
-              />
+                    <ChevronDown
+                      suppressHydrationWarning
+                      size={18}
+                      className={`transition-transform duration-200 ${
+                        isOpen ? "rotate-180" : ""
+                      } ${isActive ? "text-white" : "text-gray-400"}`}
+                    />
                   )}
                 </div>
 
@@ -196,8 +191,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                 {item.submenu && isOpen && !collapsed && (
                   <div className="ml-4 mt-1 flex flex-col gap-1">
                     {item.submenu.map((subItem) => {
-                      // ✅ TAMBAHAN BARU: Cek apakah submenu aktif
-                      const isSubActive = activeItem?.path === subItem.path;
+                      const isSubActive = subItem.path && activeItem?.path === subItem.path;
                       return (
                         <div
                           key={subItem.name}
@@ -209,8 +203,8 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                             }
                           `}
                           onClick={(e) => {
-                            e.stopPropagation(); // ✅ Cegah memicu toggle submenu
-                            handleItemClick(subItem); // 🔁 DIUBAH: pakai handleItemClick
+                            e.stopPropagation();
+                            handleItemClick(subItem);
                           }}
                         >
                           <span className="mr-2">{subItem.icon}</span>
@@ -225,7 +219,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
           })}
         </div>
       </nav>
-
     </aside>
   );
 }
