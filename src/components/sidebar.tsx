@@ -73,6 +73,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       onItemClick(item);
       setOpenSubmenus(new Set()); // Opsional: tutup semua submenu setelah pilih item
     }
+
   };
 
   const navItems: NavItem[] = [
