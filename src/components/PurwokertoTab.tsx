@@ -127,35 +127,37 @@
       };
 
       const handleConfirm = () => {
-    // Ambil semua jawaban dan format untuk disimpan
-    const resultData = questions.map((q) => ({
-      no: q.id,
-      kode: q.section,
-      pertanyaan: q.question,
-      jawaban: answers[q.id] || "-",
-      status: answers[q.id] ? "Terisi" : "Kosong",
-    }));
+  // Ambil semua jawaban dan format untuk disimpan
+  const resultData = questions.map((q) => ({
+    no: q.id,
+    kode: q.section,
+    pertanyaan: q.question,
+    jawaban: answers[q.id] || "-",
+    evidence: answers[`evidence-${q.id}`] || "-",   // ✅ tambahkan evidence
+    status: answers[q.id] ? "Terisi" : "Kosong",
+  }));
 
-    // Simpan ke localStorage (bisa diganti kirim ke API)
-    const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
-    const newEntry = {
-      id: Date.now(), // ID unik
-      unit: "Tel-U Purwokerto", // bisa diambil dari context
-      tanggal: new Date().toLocaleDateString("id-ID"),
-      totalTerisi: Object.keys(answers).length,
-      data: resultData,
-    };
-    localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
-
-    // Tutup modal & tampilkan sukses
-    setShowModal(false);
-    setShowSuccess(true);
-
-    // Redirect setelah 1.5 detik
-    setTimeout(() => {
-      router.push("/assessmenttable");
-    }, 1500);
+  // Simpan ke localStorage (bisa diganti kirim ke API)
+  const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
+  const newEntry = {
+    id: Date.now(),
+    unit: "Tel-U Purwokerto",
+    tanggal: new Date().toLocaleDateString("id-ID"),
+    totalTerisi: Object.keys(answers).length,
+    data: resultData,
   };
+  localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
+
+  // Tutup modal & tampilkan sukses
+  setShowModal(false);
+  setShowSuccess(true);
+
+  // Redirect setelah 1.5 detik
+  setTimeout(() => {
+    router.push("/assessmenttable");
+  }, 1500);
+};
+
         const router = useRouter();
         const [showResetModal, setShowResetModal] = useState(false);
         const [resetQuestionId, setResetQuestionId] = useState<number | null>(null);
@@ -328,7 +330,30 @@ const allAnswered = questions.slice(0, 29).every(q => {
                       </div>
                     )}
 
-                    <div className="flex justify-end flex-wrap gap-3 pt-4">
+                    {current.id && (
+  <div className="mt-4">
+    <label className="block text-sm text-gray-800 mb-1">
+      Link Evidence
+    </label>
+    <input
+      type="url"
+      placeholder="Masukkan link evidence (jika ada)"
+      className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+      value={answers[`evidence-${current.id}`] || ""}
+      onChange={(e) => {
+        setAnswers((prev) => ({
+          ...prev,
+          [`evidence-${current.id}`]: e.target.value,
+        }));
+        setIsFormDirty(true);
+        setFormBelumDisimpan(true);
+      }}
+    />
+  </div>
+)}
+
+
+                    <div className="flex justify-end items-center gap-3 pt-4">
                     <Button
                     variant="outline" 
                     icon={X}
@@ -348,7 +373,7 @@ const allAnswered = questions.slice(0, 29).every(q => {
                         variant="outline"
                         icon={X}
                         iconPosition="left"
-                        className="px-8"
+                        className="px-6"
                         onClick={handlePrevious} >
                         Previous Question
                       </Button>
@@ -358,7 +383,7 @@ const allAnswered = questions.slice(0, 29).every(q => {
                           variant="simpan"
                           icon={ArrowRight}
                           iconPosition="right"
-                          className="px-8"
+                          className="px-6"
                         onClick={handleNext}>
                           Next Question
                         </Button>
@@ -485,47 +510,59 @@ const allAnswered = questions.slice(0, 29).every(q => {
           </Button>
                   
           <Button
-        variant="primary"
-        onClick={() => {
-          // Ambil semua jawaban
-          const allAnswers = Object.keys(answers).map(id => ({
-            id,
-            jawaban: answers[id],
-          }));
-          // Hitung skor
-          const skorTinggi = allAnswers.filter(a => a.jawaban === "3" || a.jawaban === "Lebih dari 3").length;
-          const hasilSkor = Math.min(4, Math.ceil(skorTinggi / 7));
-          // Data yang akan disimpan
-          const submissionData = {
-            id: 3,
-            logo: "school",
-            nama: "Tel-U Purwokerto",
-            tanggal: new Date().toLocaleDateString("id-ID"),
-            skor: [hasilSkor, hasilSkor, hasilSkor, hasilSkor],
-            hasil: hasilSkor,
-            status: "Lulus",
-            aksi: "view",
-          };
-          // Simpan ke localStorage
-          localStorage.setItem("assessment_submission_purwokerto", JSON.stringify(submissionData));
-          setFormBelumDisimpan(false);
+  variant="primary"
+  onClick={() => {
+    // Ambil semua jawaban
+    const allAnswers = Object.keys(answers).map((id) => ({
+      id,
+      jawaban: answers[id],
+      evidence: answers[`evidence-${id}`] || "-", // ✅ ikut simpan evidence
+    }));
 
-          // Jalankan proses simpan ke history
-          handleConfirm();
-          setShowSuccess(true);
+    // Hitung skor
+    const skorTinggi = allAnswers.filter(
+      (a) => a.jawaban === "3" || a.jawaban === "Lebih dari 3"
+    ).length;
+    const hasilSkor = Math.min(4, Math.ceil(skorTinggi / 7));
 
-          // 🔔 Tambahkan: tanda notifikasi untuk halaman tujuan
-          localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+    // Data yang akan disimpan
+    const submissionData = {
+      id: 3,
+      logo: "school",
+      nama: "Tel-U Purwokerto",
+      tanggal: new Date().toLocaleDateString("id-ID"),
+      skor: [hasilSkor, hasilSkor, hasilSkor, hasilSkor],
+      hasil: hasilSkor,
+      status: "Lulus",
+      aksi: "view",
+      evidence: Object.fromEntries(
+        questions.map((q) => [q.id, answers[`evidence-${q.id}`] || "-"]) // ✅ evidence per soal
+      ),
+    };
 
-          // 🔧 Perbaiki typo di URL
-          setTimeout(() => {
-            router.push("/assessment/assessmenttable"); // ✅ Perbaiki dari "/assesmenttable"
-          }, 1500);
-        }}
-        className="px-4 py-2 text-white rounded-md"
-      >
-        Submit
-      </Button>
+    // Simpan ke localStorage
+    localStorage.setItem(
+      "assessment_submission_purwokerto",
+      JSON.stringify(submissionData)
+    );
+    setFormBelumDisimpan(false);
+
+    // Jalankan proses simpan ke history
+    handleConfirm();
+    setShowSuccess(true);
+
+    // 🔔 Tambahkan: tanda notifikasi untuk halaman tujuan
+    localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+
+    // 🔧 Redirect
+    setTimeout(() => {
+      router.push("/assessment/assessmenttable");
+    }, 1500);
+  }}
+  className="px-4 py-2 text-white rounded-md"
+>
+  Submit
+</Button>
 
         </div>
         <SuccessNotification

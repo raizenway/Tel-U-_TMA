@@ -1,3 +1,4 @@
+// components/TableUpdate.tsx
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -8,7 +9,7 @@ interface Column {
   key: string;
   width?: string;
   className?: string;
-  sortable?: boolean; // tambahkan flag sortable
+  sortable?: boolean;
 }
 
 interface TableUpdateProps {
@@ -32,7 +33,7 @@ export default function TableUpdate({
 }: TableUpdateProps) {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
-  // fungsi sorting
+  // Sorting
   const sortedData = useMemo(() => {
     if (!sortConfig) return data;
     return [...data].sort((a, b) => {
@@ -45,7 +46,7 @@ export default function TableUpdate({
     });
   }, [data, sortConfig]);
 
-  // handle klik kolom untuk sorting
+  // Handle sort
   const handleSort = (key: string) => {
     if (sortConfig?.key === key) {
       setSortConfig({
@@ -58,11 +59,12 @@ export default function TableUpdate({
   };
 
   return (
-    <div className="w-full max-h-[400px] overflow-x-auto border rounded-lg">
-      <div className="flex-1 overflow-y-auto overflow-x-visible">
-        <table className="min-w-[1000px] w-full border-collapse">
-          <thead className="bg-gray-100 sticky top-0 z-10">
-            <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+    <div className="p-6 bg-white  rounded-lg  mx-auto w-full max-w-4xl mt-6">
+      {/* Container scrollable */}
+      <div className="overflow-x-auto max-h-[400px]">
+        <table className="min-w-full border-collapse">
+          <thead className="bg-gray-100 z-10">
+            <tr className="text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -90,7 +92,7 @@ export default function TableUpdate({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {sortedData.length > 0 ? (
               sortedData.map((item, index) => (
                 <tr key={index} className="hover:bg-gray-50">
@@ -158,5 +160,3 @@ export default function TableUpdate({
     </div>
   );
 }
-
-                     
