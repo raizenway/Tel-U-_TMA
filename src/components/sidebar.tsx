@@ -72,6 +72,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       setActiveItem(item);
       onItemClick(item);
     }
+
   };
 
   const navItems: NavItem[] = [
