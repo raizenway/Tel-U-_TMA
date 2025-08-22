@@ -170,13 +170,14 @@ export default function AddMaturityLevelPage() {
           </div>
         </div>
         <div className="flex justify-end gap-4 mt-4">
-          <Button
+         <Button
             onClick={() => router.push("/maturity-level")}
-            variant="outline"
+            variant="ghost"
             icon={X}
+            iconColor="text-red-600"
             iconPosition="left"
-            className="rounded-[12px] px-17 py-2"
-            >
+            className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+          >
             Batal
           </Button>
 

@@ -50,7 +50,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
 
   const toggleCollapse = () => {
     setCollapsed((prev) => !prev);
-    setActiveSubmenu(null); // Tutup semua submenu saat collapse/expand
   };
 
   const navItems: NavItem[] = [
