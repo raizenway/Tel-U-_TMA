@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -32,25 +32,48 @@ type SidebarProps = {
 
 export default function Sidebar({ onItemClick }: SidebarProps) {
   const router = useRouter();
-  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null); // Hanya satu submenu terbuka
+  const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
+
+  // Toggle submenu: buka/tutup saat diklik
+  const toggleSubmenu = (name: string) => {
+    const newOpenSubmenus = new Set(openSubmenus);
+    if (newOpenSubmenus.has(name)) {
+      newOpenSubmenus.delete(name); // klik lagi → tutup
+    } else {
+      newOpenSubmenus.add(name);   // buka
+    }
+    setOpenSubmenus(newOpenSubmenus);
+  };
+
+  const toggleCollapse = () => {
+    setCollapsed((prev) => !prev);
+    setOpenSubmenus(new Set()); // Tutup semua submenu saat collapse/expand
+  };
+
+  // Tutup semua submenu saat klik di luar sidebar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const sidebar = document.querySelector("aside");
+      if (sidebar && !sidebar.contains(e.target as Node)) {
+        setOpenSubmenus(new Set());
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleItemClick = (item: NavItem) => {
     if (item.path) {
       setActiveItem(item);
       onItemClick(item);
+      setOpenSubmenus(new Set()); // Opsional: tutup semua submenu setelah pilih item
     }
-    // ❌ Jangan set activeItem jika tidak punya path
-  };
 
-  const toggleSubmenu = (name: string) => {
-    setActiveSubmenu(activeSubmenu === name ? null : name);
-  };
-
-  const toggleCollapse = () => {
-    setCollapsed((prev) => !prev);
-    setActiveSubmenu(null); // Tutup semua submenu saat collapse/expand
   };
 
   const navItems: NavItem[] = [
@@ -70,8 +93,13 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       submenu: [
         {
           name: "Approval Assessment",
-          path: "approvall",
+          path: "approval",
           icon: <ClipboardList size={18} className="text-gray-600" />,
+        },
+        {
+          name: "Assessment Result",
+          path: "assessment-result",
+          icon: <ChartLine size={18} className="text-gray-600" />,
         },
       ],
     },
@@ -109,23 +137,23 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     >
       {/* Logo */}
       <div className="px-6 py-8 flex items-center">
-         {collapsed ? (
-            <Image
-              src="/Logo v1.png"   // logo kecil
-              alt="Logo Telkom University"
-              width={40}
-              height={40}
-              priority
-            />
-          ) : (
-            <Image
-              src="/Logo.png"    // logo full
-              alt="Logo Telkom University"
-              width={190}
-              height={80}
-              priority
-            />
-          )}
+        {collapsed ? (
+          <Image
+            src="/Logo v1.png"
+            alt="Logo Telkom University"
+            width={40}
+            height={40}
+            priority
+          />
+        ) : (
+          <Image
+            src="/Logo.png"
+            alt="Logo Telkom University"
+            width={190}
+            height={80}
+            priority
+          />
+        )}
         <button
           onClick={toggleCollapse}
           className="ml-auto p-2 text-gray-500 hover:text-gray-700 transition"
@@ -155,9 +183,8 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       <nav className="flex-1 px-4 mt-4 text-sm font-medium">
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
-            // ✅ Hanya aktif jika punya path dan cocok
             const isActive = item.path && activeItem?.path === item.path;
-            const isOpen = activeSubmenu === item.name;
+            const isOpen = openSubmenus.has(item.name);
 
             return (
               <div key={item.name} className="transition-all duration-200">
@@ -174,7 +201,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   onClick={() => {
                     if (item.submenu) {
                       toggleSubmenu(item.name);
-                      // ❌ Jangan handleItemClick untuk parent
                     } else {
                       handleItemClick(item);
                     }
@@ -188,7 +214,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   {/* Chevron hanya muncul jika tidak collapsed */}
                   {item.submenu && !collapsed && (
                     <ChevronDown
-                      suppressHydrationWarning
                       size={18}
                       className={`transition-transform duration-200 ${
                         isOpen ? "rotate-180" : ""
@@ -217,7 +242,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                             handleItemClick(subItem);
                           }}
                         >
-                          <span className="mr-2">{subItem.icon}</span>
+                          {subItem.icon && <span className="mr-2">{subItem.icon}</span>}
                           {subItem.name}
                         </div>
                       );

@@ -46,7 +46,10 @@ export default function EditMaturityPage() {
     const savedData = localStorage.getItem("maturityData");
     if (savedData && id !== undefined) {
       const parsed = JSON.parse(savedData);
+
+      // Update record sesuai index
       parsed[Number(id)] = formData;
+
       localStorage.setItem("maturityData", JSON.stringify(parsed));
     }
 
@@ -125,7 +128,10 @@ export default function EditMaturityPage() {
             <button
               type="button"
               onClick={() => {
-                localStorage.setItem("maturityTempForm", JSON.stringify(formData));
+                localStorage.setItem(
+                  "maturityTempForm",
+                  JSON.stringify(formData)
+                );
                 router.push("/maturity-level/deskripsi-per-variabel");
               }}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
@@ -140,25 +146,26 @@ export default function EditMaturityPage() {
 
         {/* Buttons */}
         <div className="flex justify-end gap-4 mt-6">
-           <Button
-                onClick={() => router.push("/maturity-level")}
-                variant="outline"
-                icon={X}
-                iconPosition="left"
-                className="rounded-[12px] px-17 py-2"
-              >
-                Batal
-              </Button>
+          <Button
+            onClick={() => router.push("/maturity-level")}
+            variant="ghost"
+            icon={X}
+            iconColor="text-red-600"
+            iconPosition="left"
+            className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+          >
+            Batal
+          </Button>
 
-              <Button
-                variant="primary"
-                type="submit"
-                icon={Save}
-                iconPosition="left"
-                className="rounded-[12px] px-17 py-2 text-sm font-semibold"
-              >
-                Simpan
-              </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            icon={Save}
+            iconPosition="left"
+            className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+          >
+            Simpan
+          </Button>
         </div>
       </form>
     </div>

@@ -347,22 +347,24 @@ const TablePage = () => {
       </ModalConfirm>
 
       {/* Modal Deskripsi per Variabel */}
-        <ModalConfirm
-          isOpen={showModal}
-          onConfirm={() => setShowModal(false)}
-          onCancel={() => setShowModal(false)}
-          title=""
-          header="Deskripsi per Variabel"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {selectedDeskripsiList.map((desc, i) => (
-              <div key={i} className="bg-purple-50 border rounded p-3">
-                <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-                <p className="text-sm text-gray-700">{desc}</p>
-              </div>
-            ))}
-          </div>
-           <div className="flex justify-center mt-6">
+       <ModalConfirm
+  isOpen={showModal}
+  onCancel={() => setShowModal(false)}
+  onConfirm={() => {}}  
+  title=""
+  header="Deskripsi per Variabel"
+>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {selectedDeskripsiList.map((desc, i) => (
+      <div key={i} className="bg-purple-50 border rounded p-3">
+        <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
+        <p className="text-sm text-gray-700">{desc}</p>
+      </div>
+    ))}
+  </div>
+
+  {/* tombol custom */}
+  <div className="flex justify-center mt-6">
     <Button
       variant="simpan"
       className="px-30 py-2 text-lg rounded-md"
@@ -371,7 +373,8 @@ const TablePage = () => {
       Tutup
     </Button>
   </div>
-        </ModalConfirm>
+</ModalConfirm>
+
 
     </div>
   );
