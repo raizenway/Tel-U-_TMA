@@ -71,7 +71,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     if (item.path) {
       setActiveItem(item);
       onItemClick(item);
-      setOpenSubmenus(new Set()); // Opsional: tutup semua submenu setelah pilih item
     }
   };
 
