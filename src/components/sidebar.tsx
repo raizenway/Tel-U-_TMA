@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -32,23 +32,47 @@ type SidebarProps = {
 
 export default function Sidebar({ onItemClick }: SidebarProps) {
   const router = useRouter();
-  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null); // submenu terbuka
+  const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
+
+  // Toggle submenu: buka/tutup saat diklik
+  const toggleSubmenu = (name: string) => {
+    const newOpenSubmenus = new Set(openSubmenus);
+    if (newOpenSubmenus.has(name)) {
+      newOpenSubmenus.delete(name); // klik lagi → tutup
+    } else {
+      newOpenSubmenus.add(name);   // buka
+    }
+    setOpenSubmenus(newOpenSubmenus);
+  };
+
+  const toggleCollapse = () => {
+    setCollapsed((prev) => !prev);
+    setOpenSubmenus(new Set()); // Tutup semua submenu saat collapse/expand
+  };
+
+  // Tutup semua submenu saat klik di luar sidebar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const sidebar = document.querySelector("aside");
+      if (sidebar && !sidebar.contains(e.target as Node)) {
+        setOpenSubmenus(new Set());
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleItemClick = (item: NavItem) => {
     if (item.path) {
       setActiveItem(item);
       onItemClick(item);
     }
-  };
 
-  const toggleSubmenu = (name: string) => {
-    setActiveSubmenu(activeSubmenu === name ? null : name);
-  };
-
-  const toggleCollapse = () => {
-    setCollapsed((prev) => !prev);
   };
 
   const navItems: NavItem[] = [
@@ -70,6 +94,11 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
           name: "Approval Assessment",
           path: "approval",
           icon: <ClipboardList size={18} className="text-gray-600" />,
+        },
+        {
+          name: "Assessment Result",
+          path: "assessment-result",
+          icon: <ChartLine size={18} className="text-gray-600" />,
         },
       ],
     },
@@ -158,7 +187,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
             const isActive = item.path && activeItem?.path === item.path;
-            const isOpen = activeSubmenu === item.name;
+            const isOpen = openSubmenus.has(item.name);
 
             return (
               <div key={item.name} className="relative">
@@ -245,7 +274,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                             handleItemClick(subItem);
                           }}
                         >
-                          <span className="mr-2">{subItem.icon}</span>
+                          {subItem.icon && <span className="mr-2">{subItem.icon}</span>}
                           {subItem.name}
                         </div>
                       );
