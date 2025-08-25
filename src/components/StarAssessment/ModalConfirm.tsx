@@ -13,7 +13,7 @@
     confirmLabel?: string;
     cancelLabel?: string;
     hideHeader?: boolean;
-    children: React.ReactNode;
+    children?: React.ReactNode;
     footer?: React.ReactNode;
   }
 
