@@ -32,7 +32,7 @@ type SidebarProps = {
 
 export default function Sidebar({ onItemClick }: SidebarProps) {
   const router = useRouter();
-  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null); // Hanya satu submenu terbuka
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null); // submenu terbuka
   const [collapsed, setCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
 
@@ -41,7 +41,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       setActiveItem(item);
       onItemClick(item);
     }
-    // ❌ Jangan set activeItem jika tidak punya path
   };
 
   const toggleSubmenu = (name: string) => {
@@ -69,7 +68,7 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       submenu: [
         {
           name: "Approval Assessment",
-          path: "approvall",
+          path: "approval",
           icon: <ClipboardList size={18} className="text-gray-600" />,
         },
       ],
@@ -104,27 +103,27 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
 
   return (
     <aside
-      className={`${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}
+      className={`relative ${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}
     >
       {/* Logo */}
       <div className="px-6 py-8 flex items-center">
-         {collapsed ? (
-            <Image
-              src="/Logo v1.png"   // logo kecil
-              alt="Logo Telkom University"
-              width={40}
-              height={40}
-              priority
-            />
-          ) : (
-            <Image
-              src="/Logo.png"    // logo full
-              alt="Logo Telkom University"
-              width={190}
-              height={80}
-              priority
-            />
-          )}
+        {collapsed ? (
+          <Image
+            src="/Logo v1.png"
+            alt="Logo Telkom University"
+            width={40}
+            height={40}
+            priority
+          />
+        ) : (
+          <Image
+            src="/Logo.png"
+            alt="Logo Telkom University"
+            width={190}
+            height={80}
+            priority
+          />
+        )}
         <button
           onClick={toggleCollapse}
           className="ml-auto p-2 text-gray-500 hover:text-gray-700 transition"
@@ -134,7 +133,11 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       </div>
 
       {/* User Info */}
-      <div className={`px-6 py-6 border-y flex items-center gap-4 ${collapsed ? "justify-center" : ""}`}>
+      <div
+        className={`px-6 py-6 border-y flex items-center gap-4 ${
+          collapsed ? "justify-center" : ""
+        }`}
+      >
         <Image
           src="/Logo (1).png"
           alt="User"
@@ -154,18 +157,15 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       <nav className="flex-1 px-4 mt-4 text-sm font-medium">
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
-            // ✅ Hanya aktif jika punya path dan cocok
             const isActive = item.path && activeItem?.path === item.path;
             const isOpen = activeSubmenu === item.name;
 
             return (
-              <div key={item.name} className="transition-all duration-200">
+              <div key={item.name} className="relative">
                 {/* Main Item */}
                 <div
-                  className={`
-                    w-full flex items-center px-4 py-3 rounded-lg 
-                    text-black 
-                    hover:bg-gradient-to-r hover:from-[#F34440] hover:to-[#818C9F] hover:text-white
+                  className={`w-full flex items-center px-4 py-3 rounded-lg 
+                    text-black hover:bg-gradient-to-r hover:from-[#F34440] hover:to-[#818C9F] hover:text-white
                     ${isActive ? "bg-gradient-to-r from-[#F34440] to-[#818C9F] text-white" : ""}
                     transition-all duration-300 ease-in-out cursor-pointer select-none font-medium
                     ${collapsed ? "justify-center" : "justify-between"}
@@ -173,7 +173,6 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   onClick={() => {
                     if (item.submenu) {
                       toggleSubmenu(item.name);
-                      // ❌ Jangan handleItemClick untuk parent
                     } else {
                       handleItemClick(item);
                     }
@@ -184,10 +183,8 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                     {!collapsed && <span className="ml-2">{item.name}</span>}
                   </span>
 
-                  {/* Chevron hanya muncul jika tidak collapsed */}
                   {item.submenu && !collapsed && (
                     <ChevronDown
-                      suppressHydrationWarning
                       size={18}
                       className={`transition-transform duration-200 ${
                         isOpen ? "rotate-180" : ""
@@ -196,19 +193,51 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
                   )}
                 </div>
 
-                {/* Submenu */}
+                {/* Submenu (expanded mode) */}
                 {item.submenu && isOpen && !collapsed && (
                   <div className="ml-4 mt-1 flex flex-col gap-1">
                     {item.submenu.map((subItem) => {
-                      const isSubActive = subItem.path && activeItem?.path === subItem.path;
+                      const isSubActive =
+                        subItem.path && activeItem?.path === subItem.path;
                       return (
                         <div
                           key={subItem.name}
-                          className={`
-                            px-4 py-2 rounded-md cursor-pointer flex items-center
-                            ${isSubActive
-                              ? "bg-gradient-to-r from-red-500 to-gray-600 text-white"
-                              : "text-gray-600 hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-600 hover:text-white"
+                          className={`px-4 py-2 rounded-md cursor-pointer flex items-center
+                            ${
+                              isSubActive
+                                ? "bg-gradient-to-r from-red-500 to-gray-600 text-white"
+                                : "text-gray-600 hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-600 hover:text-white"
+                            }
+                          `}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleItemClick(subItem);
+                          }}
+                        >
+                          <span className="mr-2">{subItem.icon}</span>
+                          {subItem.name}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Submenu (collapsed mode → floating) */}
+                {item.submenu && isOpen && collapsed && (
+                  <div
+                    className="absolute left-full top-0 ml-2 w-56 bg-white shadow-lg rounded-lg border p-2 z-50"
+                  >
+                    {item.submenu.map((subItem) => {
+                      const isSubActive =
+                        subItem.path && activeItem?.path === subItem.path;
+                      return (
+                        <div
+                          key={subItem.name}
+                          className={`px-3 py-2 rounded-md cursor-pointer flex items-center
+                            ${
+                              isSubActive
+                                ? "bg-gradient-to-r from-red-500 to-gray-600 text-white"
+                                : "text-gray-600 hover:bg-gradient-to-r hover:from-red-500 hover:to-gray-600 hover:text-white"
                             }
                           `}
                           onClick={(e) => {
