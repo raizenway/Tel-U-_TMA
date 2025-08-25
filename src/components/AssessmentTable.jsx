@@ -8,7 +8,7 @@ import SuccessNotification from '@/components/SuccessNotification';
 import Button from '@/components/button';
 import ModalConfirm from './StarAssessment/ModalConfirm';
 import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from 'lucide-react';
-import { Search, Copy, Printer, ChevronDown } from 'lucide-react';
+import { Search, Copy, Printer, Download } from 'lucide-react';
 
 const AssessmentTable = ({ hideStartButton = false }) => {
   const [data, setData] = useState([
@@ -46,6 +46,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
   // 🔁 Baca data dari localStorage
@@ -129,8 +130,12 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     { header: "Aksi", key: "aksi", width: "80px" },
   ];
 
-  // 🗂️ Data untuk tabel
-  const tableData = data.map((item, index) => ({
+  // 🗂️ Data untuk tabel (dengan filter search)
+  const filteredData = data.filter(item =>
+    item.nama.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const tableData = filteredData.map((item, index) => ({
     nomor: index + 1,
     logo: <div className="flex items-center">{item.logo}</div>,
     nama: (
@@ -217,6 +222,94 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     ),
   }));
 
+  // 🔍 SEARCH: Sudah terhubung via `searchTerm`
+
+  // 📋 COPY: Salin data sebagai teks (tab-delimited)
+  const handleCopy = () => {
+    const headers = ["No", "Nama UPPS/KC", "Tanggal Submit", "Skor 1", "Skor 2", "Skor 3", "Skor 4", "Hasil", "Status"];
+    const rows = tableData.map(row => [
+      row.nomor,
+      typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
+      row.tanggal,
+      row.skor1,
+      row.skor2,
+      row.skor3,
+      row.skor4,
+      row.hasil,
+      row.statusText
+    ].join('\t'));
+
+    const text = [headers.join('\t'), ...rows].join('\n');
+    navigator.clipboard.writeText(text).then(
+      () => alert('Data berhasil disalin!'),
+      () => alert('Gagal menyalin data.')
+    );
+  };
+
+  // 🖨️ PRINT: Cetak tabel
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    const content = `
+      <html>
+        <head><title>Cetak Assessment</title></head>
+        <body style="font-family:Arial,sans-serif;padding:20px;">
+          <h2>Pengisian Assessment</h2>
+          <table border="1" cellpadding="5" style="border-collapse:collapse;width:100%;">
+            <thead>
+              <tr>${columns.map(col => `<th style="text-align:left;background:#f3f4f6;">${col.header}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${tableData.map(row => `
+                <tr>
+                  <td>${row.nomor}</td>
+                  <td>🏫</td>
+                  <td>${typeof row.nama === 'string' ? row.nama : row.nama.props.children[0]}</td>
+                  <td>${row.tanggal}</td>
+                  <td>${row.skor1}</td>
+                  <td>${row.skor2}</td>
+                  <td>${row.skor3}</td>
+                  <td>${row.skor4}</td>
+                  <td>${row.hasil}</td>
+                  <td>${row.statusText}</td>
+                  <td>-</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onload = () => printWindow.print();
+  };
+
+  // 🔽 DOWNLOAD: Ekspor ke CSV
+  const handleDownloadCSV = () => {
+    const headers = ["No", "Nama UPPS/KC", "Tanggal Submit", "Skor 1", "Skor 2", "Skor 3", "Skor 4", "Hasil", "Status"];
+    const rows = tableData.map(row => [
+      row.nomor,
+      typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
+      row.tanggal,
+      row.skor1,
+      row.skor2,
+      row.skor3,
+      row.skor4,
+      row.hasil,
+      row.statusText
+    ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'assessment-data.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 md:p-8 bg-white rounded-lg shadow-md border border-gray-45 w-full relative mt-20 space-y-6 overflow-x-auto">
       <SuccessNotification
@@ -258,18 +351,39 @@ const AssessmentTable = ({ hideStartButton = false }) => {
               type="text"
               placeholder="Cari UPPS/KC..."
               className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-              onChange={(e) => console.log("Search:", e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" icon={Copy} iconPosition="left" onClick={() => console.log("Copy")} className="h-10 px-4 py-2 text-sm">
+            <Button
+              variant="outline"
+              icon={Copy}
+              iconPosition="left"
+              onClick={handleCopy}
+              className="h-10 px-4 py-2 text-sm"
+            >
               Copy
             </Button>
-            <Button variant="outline" icon={Printer} iconPosition="left" onClick={() => console.log("Print")} className="h-10 px-4 py-2 text-sm">
+
+            <Button
+              variant="outline"
+              icon={Printer}
+              iconPosition="left"
+              onClick={handlePrint}
+              className="h-10 px-4 py-2 text-sm"
+            >
               Print
             </Button>
-            <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={() => console.log("Download")} className="h-10 px-4 py-2 text-sm">
+
+            <Button
+              variant="outline"
+              icon={Download}
+              iconPosition="left"
+              onClick={handleDownloadCSV}
+              className="h-10 px-4 py-2 text-sm"
+            >
               Download
             </Button>
 
@@ -287,13 +401,15 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       </div>
 
       {/* Table Section */}
-      <Table
-        columns={columns}
-        data={tableData}
-        currentPage={1}
-        rowsPerPage={10}
-        className="w-full"
-      />
+      <div id="assessment-table">
+        <Table
+          columns={columns}
+          data={tableData}
+          currentPage={1}
+          rowsPerPage={10}
+          className="w-full"
+        />
+      </div>
     </div>
   );
 };

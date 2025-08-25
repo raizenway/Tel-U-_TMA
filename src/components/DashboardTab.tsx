@@ -50,14 +50,6 @@ interface CampusData {
   "Tel-U Bandung": number[];
 }
 
-interface StudentRow {
-  tahun: string;
-  Jakarta: number;
-  Bandung: number;
-  Purwokerto: number;
-  Surabaya: number;
-}
-
 export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
@@ -236,6 +228,14 @@ export default function DashboardTab() {
     "Tel-U Purwokerto": "#ff7300",
   };
 
+  // 🔹 🔶 GANTI WARNA 🔶 🔹
+  const studentColors = [
+    "#A966FF", // 2021  
+    "#FF0000", // 2022 
+    "#5D77ff", // 2023 
+    "#FFB930", // 2024 
+  ];
+
   return (
     <div className="space-y-8 px-4 py-6">
       {/* Stat Cards */}
@@ -340,12 +340,12 @@ export default function DashboardTab() {
               <YAxis />
               <Tooltip />
               <Legend />
-              {studentYears.map((year) => (
+              {studentYears.map((year, index) => (
                 <Bar
                   key={year}
                   dataKey={year}
-                  fill={`hsl(${(parseInt(year) - 2021) * 30}, 70%, 50%)`}
-                  radius={[4, 4, 0, 0]}
+                  fill={studentColors[index % studentColors.length]} // 🔥 Warna di sini
+                  radius={[10, 10, 0, 0]}
                 />
               ))}
             </BarChart>
