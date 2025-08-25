@@ -5,30 +5,69 @@ import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
 
+type MaturityType = {
+  level: string;
+  namaLevel: string;
+  skorMin: string;
+  skorMax: string;
+  deskripsiUmum: string;
+  deskripsiPerVariabel: string[];
+};
+
 export default function EditMaturityPage() {
   const { id } = useParams();
   const router = useRouter();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<MaturityType>({
     level: "",
     namaLevel: "",
     skorMin: "",
     skorMax: "",
     deskripsiUmum: "",
-    deskripsiPerVariabel: "",
+    deskripsiPerVariabel: [],
   });
 
-  // Ambil data dari localStorage berdasarkan ID dari URL
-  useEffect(() => {
+  // Fungsi untuk ambil data dari localStorage
+  const loadData = () => {
     const savedData = localStorage.getItem("maturityData");
     if (savedData && id !== undefined) {
-      const parsed = JSON.parse(savedData);
+      const parsed: MaturityType[] = JSON.parse(savedData);
       const record = parsed[Number(id)];
       if (record) {
         setFormData(record);
       }
     }
+  };
+
+  // Ambil data awal dari maturityData
+  useEffect(() => {
+    loadData();
   }, [id]);
+
+  // Cek apakah data sementara diperbarui saat kembali dari halaman edit deskripsi
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const tempForm = localStorage.getItem("maturityTempForm");
+      if (tempForm) {
+        const tempData: MaturityType = JSON.parse(tempForm);
+        // Update hanya deskripsiPerVariabel jika ada perubahan
+        setFormData((prev) => ({
+          ...prev,
+          deskripsiPerVariabel: tempData.deskripsiPerVariabel,
+        }));
+      }
+    };
+
+    // Cek setiap kali komponen muncul (misalnya setelah kembali dari navigasi)
+    window.addEventListener("focus", handleStorageChange);
+
+    // Juga cek saat komponen mount (untuk kasus kembali dari halaman lain)
+    handleStorageChange();
+
+    return () => {
+      window.removeEventListener("focus", handleStorageChange);
+    };
+  }, []);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -45,11 +84,8 @@ export default function EditMaturityPage() {
 
     const savedData = localStorage.getItem("maturityData");
     if (savedData && id !== undefined) {
-      const parsed = JSON.parse(savedData);
-
-      // Update record sesuai index
+      const parsed: MaturityType[] = JSON.parse(savedData);
       parsed[Number(id)] = formData;
-
       localStorage.setItem("maturityData", JSON.stringify(parsed));
     }
 
@@ -128,17 +164,14 @@ export default function EditMaturityPage() {
             <button
               type="button"
               onClick={() => {
-                localStorage.setItem(
-                  "maturityTempForm",
-                  JSON.stringify(formData)
-                );
-                router.push("/maturity-level/deskripsi-per-variabel");
+                // Simpan sementara sebelum pergi
+                localStorage.setItem("maturityTempForm", JSON.stringify(formData));
+                router.push(`/maturity-level/deskripsi-per-variabel`);
               }}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
-              {formData.deskripsiPerVariabel &&
-              formData.deskripsiPerVariabel.length > 0
-                ? "Lihat Deskripsi"
+              {formData.deskripsiPerVariabel && formData.deskripsiPerVariabel.length > 0
+                ? `Lihat Deskripsi (${formData.deskripsiPerVariabel.length})`
                 : "+ Tambah Deskripsi"}
             </button>
           </div>

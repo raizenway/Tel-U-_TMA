@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Table from "@/components/Table";
 import { Copy, Printer, Download, Pencil, Trash2, Plus, Eye, ChevronDown, Search } from "lucide-react";
 import Button from "@/components/button";
-import { useRouter,useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 
 const TablePage = () => {
@@ -17,75 +17,75 @@ const TablePage = () => {
   const searchParams = useSearchParams();
   const [showNotif, setShowNotif] = useState(false);
 
-  // modal lihat deskripsi
+  // Modal lihat deskripsi
   const [showModal, setShowModal] = useState(false);
   const [selectedDeskripsiList, setSelectedDeskripsiList] = useState<string[]>([]);
 
-  // Ambil data dari localStorage atau dummy data
-  useEffect(() => {
-    const savedData = localStorage.getItem("maturityData");
-    if (savedData) {
-      setData(JSON.parse(savedData));
-    } else {
-      const defaultData = [
-        {
-          level: "1",
-          namaLevel: "Very Low Maturity",
-          skorMin: "0%",
-          skorMax: "24.9%",
-          deskripsiUmum: "Sangat belum siap otonomi dan perlu ada perubahan signifikan segera",
-          deskripsiPerVariabel: [
-            "Deskripsi Skor 0...",
-            "Deskripsi Skor 1...",
-            "Deskripsi Skor 2...",
-            "Deskripsi Skor 3...",
-            "Deskripsi Skor 4..."
-          ]
-        },
-        {
-          level: "2",
-          namaLevel: "Low Maturity",
-          skorMin: "25%",
-          skorMax: "49.9%",
-          deskripsiUmum: "Belum siap otonomi dan ada yang harus ditingkatkan segera",
-          deskripsiPerVariabel: [
-            "Deskripsi Skor 0...",
-            "Deskripsi Skor 1...",
-            "Deskripsi Skor 2...",
-            "Deskripsi Skor 3...",
-            "Deskripsi Skor 4..."
-          ]
-        },
-        {
-          level: "3",
-          namaLevel: "Medium Maturity",
-          skorMin: "50%",
-          skorMax: "74.9%",
-          deskripsiUmum: "Sudah siap otonomi level 2, dan masih ada yang perlu ditingkatkan",
-          deskripsiPerVariabel: [
-            "Deskripsi Skor 0...",
-            "Deskripsi Skor 1...",
-            "Deskripsi Skor 2...",
-            "Deskripsi Skor 3...",
-            "Deskripsi Skor 4..."
-          ]
+  // Fungsi untuk muat dan validasi data dari localStorage
+   const loadData = () => {
+    try {
+      const savedData = localStorage.getItem("maturityData");
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+
+        if (Array.isArray(parsed)) {
+          const validatedData = parsed.map((item) => ({
+            ...item,
+            level: typeof item.level === "string" ? item.level : String(item.level || ""),
+            namaLevel: typeof item.namaLevel === "string" ? item.namaLevel : "",
+            skorMin: typeof item.skorMin === "string" ? item.skorMin : "",
+            skorMax: typeof item.skorMax === "string" ? item.skorMax : "",
+            deskripsiUmum: typeof item.deskripsiUmum === "string" ? item.deskripsiUmum : "",
+            deskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
+              ? item.deskripsiPerVariabel.map((d) => (typeof d === "string" ? d : ""))
+              : Array(5).fill(""),
+          }));
+          setData(validatedData);
+        } else {
+          throw new Error("Data tidak dalam format array");
         }
-      ];
-      setData(defaultData);
-      localStorage.setItem("maturityData", JSON.stringify(defaultData));
+      } else {
+        // ❌ jangan ada data default
+        setData([]);
+        localStorage.setItem("maturityData", JSON.stringify([]));
+      }
+    } catch (error) {
+      console.error("Error loading maturityData:", error);
+      setData([]);
     }
+  };
+
+  // Muat data pertama kali
+  useEffect(() => {
+    loadData();
   }, []);
 
+  // Dengarkan perubahan localStorage (misal dari tab lain)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      loadData(); // Reload dengan validasi
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // Update localStorage saat data berubah
   useEffect(() => {
     if (data.length > 0) {
-      localStorage.setItem("maturityData", JSON.stringify(data));
+      try {
+        localStorage.setItem("maturityData", JSON.stringify(data));
+      } catch (e) {
+        console.error("Gagal simpan ke localStorage", e);
+      }
     }
   }, [data]);
 
+  // Tampilkan notifikasi jika dari query success
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       setShowNotif(true);
-      setTimeout(() => setShowNotif(false), 3000); // auto hide 3 detik
+      setTimeout(() => setShowNotif(false), 3000);
     }
   }, [searchParams]);
 
@@ -113,36 +113,34 @@ const TablePage = () => {
     router.push(`/maturity-level/edit-maturity/${realIndex}`);
   };
 
-  const handleDelete = (index: number) => {
-    const realIndex = (currentPage - 1) * 10 + index;
-    const newData = [...data];
-    newData.splice(realIndex, 1);
-    setData(newData);
-    setShowDelete(false);
-  };
+ const handleDelete = (index: number) => {
+  const realIndex = (currentPage - 1) * 10 + index;
+  const newData = [...data];
+  newData.splice(realIndex, 1);
+
+  // update state
+  setData(newData);
+
+  // update localStorage juga
+  localStorage.setItem("maturityData", JSON.stringify(newData));
+
+  setShowDelete(false);
+};
+
 
   const handlePrint = () => window.print();
 
   const handleDownload = () => {
-    const headers = [
-      "Level",
-      "Nama Level",
-      "Skor Minimum",
-      "Skor Maximum",
-      "Deskripsi Umum",
-      "Deskripsi Per Variabel",
-    ];
+    const headers = ["Level", "Nama Level", "Skor Minimum", "Skor Maximum", "Deskripsi Umum", "Deskripsi Per Variabel"];
     const rows = filteredData
-      .map((row) =>
-        [
-          row.level,
-          row.namaLevel,
-          row.skorMin,
-          row.skorMax,
-          row.deskripsiUmum,
-          row.deskripsiPerVariabel.join(" | "),
-        ].join("\t")
-      )
+      .map((row) => [
+        row.level,
+        row.namaLevel,
+        row.skorMin,
+        row.skorMax,
+        row.deskripsiUmum,
+        Array.isArray(row.deskripsiPerVariabel) ? row.deskripsiPerVariabel.join(" | ") : "",
+      ].join("\t"))
       .join("\n");
 
     const tsv = headers.join("\t") + "\n" + rows;
@@ -156,25 +154,16 @@ const TablePage = () => {
   };
 
   const handleCopy = () => {
-    const headers = [
-      "Level",
-      "Nama Level",
-      "Skor Minimum",
-      "Skor Maximum",
-      "Deskripsi Umum",
-      "Deskripsi Per Variabel",
-    ];
+    const headers = ["Level", "Nama Level", "Skor Minimum", "Skor Maximum", "Deskripsi Umum", "Deskripsi Per Variabel"];
     const rows = filteredData
-      .map((row) =>
-        [
-          row.level,
-          row.namaLevel,
-          row.skorMin,
-          row.skorMax,
-          row.deskripsiUmum,
-          row.deskripsiPerVariabel.join(" | "),
-        ].join("\t")
-      )
+      .map((row) => [
+        row.level,
+        row.namaLevel,
+        row.skorMin,
+        row.skorMax,
+        row.deskripsiUmum,
+        Array.isArray(row.deskripsiPerVariabel) ? row.deskripsiPerVariabel.join(" | ") : "",
+      ].join("\t"))
       .join("\n");
 
     const textToCopy = headers.join("\t") + "\n" + rows;
@@ -191,12 +180,22 @@ const TablePage = () => {
       <button
         className="flex items-center gap-2 text-gray-700 hover:underline"
         onClick={() => {
-          setSelectedDeskripsiList(row.deskripsiPerVariabel);
+          // Ambil data terbaru dari localStorage
+          const savedData = localStorage.getItem("maturityData");
+          const freshData = savedData ? JSON.parse(savedData) : data;
+          const realIndex = (currentPage - 1) * 10 + index;
+          const currentRow = freshData[realIndex];
+
+          // ✅ Validasi deskripsiPerVariabel selalu array
+          const deskripsi = Array.isArray(currentRow?.deskripsiPerVariabel)
+            ? currentRow.deskripsiPerVariabel
+            : Array(5).fill("");
+
+          setSelectedDeskripsiList(deskripsi);
           setShowModal(true);
         }}
       >
-        <Eye size={18} strokeWidth={1} /> {/* lebih tipis, mirip outline */}
-        Lihat Deskripsi
+        <Eye size={18} strokeWidth={1} /> Lihat Deskripsi
       </button>
     ),
     aksi: (
@@ -236,78 +235,67 @@ const TablePage = () => {
         {/* Search & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
-                <Search className="w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Cari"
-                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-                  onChange={(e) => console.log("Search:", e.target.value)}
-                 />
-                </div>
-
-          <div className="flex items-center gap-2">
-              <Button
-               variant="outline"
-               icon={Copy}
-              iconPosition="left" 
-              onClick={handleCopy}
-               >
-                Copy
-                </Button>
-                 <Button
-               variant="outline"
-               icon={Printer}
-              iconPosition="left" 
-              onClick={handlePrint}
-               >
-                Print
-                </Button>
-                 <Button
-               variant="outline"
-               icon={ChevronDown}
-              iconPosition="right" 
-                  onClick={handleDownload}
-               >
-                Download
-                </Button>
-            <Button className="px-8"
-            onClick={() => router.push("/maturity-level/add-maturity")}
-            >
-                Tambah Maturity Level
-              </Button>
-              </div>
-         </div>
-         
-         {/* Notifikasi */}
-         {showNotif && (
-               <div className="absolute bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-md flex items-center justify-between min-w-[280px]">
-               <span className="font-medium">Data Berhasil Disimpan</span>
-              </div>
-            )}
-                {/*Table*/}
-                <div className="overflow-x-auto w-full">
-            <Table
-              columns={columns}
-              data={dataDenganAksi.map((row) => {
-                const newRow: any = {};
-                Object.keys(row).forEach((key) => {
-                  newRow[key] = (
-                    <div className="whitespace-normal break-words max-w-xs">
-                      {row[key]}
-                    </div>
-                  );
-                });
-                return newRow;
-              })}
-              currentPage={currentPage}
-              rowsPerPage={10}
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Cari"
+              className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
+              Copy
+            </Button>
+            <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
+              Print
+            </Button>
+            <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
+              Download
+            </Button>
+            <Button className="px-8" onClick={handleTambah}>
+              Tambah Maturity Level
+            </Button>
+          </div>
+        </div>
+
+        {/* Notifikasi */}
+        {showNotif && (
+          <div className="absolute bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-md flex items-center justify-between min-w-[280px]">
+            <span className="font-medium">Data Berhasil Disimpan</span>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="overflow-x-auto w-full">
+          <Table
+            columns={columns}
+            data={dataDenganAksi.map((row) => {
+              const newRow: any = {};
+              Object.keys(row).forEach((key) => {
+                newRow[key] = (
+                  <div className="whitespace-normal break-words max-w-xs">
+                    {row[key]}
+                  </div>
+                );
+              });
+              return newRow;
+            })}
+            currentPage={currentPage}
+            rowsPerPage={10}
+          />
+        </div>
 
         {/* Pagination */}
         <div className="flex justify-between items-center mt-4 flex-wrap gap-2">
           <div className="flex gap-2">
-            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-8 h-8 border rounded-full disabled:opacity-50">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="w-8 h-8 border rounded-full disabled:opacity-50"
+            >
               {"<"}
             </button>
             {Array.from({ length: totalPages }, (_, i) => (
@@ -319,7 +307,11 @@ const TablePage = () => {
                 {i + 1}
               </button>
             ))}
-            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-8 h-8 border rounded-full disabled:opacity-50">
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="w-8 h-8 border rounded-full disabled:opacity-50"
+            >
               {">"}
             </button>
           </div>
@@ -347,35 +339,36 @@ const TablePage = () => {
       </ModalConfirm>
 
       {/* Modal Deskripsi per Variabel */}
-       <ModalConfirm
-  isOpen={showModal}
-  onCancel={() => setShowModal(false)}
-  onConfirm={() => {}}  
-  title=""
-  header="Deskripsi per Variabel"
->
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    {selectedDeskripsiList.map((desc, i) => (
-      <div key={i} className="bg-purple-50 border rounded p-3">
-        <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-        <p className="text-sm text-gray-700">{desc}</p>
-      </div>
-    ))}
-  </div>
+      <ModalConfirm
+        isOpen={showModal}
+        onCancel={() => setShowModal(false)}
+        onConfirm={() => {}}
+        title=""
+        header="Deskripsi per Variabel"
+      >
+        {Array.isArray(selectedDeskripsiList) && selectedDeskripsiList.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {selectedDeskripsiList.map((desc, i) => (
+              <div key={i} className="bg-purple-50 border rounded p-3">
+                <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
+                <p className="text-sm text-gray-700">{desc || "(Tidak ada deskripsi)"}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
+        )}
 
-  {/* tombol custom */}
-  <div className="flex justify-center mt-6">
-    <Button
-      variant="simpan"
-      className="px-30 py-2 text-lg rounded-md"
-      onClick={() => setShowModal(false)}
-    >
-      Tutup
-    </Button>
-  </div>
-</ModalConfirm>
-
-
+        <div className="flex justify-center mt-6">
+          <Button
+            variant="simpan"
+            className="px-8 py-2 text-lg rounded-md"
+            onClick={() => setShowModal(false)}
+          >
+            Tutup
+          </Button>
+        </div>
+      </ModalConfirm>
     </div>
   );
 };
