@@ -5,24 +5,27 @@ import React, { useState } from "react";
 import TableUpdate from "@/components/TableUpdate";
 import Button from "@/components/button";
 import { useRouter } from "next/navigation";
+import { ChevronDown, Copy, Printer } from "lucide-react"; // ✅ Tambah Printer
+import * as XLSX from 'xlsx'; // ✅ Import xlsx
 
 export default function TablePage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
   const columns = [
     { header: "Nomor", key: "nomor", width: "100px", className: "text-center", sortable: true },
     { header: "Nama Variable", key: "variable", width: "180px", sortable: true },
-    { header: "Indikator", key: "indikator", width: "250px", sortable: true },
+    { header: "Indikator", key: "indikator", width: "250px" },
     { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
     { header: "Deskripsi Skor 0", key: "deskripsiSkor0", width: "200px", sortable: true },
     { header: "Deskripsi Skor 1", key: "deskripsiSkor1", width: "200px" },
     { header: "Deskripsi Skor 2", key: "deskripsiSkor2", width: "200px" },
     { header: "Deskripsi Skor 3", key: "deskripsiSkor3", width: "200px" },
     { header: "Deskripsi Skor 4", key: "deskripsiSkor4", width: "200px" },
-    { header: "Tipe Soal", key: "tipeSoal", width: "140px", className: "text-center" },
+    { header: "Tipe Soal", key: "tipeSoal", width: "140px", className: "text-center", sortable: true },
     {
       header: "AKSI",
       key: "action",
@@ -32,7 +35,9 @@ export default function TablePage() {
     },
   ];
 
-  const data = Array.from({ length: 15 }, (_, i) => ({
+  // Tambahkan `nomor` ke data
+  const rawData = Array.from({ length: 15 }, (_, i) => ({
+    nomor: i + 1,
     variable: i % 2 === 0 ? "V1 (Mutu)" : "V4 (Sarana & Prasarana)",
     indikator:
       i % 2 === 0
@@ -48,19 +53,61 @@ export default function TablePage() {
     deskripsiSkor3: "Baik",
     deskripsiSkor4: "Sangat Baik",
     tipeSoal: i % 2 === 0 ? "Pilihan Ganda" : "Isian",
+    status: "Active",
   }));
 
-  const filteredData = data.filter((row) =>
+  // ✅ 1. Filter data
+  const filteredData = rawData.filter((row) =>
     Object.values(row).some((val) =>
-      val?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      String(val).toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  // ✅ 2. Sorting
+  const sortedData = React.useMemo(() => {
+    if (!sortConfig) return filteredData;
+
+    return [...filteredData].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      if (typeof aValue === "string") aValue = aValue.toLowerCase();
+      if (typeof bValue === "string") bValue = bValue.toLowerCase();
+
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredData, sortConfig]);
+
+  // ✅ 3. Pagination
+  const totalItems = sortedData.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
+  const paginatedData = sortedData.slice(indexOfFirstItem, indexOfFirstItem + itemsPerPage);
+
+  // ✅ 4. Handlers
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (!prev || prev.key !== key) {
+        return { key, direction: "asc" };
+      }
+      if (prev.direction === "asc") {
+        return { key, direction: "desc" };
+      }
+      return null;
+    });
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
 
   const handleEdit = (id: number) => {
     console.log("Edit item nomor:", id);
@@ -76,11 +123,57 @@ export default function TablePage() {
     alert(`Item nomor ${index + 1} diaktifkan kembali`);
   };
 
+  // ✅ Handle Copy (pakai filteredData, bukan filteredUsers)
+  const handleCopy = () => {
+    const header = columns.map(col => col.header).join(',') + '\n';
+    const rows = paginatedData.map(row =>
+      columns.map(col => {
+        if (col.key === "nomor") {
+          return (currentPage - 1) * itemsPerPage + paginatedData.indexOf(row) + 1;
+        }
+        return row[col.key] || "";
+      }).join(',')
+    ).join('\n');
+
+    const csv = header + rows;
+    navigator.clipboard.writeText(csv).then(() => {
+      alert('Data berhasil disalin ke clipboard!');
+    });
+  };
+
+  // ✅ Handle Print
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // ✅ Handle Download Excel
+  const handleDownload = () => {
+    const worksheetData = [
+      columns.map(col => col.header), // Header
+      ...paginatedData.map(row =>
+        columns.map(col => {
+          if (col.key === "nomor") {
+            return (currentPage - 1) * itemsPerPage + paginatedData.indexOf(row) + 1;
+          }
+          return row[col.key] || "";
+        })
+      )
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    worksheet['!cols'] = columns.map(col => ({
+      wch: parseInt(col.width || '100') / 5, // estimasi lebar
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Data Halaman ${currentPage}`);
+    XLSX.writeFile(workbook, `data_assessment_halaman_${currentPage}.xlsx`);
+  };
+
   return (
     <div className="p-6 bg-white rounded-xl shadow m-6 mt-20 w-full">
-      {/* Header: Search + Button sejajar */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        {/* Search Input */}
         <div className="relative w-full sm:w-80">
           <input
             type="text"
@@ -105,15 +198,44 @@ export default function TablePage() {
           </svg>
         </div>
 
-        {/* Tambah Pertanyaan Button */}
-        <Button
-          variant="primary"
-          onClick={() => router.push("/create")}
-          className="px-5 py-2 whitespace-nowrap flex items-center justify-center gap-1"
-        >
-          <span className="font-bold">+</span>
-          Tambah Pertanyaan
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            icon={Copy}
+            iconPosition="left"
+            onClick={handleCopy}
+          >
+            Copy
+          </Button>
+
+          <Button
+            variant="outline"
+            icon={Printer}
+            iconPosition="left"
+            onClick={handlePrint}
+          >
+            Print
+          </Button>
+
+          <Button
+            variant="outline"
+            icon={ChevronDown}
+            iconPosition="right"
+            onClick={handleDownload}
+          >
+            Download
+          </Button>
+
+          <Button
+            variant="primary"
+            onClick={() => router.push("/create")}
+            className="px-5 py-2 whitespace-nowrap flex items-center justify-center gap-1"
+          >
+            <span className="font-bold">+</span>
+            Tambah Pertanyaan
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -121,35 +243,50 @@ export default function TablePage() {
         columns={columns}
         data={paginatedData}
         currentPage={currentPage}
-        rowsPerPage={rowsPerPage}
+        rowsPerPage={itemsPerPage}
         onEdit={handleEdit}
         onDeactivate={handleDeactivate}
         onReactivate={handleReactivate}
+        onSort={handleSort}
+        sortConfig={sortConfig}
       />
 
       {/* Pagination */}
-      <div className="flex justify-end mt-4">
-        <div className="flex gap-2">
+      <div className="flex justify-between items-center mt-6 px-4">
+        <div className="flex items-center gap-2">
+          <select
+            className="border border-gray-300 rounded-full px-2 py-1 bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            value={itemsPerPage}
+            onChange={handleItemsPerPageChange}
+          >
+            <option value={5}>5 Data</option>
+            <option value={10}>10 Data</option>
+            <option value={20}>20 Data</option>
+            <option value={50}>50 Data</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
+            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 bg-gray-300 text-gray-500 disabled:opacity-50 hover:bg-gray-200 transition"
           >
-            {"<"} Sebelumnya
+            {"<"}
           </button>
-
-          <span className="px-3 py-1 border rounded font-medium bg-white">
-            {currentPage} dari {totalPages}
+          <span className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 bg-gray-100 text-gray-500">
+            {currentPage}
           </span>
-
           <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
+            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 bg-gray-300 text-gray-500 disabled:opacity-50 hover:bg-gray-200 transition"
           >
-            Selanjutnya {">"}
+            {">"}
           </button>
         </div>
+
+        <div className="text-sm text-gray-600">Total: {totalItems}</div>
       </div>
     </div>
   );
