@@ -70,16 +70,6 @@ export default function DashboardTab() {
     "Tel-U Bandung": [140, 135, 160, 170],
   });
 
-  const [studentData, setStudentData] = useState<StudentRow[]>(() =>
-    studentYears.map((year, idx) => ({
-      tahun: year,
-      Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
-      Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
-      Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
-      Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
-    }))
-  );
-
   const [accreditationYears, setAccreditationYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
     "Tel-U Jakarta": [85, 87, 89, 90],
@@ -99,7 +89,7 @@ export default function DashboardTab() {
       Surabaya: accreditationInputData["Tel-U Surabaya"][idx],
     }));
     setAccreditationData(initialData);
-  }, []);
+  }, [accreditationInputData, accreditationYears]);
 
   const handleAddYear = () => {
     const lastYearStr = studentYears.at(-1);
@@ -147,14 +137,7 @@ export default function DashboardTab() {
 
   const handleGenerate = () => {
     if (modalMode === 'student') {
-      const newStudentData = studentYears.map((year, idx) => ({
-        tahun: year,
-        Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
-        Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
-        Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
-        Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
-      }));
-      setStudentData(newStudentData);
+      // Tidak perlu update studentData karena langsung pakai studentInputData
     } else if (modalMode === 'prodi') {
       const newData = accreditationYears.map((year, idx) => ({
         tahun: year,
@@ -219,6 +202,15 @@ export default function DashboardTab() {
 
   const [selectedCampus, setSelectedCampus] = useState<"All" | CampusKey>("All");
   const [selectedVariable, setSelectedVariable] = useState<string>("Akademik");
+
+  // Transform data untuk Student Body: X-axis = Kampus, Bar = Tahun
+  const studentDataByCampus = CAMPUS_LIST.map((campus) => {
+    const data: any = { kampus: campus.replace("Tel-U ", "") };
+    studentYears.forEach((year, idx) => {
+      data[year] = studentInputData[campus][idx] || 0;
+    });
+    return data;
+  });
 
   return (
     <div className="space-y-8 px-4 py-6">
@@ -304,6 +296,7 @@ export default function DashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Student Body - X-axis: Kampus, Color: Tahun */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
@@ -317,20 +310,25 @@ export default function DashboardTab() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={studentData}>
+            <BarChart data={studentDataByCampus}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tahun" />
+              <XAxis dataKey="kampus" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Jakarta" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Bandung" fill="#34d399" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Purwokerto" fill="#facc15" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Surabaya" fill="#fb923c" radius={[4, 4, 0, 0]} />
+              {studentYears.map((year) => (
+                <Bar
+                  key={year}
+                  dataKey={year}
+                  fill={`hsl(${(parseInt(year) - 2021) * 30}, 70%, 50%)`}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
 
+        {/* Accreditation Line Chart */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
