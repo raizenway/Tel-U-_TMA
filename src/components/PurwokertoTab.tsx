@@ -336,7 +336,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
                 <label className="block text-sm text-gray-800 mb-1">Link Evidence</label>
                 <input
                   type="url"
-                  placeholder="Masukkan link evidence (jika ada)"
+                  placeholder="Masukkan link evidence"
                   className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
                   value={answers[`evidence-${current.id}`] || ""}
                   onChange={(e) => {

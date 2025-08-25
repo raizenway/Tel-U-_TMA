@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { FaSchool } from "react-icons/fa";
-import Table from "@/components/Table";
-import SuccessNotification from "@/components/SuccessNotification";
-import Button from "@/components/button";
-import ModalConfirm from "./StarAssessment/ModalConfirm";
-import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from "lucide-react";
-import { Search, Copy, Printer, ChevronDown } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FaSchool } from 'react-icons/fa';
+import Table from '@/components/Table';
+import SuccessNotification from '@/components/SuccessNotification';
+import Button from '@/components/button';
+import ModalConfirm from './StarAssessment/ModalConfirm';
+import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from 'lucide-react';
+import { Search, Copy, Printer, ChevronDown } from 'lucide-react';
 
 const AssessmentTable = ({ hideStartButton = false }) => {
   const [data, setData] = useState([
@@ -217,85 +217,85 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     ),
   }));
 
-return (
-  <div className="p-6 md:p-8 bg-white rounded-lg shadow-md border border-gray-45   mx-auto w-full max-w-5xl relative mt-20 space-y-6">
-    <SuccessNotification
-      isOpen={showSuccess}
-      onClose={() => setShowSuccess(false)}
-      message="Assessment berhasil diubah menjadi status Edit!"
-    />
+  return (
+    <div className="p-6 md:p-8 bg-white rounded-lg shadow-md border border-gray-45 w-full relative mt-20 space-y-6 overflow-x-auto">
+      <SuccessNotification
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Assessment berhasil diubah menjadi status Edit!"
+      />
 
-    <ModalConfirm
-      isOpen={showModal}
-      title="Menyetujui pengajuan edit assessment?"
-      header="Konfirmasi"
-      message="Menyetujui pengajuan edit assessment?"
-      confirmLabel="Approve"
-      cancelLabel="Tolak"
-      onConfirm={() => {
-        const purwokerto = data.find((item) => item.nama === "Tel-U Purwokerto");
-        if (purwokerto) handleApprove(purwokerto.id);
-      }}
-      onCancel={() => setShowModal(false)}
-    />
+      <ModalConfirm
+        isOpen={showModal}
+        title="Menyetujui pengajuan edit assessment?"
+        header="Konfirmasi"
+        message="Menyetujui pengajuan edit assessment?"
+        confirmLabel="Approve"
+        cancelLabel="Tolak"
+        onConfirm={() => {
+          const purwokerto = data.find((item) => item.nama === "Tel-U Purwokerto");
+          if (purwokerto) handleApprove(purwokerto.id);
+        }}
+        onCancel={() => setShowModal(false)}
+      />
 
-    {/* Header Section */}
-    <div>
-      <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-        Pengisian Assessment
-      </h2>
-      <p className="text-sm text-gray-600">
-        Berikut adalah daftar UPPS/KC yang sudah melakukan assessment
-      </p>
-    </div>
+      {/* Header Section */}
+      <div>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+          Pengisian Assessment
+        </h2>
+        <p className="text-sm text-gray-600">
+          Berikut adalah daftar UPPS/KC yang sudah melakukan assessment
+        </p>
+      </div>
 
-    {/* Search + Action Buttons */}
-    <div className="flex flex-col gap-4 w-full max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white shadow-sm w-80">
-          <Search className="w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Cari UPPS/KC..."
-            className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-            onChange={(e) => console.log("Search:", e.target.value)}
-          />
-        </div>
+      {/* Search + Action Buttons */}
+      <div className="flex flex-col gap-4 w-full">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white shadow-sm w-80">
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Cari UPPS/KC..."
+              className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+              onChange={(e) => console.log("Search:", e.target.value)}
+            />
+          </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" icon={Copy} iconPosition="left" onClick={() => console.log("Copy")} className="h-10 px-4 py-2 text-sm">
-            Copy
-          </Button>
-          <Button variant="outline" icon={Printer} iconPosition="left" onClick={() => console.log("Print")} className="h-10 px-4 py-2 text-sm">
-            Print
-          </Button>
-          <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={() => console.log("Download")} className="h-10 px-4 py-2 text-sm">
-            Download
-          </Button>
-
-          {!hideStartButton && (
-            <Button
-              variant="primary"
-              onClick={() => router.push("/assessment")}
-              className="h-10 px-8 py-2 text-sm font-semibold rounded flex items-center gap-2"
-            >
-              Start Assessment
+          <div className="flex items-center gap-3">
+            <Button variant="outline" icon={Copy} iconPosition="left" onClick={() => console.log("Copy")} className="h-10 px-4 py-2 text-sm">
+              Copy
             </Button>
-          )}
+            <Button variant="outline" icon={Printer} iconPosition="left" onClick={() => console.log("Print")} className="h-10 px-4 py-2 text-sm">
+              Print
+            </Button>
+            <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={() => console.log("Download")} className="h-10 px-4 py-2 text-sm">
+              Download
+            </Button>
+
+            {!hideStartButton && (
+              <Button
+                variant="primary"
+                onClick={() => router.push("/assessment")}
+                className="h-10 px-8 py-2 text-sm font-semibold rounded flex items-center gap-2"
+              >
+                Start Assessment
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Table Section */}
+      <Table
+        columns={columns}
+        data={tableData}
+        currentPage={1}
+        rowsPerPage={10}
+        className="w-full"
+      />
     </div>
-
-    {/* Table Section */}
-    <Table
-      columns={columns}
-      data={tableData}
-      currentPage={1}
-      rowsPerPage={10}
-    />
-  </div>
-);
-
+  );
 };
 
 export default AssessmentTable;

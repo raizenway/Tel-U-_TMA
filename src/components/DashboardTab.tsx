@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   RadarChart,
   Radar,
@@ -17,12 +17,12 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-} from "recharts";
-import ProgressAssessment from "@/components/ProgressAssessment";
-import { Pencil, Download } from "lucide-react";
-import AssessmentTable from "./AssessmentTable";
-import ModalConfirm from "./StarAssessment/ModalConfirm";
-import Button from "./button";
+} from 'recharts';
+import ProgressAssessment from '@/components/ProgressAssessment';
+import { Pencil, Download } from 'lucide-react';
+import AssessmentTable from './AssessmentTable';
+import ModalConfirm from './StarAssessment/ModalConfirm';
+import Button from './button';
 import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
 
 const radarData = [
@@ -70,16 +70,6 @@ export default function DashboardTab() {
     "Tel-U Bandung": [140, 135, 160, 170],
   });
 
-  const [studentData, setStudentData] = useState<StudentRow[]>(() =>
-    studentYears.map((year, idx) => ({
-      tahun: year,
-      Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
-      Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
-      Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
-      Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
-    }))
-  );
-
   const [accreditationYears, setAccreditationYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
     "Tel-U Jakarta": [85, 87, 89, 90],
@@ -99,7 +89,7 @@ export default function DashboardTab() {
       Surabaya: accreditationInputData["Tel-U Surabaya"][idx],
     }));
     setAccreditationData(initialData);
-  }, []);
+  }, [accreditationInputData, accreditationYears]);
 
   const handleAddYear = () => {
     const lastYearStr = studentYears.at(-1);
@@ -147,14 +137,7 @@ export default function DashboardTab() {
 
   const handleGenerate = () => {
     if (modalMode === 'student') {
-      const newStudentData = studentYears.map((year, idx) => ({
-        tahun: year,
-        Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
-        Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
-        Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
-        Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
-      }));
-      setStudentData(newStudentData);
+      // Tidak perlu update studentData karena langsung pakai studentInputData
     } else if (modalMode === 'prodi') {
       const newData = accreditationYears.map((year, idx) => ({
         tahun: year,
@@ -206,6 +189,7 @@ export default function DashboardTab() {
     setShowModal(true);
   };
 
+  // Data perkembangan variabel
   const variableData = [
     { tahun: "2021", variable: "Akademik", "Tel-U Jakarta": 88, "Tel-U Bandung": 92, "Tel-U Surabaya": 85, "Tel-U Purwokerto": 80 },
     { tahun: "2021", variable: "SDM", "Tel-U Jakarta": 82, "Tel-U Bandung": 87, "Tel-U Surabaya": 80, "Tel-U Purwokerto": 78 },
@@ -219,6 +203,38 @@ export default function DashboardTab() {
 
   const [selectedCampus, setSelectedCampus] = useState<"All" | CampusKey>("All");
   const [selectedVariable, setSelectedVariable] = useState<string>("Akademik");
+
+  // Transform data untuk Student Body: X-axis = Kampus, Bar = Tahun
+  const studentDataByCampus = CAMPUS_LIST.map((campus) => {
+    const data: any = { kampus: campus.replace("Tel-U ", "") };
+    studentYears.forEach((year, idx) => {
+      data[year] = studentInputData[campus][idx] || 0;
+    });
+    return data;
+  });
+
+  // Siapkan data untuk grafik variabel
+  const filteredVariableData = variableData.filter(d => d.variable === selectedVariable);
+
+  const chartData = filteredVariableData.map(d => {
+    const row: any = { tahun: d.tahun };
+    if (selectedCampus === "All") {
+      CAMPUS_LIST.forEach(campus => {
+        row[campus] = d[campus];
+      });
+    } else {
+      row[selectedCampus] = d[selectedCampus];
+    }
+    return row;
+  });
+
+  // Warna untuk tiap kampus
+  const campusColors: Record<string, string> = {
+    "Tel-U Jakarta": "#8884d8",
+    "Tel-U Bandung": "#82ca9d",
+    "Tel-U Surabaya": "#ffc658",
+    "Tel-U Purwokerto": "#ff7300",
+  };
 
   return (
     <div className="space-y-8 px-4 py-6">
@@ -304,6 +320,7 @@ export default function DashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Student Body - X-axis: Kampus, Color: Tahun */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
@@ -317,20 +334,25 @@ export default function DashboardTab() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={studentData}>
+            <BarChart data={studentDataByCampus}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tahun" />
+              <XAxis dataKey="kampus" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Jakarta" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Bandung" fill="#34d399" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Purwokerto" fill="#facc15" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Surabaya" fill="#fb923c" radius={[4, 4, 0, 0]} />
+              {studentYears.map((year) => (
+                <Bar
+                  key={year}
+                  dataKey={year}
+                  fill={`hsl(${(parseInt(year) - 2021) * 30}, 70%, 50%)`}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
 
+        {/* Accreditation Line Chart */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
@@ -391,25 +413,31 @@ export default function DashboardTab() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart
-            data={variableData
-              .filter(d => d.variable === selectedVariable)
-              .map(d => ({
-                ...d,
-                nilai: selectedCampus === "All"
-                  ? (["Tel-U Jakarta", "Tel-U Bandung", "Tel-U Surabaya", "Tel-U Purwokerto"] as const)
-                      .map(campus => d[campus])
-                      .reduce((acc, score) => acc + score, 0) / 4
-                  : d[selectedCampus]
-              }))
-              .map(d => ({ tahun: d.tahun, nilai: d.nilai }))}
-          >
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="tahun" />
             <YAxis domain={[0, 100]} />
-            <Tooltip />
+            <Tooltip formatter={(value) => Number(value).toFixed(2)} />
             <Legend />
-            <Line type="monotone" dataKey="nilai" stroke="#8884d8" />
+            {selectedCampus === "All"
+              ? CAMPUS_LIST.map(campus => (
+                  <Line
+                    key={campus}
+                    type="monotone"
+                    dataKey={campus}
+                    stroke={campusColors[campus]}
+                    name={campus.replace("Tel-U ", "")}
+                  />
+                ))
+              : (
+                  <Line
+                    type="monotone"
+                    dataKey={selectedCampus}
+                    stroke={campusColors[selectedCampus]}
+                    name={selectedCampus.replace("Tel-U ", "")}
+                  />
+                )
+            }
           </LineChart>
         </ResponsiveContainer>
       </div>

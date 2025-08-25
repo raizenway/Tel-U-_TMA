@@ -1,7 +1,7 @@
 // components/TableUpdate.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { Pencil, X, Check, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
 interface Column {
@@ -20,6 +20,8 @@ interface TableUpdateProps {
   onEdit?: (id: number) => void;
   onDeactivate?: (index: number) => void;
   onReactivate?: (index: number) => void;
+  onSort?: (key: string) => void; // ✅ tambahkan
+  sortConfig?: { key: string; direction: "asc" | "desc" } | null; // ✅ tambahkan
 }
 
 export default function TableUpdate({
@@ -30,50 +32,25 @@ export default function TableUpdate({
   onEdit,
   onDeactivate,
   onReactivate,
+  onSort,
+  sortConfig,
 }: TableUpdateProps) {
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
-
-  // Sorting
-  const sortedData = useMemo(() => {
-    if (!sortConfig) return data;
-    return [...data].sort((a, b) => {
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-
-      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [data, sortConfig]);
-
-  // Handle sort
-  const handleSort = (key: string) => {
-    if (sortConfig?.key === key) {
-      setSortConfig({
-        key,
-        direction: sortConfig.direction === "asc" ? "desc" : "asc",
-      });
-    } else {
-      setSortConfig({ key, direction: "asc" });
-    }
-  };
-
   return (
-    <div className="p-6 bg-white  rounded-lg  mx-auto w-full max-w-4xl mt-6">
-      {/* Container scrollable */}
-      <div className="overflow-x-auto max-h-[400px]">
-        <table className="min-w-full border-collapse">
-          <thead className="bg-gray-100 z-10">
-            <tr className="text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+    <div className="bg-white rounded-lg mx-auto w-full max-w-5xl mt-6 shadow-sm">
+      {/* Scroll wrapper */}
+      <div className="overflow-x-auto max-h-[500px]">
+        <table className="w-full table-fixed border-collapse border border-gray-300 text-sm">
+          <thead className="bg-gray-100 text-gray-700 font-semibold">
+            <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-left border border-gray-300 ${col.className || ""}`}
                   style={{ width: col.width || "auto" }}
+                  className={`px-4 py-3 border border-gray-300 text-left uppercase tracking-wide text-xs ${col.className || ""}`}
                 >
                   <div
                     className={`flex items-center gap-1 ${col.sortable ? "cursor-pointer select-none" : ""}`}
-                    onClick={() => col.sortable && handleSort(col.key)}
+                    onClick={() => col.sortable && onSort?.(col.key)} // ✅ panggil handler dari parent
                   >
                     {col.header}
                     {col.sortable && (
@@ -92,27 +69,30 @@ export default function TableUpdate({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            {sortedData.length > 0 ? (
-              sortedData.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-50">
+          <tbody>
+            {data.length > 0 ? (
+              data.map((item, index) => (
+                <tr
+                  key={index}
+                  className="hover:bg-gray-50 transition-colors duration-150"
+                >
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-4 py-3 text-sm border border-gray-200 ${
+                      className={`px-4 py-3 text-sm border border-gray-300 ${
                         col.key === "action"
-                          ? "bg-white shadow-lg shadow-black/15 z-20"
+                          ? "bg-white shadow-md shadow-black/10 z-10"
                           : ""
                       } ${col.className || ""}`}
                     >
                       {col.key === "nomor"
                         ? (currentPage - 1) * rowsPerPage + index + 1
                         : col.key === "action" ? (
-                          <div className="flex justify-center gap-3">
+                          <div className="flex justify-center gap-2">
                             {onEdit && (
                               <button
                                 onClick={() => onEdit(item.nomor)}
-                                className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium transition"
                               >
                                 <Pencil size={14} className="mr-1" /> Edit
                               </button>
@@ -121,7 +101,7 @@ export default function TableUpdate({
                               onDeactivate && (
                                 <button
                                   onClick={() => onDeactivate(index)}
-                                  className="flex items-center text-red-600 hover:text-red-800 text-xs font-medium"
+                                  className="flex items-center text-red-600 hover:text-red-800 text-xs font-medium transition"
                                 >
                                   <X size={14} className="mr-1" /> Deactive
                                 </button>
@@ -130,7 +110,7 @@ export default function TableUpdate({
                               onReactivate && (
                                 <button
                                   onClick={() => onReactivate(index)}
-                                  className="flex items-center text-green-600 hover:text-green-800 text-xs font-medium"
+                                  className="flex items-center text-green-600 hover:text-green-800 text-xs font-medium transition"
                                 >
                                   <Check size={14} className="mr-1" /> Reactive
                                 </button>
