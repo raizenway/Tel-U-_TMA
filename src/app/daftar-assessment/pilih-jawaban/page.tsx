@@ -23,8 +23,6 @@ interface AssessmentItem {
   deskripsiSkor2: string;
   deskripsiSkor3: string;
   deskripsiSkor4: string;
-  rentangJawaban?: { min: number; max: number };
-  rentangJawaban2?: { min: number; max: number }; // tambah untuk pertanyaan 2
 }
 
 // Type untuk status input (UI)
@@ -43,10 +41,6 @@ export default function PilihJawabanPage() {
   const [jumlahPertanyaan, setJumlahPertanyaan] = useState<'1 Pertanyaan' | '2 Pertanyaan' | ''>('');
   const [tipePertanyaan, setTipePertanyaan] = useState<'pg' | 'short-answer'>('pg');
   const [urutan, setUrutan] = useState<string>('');
-
-  // Rentang jawaban: terpisah untuk setiap pertanyaan
-  const [rentangPertanyaan1, setRentangPertanyaan1] = useState({ min: '', max: '' });
-  const [rentangPertanyaan2, setRentangPertanyaan2] = useState({ min: '', max: '' });
 
   // Skor dan deskripsi
   const [skor, setSkor] = useState<{ [key: number]: { min: string; max: string } }>({
@@ -88,19 +82,6 @@ export default function PilihJawabanPage() {
       setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
       setTipePertanyaan(data.tipePertanyaan || 'pg');
 
-      if (data.rentangJawaban) {
-        setRentangPertanyaan1({
-          min: String(data.rentangJawaban.min),
-          max: String(data.rentangJawaban.max),
-        });
-      }
-      if (data.rentangJawaban2) {
-        setRentangPertanyaan2({
-          min: String(data.rentangJawaban2.min),
-          max: String(data.rentangJawaban2.max),
-        });
-      }
-
       if (data.skor) {
         const loadedSkor: { [key: number]: { min: string; max: string } } = {};
         for (let i = 0; i <= 4; i++) {
@@ -124,7 +105,6 @@ export default function PilihJawabanPage() {
         setDeskripsiSkor(data.deskripsiSkor);
       }
 
-      // Tentukan mode: hanya edit jika ada nomor
       if (data.nomor !== undefined && data.nomor !== null && data.nomor !== '') {
         setEditNomor(data.nomor);
         setIsEditMode(true);
@@ -148,34 +128,6 @@ export default function PilihJawabanPage() {
     }
     if (!status) newErrors.status = 'Wajib dipilih';
     if (!jumlahPertanyaan) newErrors.jumlahPertanyaan = 'Wajib dipilih';
-
-    // Validasi rentang pertanyaan 1
-    if (tipePertanyaan === 'short-answer') {
-      if (!rentangPertanyaan1.min) newErrors.rentangMin1 = 'Wajib diisi';
-      if (!rentangPertanyaan1.max) newErrors.rentangMax1 = 'Wajib diisi';
-      const min = parseFloat(rentangPertanyaan1.min);
-      const max = parseFloat(rentangPertanyaan1.max);
-      if (isNaN(min) || isNaN(max)) {
-        if (!newErrors.rentangMin1) newErrors.rentangMin1 = 'Harus angka';
-        if (!newErrors.rentangMax1) newErrors.rentangMax1 = 'Harus angka';
-      } else if (min >= max) {
-        newErrors.rentangMax1 = 'Max harus lebih besar dari min';
-      }
-    }
-
-    // Validasi rentang pertanyaan 2
-    if (jumlahPertanyaan === '2 Pertanyaan' && tipePertanyaan === 'short-answer') {
-      if (!rentangPertanyaan2.min) newErrors.rentangMin2 = 'Wajib diisi';
-      if (!rentangPertanyaan2.max) newErrors.rentangMax2 = 'Wajib diisi';
-      const min2 = parseFloat(rentangPertanyaan2.min);
-      const max2 = parseFloat(rentangPertanyaan2.max);
-      if (isNaN(min2) || isNaN(max2)) {
-        if (!newErrors.rentangMin2) newErrors.rentangMin2 = 'Harus angka';
-        if (!newErrors.rentangMax2) newErrors.rentangMax2 = 'Harus angka';
-      } else if (min2 >= max2) {
-        newErrors.rentangMax2 = 'Max harus lebih besar dari min';
-      }
-    }
 
     Object.keys(deskripsiSkor).forEach((level) => {
       const numLevel = Number(level);
@@ -245,20 +197,6 @@ export default function PilihJawabanPage() {
                 ...baseData,
                 pertanyaan: pertanyaan1,
                 pertanyaan2: jumlahPertanyaan === '2 Pertanyaan' ? pertanyaan2 : undefined,
-                rentangJawaban:
-                  tipePertanyaan === 'short-answer'
-                    ? {
-                        min: parseFloat(rentangPertanyaan1.min),
-                        max: parseFloat(rentangPertanyaan1.max),
-                      }
-                    : undefined,
-                rentangJawaban2:
-                  jumlahPertanyaan === '2 Pertanyaan' && tipePertanyaan === 'short-answer'
-                    ? {
-                        min: parseFloat(rentangPertanyaan2.min),
-                        max: parseFloat(rentangPertanyaan2.max),
-                      }
-                    : undefined,
               }
             : item
         );
@@ -271,18 +209,6 @@ export default function PilihJawabanPage() {
           ...baseData,
           pertanyaan: i === 0 ? pertanyaan1 : pertanyaan2,
           pertanyaan2: undefined,
-          rentangJawaban:
-            tipePertanyaan === 'short-answer'
-              ? i === 0
-                ? {
-                    min: parseFloat(rentangPertanyaan1.min),
-                    max: parseFloat(rentangPertanyaan1.max),
-                  }
-                : {
-                    min: parseFloat(rentangPertanyaan2.min),
-                    max: parseFloat(rentangPertanyaan2.max),
-                  }
-              : undefined,
         })) as AssessmentItem[];
 
         updated = [...list, ...newItems];
@@ -327,16 +253,14 @@ export default function PilihJawabanPage() {
     if (!status) return false;
     if (!jumlahPertanyaan) return false;
     if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) return false;
-    if (tipePertanyaan === 'short-answer') {
-      const min1 = parseFloat(rentangPertanyaan1.min);
-      const max1 = parseFloat(rentangPertanyaan1.max);
-      if (isNaN(min1) || isNaN(max1) || min1 >= max1) return false;
+
+    // Validasi skor
+    for (const level of Object.keys(skor)) {
+      const min = parseFloat(skor[Number(level)].min);
+      const max = parseFloat(skor[Number(level)].max);
+      if (isNaN(min) || isNaN(max) || min >= max) return false;
     }
-    if (jumlahPertanyaan === '2 Pertanyaan' && tipePertanyaan === 'short-answer') {
-      const min2 = parseFloat(rentangPertanyaan2.min);
-      const max2 = parseFloat(rentangPertanyaan2.max);
-      if (isNaN(min2) || isNaN(max2) || min2 >= max2) return false;
-    }
+
     return true;
   };
 
@@ -415,6 +339,19 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
+           <div className="flex flex-col space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Urutan</label>
+            <input
+              type="number"
+              value={urutan}
+              onChange={(e) => setUrutan(e.target.value)}
+              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+              placeholder="Masukkan urutan"
+              min="1"
+            />
+            {errors.urutan && <p className="text-red-500 text-xs mt-1">{errors.urutan}</p>}
+          </div>
+
           {/* Deskripsi Skor */}
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-700 mb-3">Deskripsi Skor</h3>
@@ -442,18 +379,6 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
-          <div className="flex flex-col space-y-2">
-      <label className="block text-sm font-medium text-gray-700">Urutan</label>
-      <input
-        type="number"
-        value={urutan}
-        onChange={(e) => setUrutan(e.target.value)}
-        className="w-full border border-gray-300 rounded-md p-2 text-sm"
-        placeholder="Masukkan urutan"
-        min="1"
-      />
-      {errors.urutan && <p className="text-red-500 text-xs mt-1">{errors.urutan}</p>}
-    </div>
 
           {/* Jumlah Pertanyaan */}
           <div className="mb-6">
@@ -516,7 +441,7 @@ export default function PilihJawabanPage() {
                 {errors.pertanyaan1 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan1}</p>}
               </div>
 
-              {tipePertanyaan === 'pg' ? (
+              {tipePertanyaan === 'pg' && (
                 <div className="mb-6">
                   <table className="w-full border-collapse border border-gray-300">
                     <thead>
@@ -538,34 +463,6 @@ export default function PilihJawabanPage() {
                       </tr>
                     </tbody>
                   </table>
-                </div>
-              ) : (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Rentang Jawaban (Pertanyaan 1)</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-600">Nilai Min</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className={`w-full border ${errors.rentangMin1 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                        value={rentangPertanyaan1.min}
-                        onChange={(e) => setRentangPertanyaan1({ ...rentangPertanyaan1, min: e.target.value })}
-                      />
-                      {errors.rentangMin1 && <p className="text-red-500 text-xs mt-1">{errors.rentangMin1}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600">Nilai Max</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className={`w-full border ${errors.rentangMax1 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                        value={rentangPertanyaan1.max}
-                        onChange={(e) => setRentangPertanyaan1({ ...rentangPertanyaan1, max: e.target.value })}
-                      />
-                      {errors.rentangMax1 && <p className="text-red-500 text-xs mt-1">{errors.rentangMax1}</p>}
-                    </div>
-                  </div>
                 </div>
               )}
             </>
@@ -586,7 +483,7 @@ export default function PilihJawabanPage() {
                 {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
               </div>
 
-              {tipePertanyaan === 'pg' ? (
+              {tipePertanyaan === 'pg' && (
                 <div className="mb-6">
                   <table className="w-full border-collapse border border-gray-300">
                     <thead>
@@ -608,34 +505,6 @@ export default function PilihJawabanPage() {
                       </tr>
                     </tbody>
                   </table>
-                </div>
-              ) : (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Rentang Jawaban (Pertanyaan 2)</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-600">Nilai Min</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className={`w-full border ${errors.rentangMin2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                        value={rentangPertanyaan2.min}
-                        onChange={(e) => setRentangPertanyaan2({ ...rentangPertanyaan2, min: e.target.value })}
-                      />
-                      {errors.rentangMin2 && <p className="text-red-500 text-xs mt-1">{errors.rentangMin2}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600">Nilai Max</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className={`w-full border ${errors.rentangMax2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 text-sm`}
-                        value={rentangPertanyaan2.max}
-                        onChange={(e) => setRentangPertanyaan2({ ...rentangPertanyaan2, max: e.target.value })}
-                      />
-                      {errors.rentangMax2 && <p className="text-red-500 text-xs mt-1">{errors.rentangMax2}</p>}
-                    </div>
-                  </div>
                 </div>
               )}
             </>
@@ -700,6 +569,7 @@ export default function PilihJawabanPage() {
             <Button
               variant="ghost"
               icon={X}
+              iconColor=""
               iconPosition="left"
               onClick={handleCancel}
               className="rounded-[12px] px-4 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
