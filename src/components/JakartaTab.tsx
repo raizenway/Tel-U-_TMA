@@ -429,7 +429,21 @@ export default function JakartaTab({ setIsFormDirty }: JakartaTabProps) {
         }}
         title=""
         header="Konfirmasi"
-        hideDefaultButtons
+       footer={(
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
+            <Button
+            variant="primary"
+            type="button"
+            onClick={() => {
+              setShowPreConfirmModal(false);
+              setShowModal(true);
+            }}
+            className="px-4 py-2 rounded-md text-white text-sm"
+            >
+             cek pengisian assement
+            </Button>
+          </div>
+  )}
       >
         <div className="flex flex-col items-center justify-center text-center space-y-4">
           <img src="/modal.png" alt="Confirm" className="w-40 h-40" />
@@ -487,7 +501,21 @@ export default function JakartaTab({ setIsFormDirty }: JakartaTabProps) {
         }}
         title="Apakah Anda yakin ingin menyelesaikan?"
         header="Konfirmasi"
-        hideDefaultButtons
+        footer={(
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
+            <Button
+            variant="primary"
+            type="button"
+            onClick={() => {
+              setShowPreConfirmModal(false);
+              setShowModal(true);
+            }}
+            className="px-4 py-2 rounded-md text-white text-sm"
+            >
+             cek pengisian assement
+            </Button>
+          </div>
+  )}
       >
         <div className="grid grid-cols-3 gap-4 max-h-80 overflow-y-auto text-sm pb-2">
           {modalData.map((item, index) => (
@@ -580,7 +608,21 @@ export default function JakartaTab({ setIsFormDirty }: JakartaTabProps) {
         }}
         title={`Apakah Anda yakin ingin membatalkan jawaban untuk soal nomor ${resetQuestionId}?`}
         header="Konfirmasi Batal"
-        hideDefaultButtons
+        footer={(
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
+            <Button
+            variant="primary"
+            type="button"
+            onClick={() => {
+              setShowPreConfirmModal(false);
+              setShowModal(true);
+            }}
+            className="px-4 py-2 rounded-md text-white text-sm"
+            >
+              Cek pengisian assemssment
+            </Button>
+          </div>
+        )}
       >
         <div className="text-sm text-gray-700">
           Jawaban untuk soal <strong>nomor {resetQuestionId}</strong> akan dihapus dan Anda dapat mengisinya kembali nanti.
