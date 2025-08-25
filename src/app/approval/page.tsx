@@ -33,10 +33,10 @@ const TablePage = () => {
   const columns = [
     { header: "No", key: "nomor", width: "60px", sortable: true },
     { header: "Nama Variable", key: "variable", width: "300px", sortable: true },
-    { header: "Indikator", key: "indikator", width: "320px" },
-    { header: "Pertanyaan", key: "pertanyaan", width: "320px" },
+    { header: "Indikator", key: "indikator", width: "319px" },
+    { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
     { header: "Jawaban", key: "jawaban", width: "120px" },
-    { header: "Skor", key: "skor", width: "320px" },
+    { header: "Skor", key: "skor", width: "319px" },
     { header: "Tipe Soal", key: "tipeSoal", width: "160px" },
   ];
 
@@ -212,7 +212,7 @@ const TablePage = () => {
           </div>
 
           {/* ⬇️ Table + Scroll */}
-          <div className="w-full overflow-x-auto border rounded-lg">
+          
             <TableUpdate
               columns={columns}
               data={paginatedData}
@@ -221,7 +221,7 @@ const TablePage = () => {
               onSort={handleSort}
               sortConfig={sortConfig}
             />
-          </div>
+         
 
           {/* Pagination & Actions */}
           <div className="flex justify-between items-center mt-4 flex-wrap gap-4">
@@ -282,6 +282,7 @@ const TablePage = () => {
               confirmLabel="Ya, lakukan"
               cancelLabel="Batal"
             />
+          
           </div>
         </div>
       )}
