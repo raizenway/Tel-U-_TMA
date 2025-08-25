@@ -353,9 +353,10 @@ export default function ApiIgraciasPage() {
             <Button
               variant="ghost"
               icon={X}
+              iconColor="text-red-600"
               iconPosition="left"
               onClick={handleCancel}
-              className="rounded-[12px] px-4 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              className="rounded-[12px] px-20 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
               Batal
             </Button>
@@ -365,7 +366,7 @@ export default function ApiIgraciasPage() {
               iconPosition="left"
               onClick={handleSimpan}
               disabled={!isFormValid()} // ✅ Disable jika form tidak valid
-              className="rounded-[12px] px-4 py-2 text-sm font-semibold"
+              className="rounded-[12px] px-25 py-2 text-sm font-semibold"
             >
               Simpan
             </Button>

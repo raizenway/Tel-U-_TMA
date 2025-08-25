@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   RadarChart,
   Radar,
@@ -17,12 +17,12 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-} from "recharts";
-import ProgressAssessment from "@/components/ProgressAssessment";
-import { Pencil, Download } from "lucide-react";
-import AssessmentTable from "./AssessmentTable";
-import ModalConfirm from "./StarAssessment/ModalConfirm";
-import Button from "./button";
+} from 'recharts';
+import ProgressAssessment from '@/components/ProgressAssessment';
+import { Pencil, Download } from 'lucide-react';
+import AssessmentTable from './AssessmentTable';
+import ModalConfirm from './StarAssessment/ModalConfirm';
+import Button from './button';
 import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
 
 const radarData = [
@@ -48,14 +48,6 @@ interface CampusData {
   "Tel-U Surabaya": number[];
   "Tel-U Purwokerto": number[];
   "Tel-U Bandung": number[];
-}
-
-interface StudentRow {
-  tahun: string;
-  Jakarta: number;
-  Bandung: number;
-  Purwokerto: number;
-  Surabaya: number;
 }
 
 export default function DashboardTab() {
@@ -189,6 +181,7 @@ export default function DashboardTab() {
     setShowModal(true);
   };
 
+  // Data perkembangan variabel
   const variableData = [
     { tahun: "2021", variable: "Akademik", "Tel-U Jakarta": 88, "Tel-U Bandung": 92, "Tel-U Surabaya": 85, "Tel-U Purwokerto": 80 },
     { tahun: "2021", variable: "SDM", "Tel-U Jakarta": 82, "Tel-U Bandung": 87, "Tel-U Surabaya": 80, "Tel-U Purwokerto": 78 },
@@ -211,6 +204,37 @@ export default function DashboardTab() {
     });
     return data;
   });
+
+  // Siapkan data untuk grafik variabel
+  const filteredVariableData = variableData.filter(d => d.variable === selectedVariable);
+
+  const chartData = filteredVariableData.map(d => {
+    const row: any = { tahun: d.tahun };
+    if (selectedCampus === "All") {
+      CAMPUS_LIST.forEach(campus => {
+        row[campus] = d[campus];
+      });
+    } else {
+      row[selectedCampus] = d[selectedCampus];
+    }
+    return row;
+  });
+
+  // Warna untuk tiap kampus
+  const campusColors: Record<string, string> = {
+    "Tel-U Jakarta": "#8884d8",
+    "Tel-U Bandung": "#82ca9d",
+    "Tel-U Surabaya": "#ffc658",
+    "Tel-U Purwokerto": "#ff7300",
+  };
+
+  // 🔹 🔶 GANTI WARNA 🔶 🔹
+  const studentColors = [
+    "#A966FF", // 2021  
+    "#FF0000", // 2022 
+    "#5D77ff", // 2023 
+    "#FFB930", // 2024 
+  ];
 
   return (
     <div className="space-y-8 px-4 py-6">
@@ -316,12 +340,12 @@ export default function DashboardTab() {
               <YAxis />
               <Tooltip />
               <Legend />
-              {studentYears.map((year) => (
+              {studentYears.map((year, index) => (
                 <Bar
                   key={year}
                   dataKey={year}
-                  fill={`hsl(${(parseInt(year) - 2021) * 30}, 70%, 50%)`}
-                  radius={[4, 4, 0, 0]}
+                  fill={studentColors[index % studentColors.length]} // 🔥 Warna di sini
+                  radius={[10, 10, 0, 0]}
                 />
               ))}
             </BarChart>
@@ -389,25 +413,31 @@ export default function DashboardTab() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart
-            data={variableData
-              .filter(d => d.variable === selectedVariable)
-              .map(d => ({
-                ...d,
-                nilai: selectedCampus === "All"
-                  ? (["Tel-U Jakarta", "Tel-U Bandung", "Tel-U Surabaya", "Tel-U Purwokerto"] as const)
-                      .map(campus => d[campus])
-                      .reduce((acc, score) => acc + score, 0) / 4
-                  : d[selectedCampus]
-              }))
-              .map(d => ({ tahun: d.tahun, nilai: d.nilai }))}
-          >
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="tahun" />
             <YAxis domain={[0, 100]} />
-            <Tooltip />
+            <Tooltip formatter={(value) => Number(value).toFixed(2)} />
             <Legend />
-            <Line type="monotone" dataKey="nilai" stroke="#8884d8" />
+            {selectedCampus === "All"
+              ? CAMPUS_LIST.map(campus => (
+                  <Line
+                    key={campus}
+                    type="monotone"
+                    dataKey={campus}
+                    stroke={campusColors[campus]}
+                    name={campus.replace("Tel-U ", "")}
+                  />
+                ))
+              : (
+                  <Line
+                    type="monotone"
+                    dataKey={selectedCampus}
+                    stroke={campusColors[selectedCampus]}
+                    name={selectedCampus.replace("Tel-U ", "")}
+                  />
+                )
+            }
           </LineChart>
         </ResponsiveContainer>
       </div>
