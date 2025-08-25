@@ -15,19 +15,59 @@ export default function AddMaturityLevelPage() {
     deskripsiPerVariabel: [] as string[],
   });
 
-  const [showNotif, setShowNotif] = useState(false); // state untuk notifikasi
+  const [showNotif, setShowNotif] = useState(false);
   const router = useRouter();
 
+  // ✅ Muat data sementara hanya jika dari halaman tambah
   useEffect(() => {
-    const savedForm = localStorage.getItem("maturityTempForm");
-    if (savedForm) {
-      setFormData(JSON.parse(savedForm));
+    const tempForm = localStorage.getItem("maturityTempForm");
+
+    if (tempForm) {
+      try {
+        const parsed = JSON.parse(tempForm);
+        if (parsed.fromAdd === true) {
+          setFormData((prev) => ({
+            ...prev,
+            level: parsed.level || "",
+            namaLevel: parsed.namaLevel || "",
+            skorMin: parsed.skorMin || "",
+            skorMax: parsed.skorMax || "",
+            deskripsiUmum: parsed.deskripsiUmum || "",
+            deskripsiPerVariabel: Array.isArray(parsed.deskripsiPerVariabel)
+              ? parsed.deskripsiPerVariabel
+              : [],
+          }));
+        }
+      } catch (e) {
+        console.warn("Gagal parse maturityTempForm", e);
+      }
     }
   }, []);
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  // ✅ Dengarkan update dari halaman deskripsi-per-variabel
+  useEffect(() => {
+    const handleFocus = () => {
+      const tempForm = localStorage.getItem("maturityTempForm");
+      if (tempForm) {
+        try {
+          const tempData = JSON.parse(tempForm);
+          if (Array.isArray(tempData.deskripsiPerVariabel)) {
+            setFormData((prev) => ({
+              ...prev,
+              deskripsiPerVariabel: tempData.deskripsiPerVariabel,
+            }));
+          }
+        } catch (e) {
+          console.warn("Gagal muat deskripsiPerVariabel", e);
+        }
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -44,17 +84,54 @@ export default function AddMaturityLevelPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    router.push("/maturity-level?success=true");
 
+    if (!isFormValid) return;
 
-    const existingData =
-      JSON.parse(localStorage.getItem("maturityData") || "[]");
+    // ✅ Pastikan key lama tidak ganggu
+    localStorage.removeItem("maturityLevels");
 
-    const updatedData = [...existingData, formData];
+    // ✅ Ambil data lama dari localStorage
+    const existingDataStr = localStorage.getItem("maturityData");
+    let existingData: any[] = [];
+
+    try {
+      if (existingDataStr) {
+        existingData = JSON.parse(existingDataStr);
+      }
+    } catch (e) {
+      console.error("Data maturityData rusak, reset ke array kosong");
+      existingData = [];
+    }
+
+    // ✅ Cek duplikat level (anggap angka & string sama)
+    const newLevel = formData.level.trim();
+    const isDuplicate = existingData.some(
+      (item) => String(item.level).trim() === newLevel
+    );
+
+    if (isDuplicate) {
+      alert(`Level ${newLevel} sudah ada. Harap gunakan level yang berbeda.`);
+      return;
+    }
+
+    // ✅ Buat data baru
+    const newData = {
+      level: newLevel,
+      namaLevel: formData.namaLevel.trim(),
+      skorMin: formData.skorMin.trim(),
+      skorMax: formData.skorMax.trim(),
+      deskripsiUmum: formData.deskripsiUmum.trim(),
+      deskripsiPerVariabel: [...formData.deskripsiPerVariabel],
+    };
+
+    // ✅ Simpan ke localStorage
+    const updatedData = [...existingData, newData];
     localStorage.setItem("maturityData", JSON.stringify(updatedData));
 
+    // ✅ Hapus data sementara
     localStorage.removeItem("maturityTempForm");
 
+    // ✅ Reset form
     setFormData({
       level: "",
       namaLevel: "",
@@ -64,11 +141,11 @@ export default function AddMaturityLevelPage() {
       deskripsiPerVariabel: [],
     });
 
-    // ✅ Tampilkan notifikasi sukses
+    // ✅ Tampilkan notifikasi
     setShowNotif(true);
     setTimeout(() => {
       setShowNotif(false);
-      router.push("/maturity-level"); // pindah ke tabel setelah notif hilang
+      router.push("/maturity-level");
     }, 2000);
   };
 
@@ -156,22 +233,28 @@ export default function AddMaturityLevelPage() {
               onClick={() => {
                 localStorage.setItem(
                   "maturityTempForm",
-                  JSON.stringify(formData)
+                  JSON.stringify({
+                    ...formData,
+                    fromAdd: true,
+                  })
                 );
                 router.push("/maturity-level/deskripsi-per-variabel");
               }}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
-              {formData.deskripsiPerVariabel &&
-              formData.deskripsiPerVariabel.length > 0
+              {formData.deskripsiPerVariabel.length > 0
                 ? "Lihat Deskripsi"
                 : "+ Tambah Deskripsi"}
             </button>
           </div>
         </div>
+
         <div className="flex justify-end gap-4 mt-4">
-         <Button
-            onClick={() => router.push("/maturity-level")}
+          <Button
+            onClick={() => {
+              localStorage.removeItem("maturityTempForm");
+              router.push("/maturity-level");
+            }}
             variant="ghost"
             icon={X}
             iconColor="text-red-600"
