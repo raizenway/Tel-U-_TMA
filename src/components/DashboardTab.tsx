@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   RadarChart,
   Radar,
@@ -17,15 +17,14 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-} from "recharts";
-import ProgressAssessment from "@/components/ProgressAssessment";
-import { Pencil, Download } from "lucide-react";
-import AssessmentTable from "./AssessmentTable";
-import ModalConfirm from "./StarAssessment/ModalConfirm";
-import Button from "./button";
+} from 'recharts';
+import ProgressAssessment from '@/components/ProgressAssessment';
+import { Pencil, Download } from 'lucide-react';
+import AssessmentTable from './AssessmentTable';
+import ModalConfirm from './StarAssessment/ModalConfirm';
+import Button from './button';
 import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
 
-// Data Chart
 const radarData = [
   { subject: "Akademik", A: 90 },
   { subject: "SDM", A: 85 },
@@ -35,7 +34,6 @@ const radarData = [
   { subject: "Publikasi", A: 95 },
 ];
 
-// ✅ Daftar kampus
 const CAMPUS_LIST = [
   "Tel-U Jakarta",
   "Tel-U Surabaya",
@@ -43,7 +41,8 @@ const CAMPUS_LIST = [
   "Tel-U Bandung",
 ] as const;
 
-// ✅ Tipe data
+type CampusKey = typeof CAMPUS_LIST[number];
+
 interface CampusData {
   "Tel-U Jakarta": number[];
   "Tel-U Surabaya": number[];
@@ -51,20 +50,11 @@ interface CampusData {
   "Tel-U Bandung": number[];
 }
 
-interface StudentRow {
-  tahun: string;
-  Jakarta: number;
-  Bandung: number;
-  Purwokerto: number;
-  Surabaya: number;
-}
-
 export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
 
-  // ✅ Student Body Data
-  const [studentYears, setStudentYears] = useState(["2021", "2022", "2023", "2024"]);
+  const [studentYears, setStudentYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [studentInputData, setStudentInputData] = useState<CampusData>({
     "Tel-U Jakarta": [100, 120, 125, 135],
     "Tel-U Surabaya": [130, 150, 170, 180],
@@ -72,18 +62,7 @@ export default function DashboardTab() {
     "Tel-U Bandung": [140, 135, 160, 170],
   });
 
-  const [studentData, setStudentData] = useState<StudentRow[]>(() =>
-    studentYears.map((year, idx) => ({
-      tahun: year,
-      Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
-      Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
-      Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
-      Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
-    }))
-  );
-
-  // ✅ Akreditasi Prodi - Data Input
-  const [accreditationYears, setAccreditationYears] = useState(["2021", "2022", "2023", "2024"]);
+  const [accreditationYears, setAccreditationYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
     "Tel-U Jakarta": [85, 87, 89, 90],
     "Tel-U Surabaya": [80, 82, 85, 88],
@@ -91,10 +70,8 @@ export default function DashboardTab() {
     "Tel-U Bandung": [90, 91, 92, 93],
   });
 
-  // ✅ Data untuk ditampilkan di grafik
   const [accreditationData, setAccreditationData] = useState<{ tahun: string; Jakarta: number; Bandung: number; Purwokerto: number; Surabaya: number }[]>([]);
 
-  // ✅ Inisialisasi data akreditasi saat pertama kali
   useEffect(() => {
     const initialData = accreditationYears.map((year, idx) => ({
       tahun: year,
@@ -104,11 +81,12 @@ export default function DashboardTab() {
       Surabaya: accreditationInputData["Tel-U Surabaya"][idx],
     }));
     setAccreditationData(initialData);
-  }, []);
+  }, [accreditationInputData, accreditationYears]);
 
-  // ✅ Tambah Tahun - Mahasiswa
   const handleAddYear = () => {
-    const nextYear = String(Number(studentYears[studentYears.length - 1]) + 1);
+    const lastYearStr = studentYears.at(-1);
+    const lastYearNum = lastYearStr ? parseInt(lastYearStr, 10) : 2024;
+    const nextYear = String(lastYearNum + 1);
     setStudentYears((prev) => [...prev, nextYear]);
     (Object.keys(studentInputData) as Array<keyof CampusData>).forEach((campus) => {
       setStudentInputData((prev) => ({
@@ -118,7 +96,6 @@ export default function DashboardTab() {
     });
   };
 
-  // ✅ Ubah Nilai Mahasiswa
   const handleInputChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
     const num = value === "" ? 0 : Number(value);
     if (isNaN(num)) return;
@@ -128,9 +105,10 @@ export default function DashboardTab() {
     }));
   };
 
-  // ✅ Tambah Tahun - Akreditasi Prodi
   const handleAddAccreditationYear = () => {
-    const nextYear = String(Number(accreditationYears[accreditationYears.length - 1]) + 1);
+    const lastYearStr = accreditationYears.at(-1);
+    const lastYearNum = lastYearStr ? parseInt(lastYearStr, 10) : 2024;
+    const nextYear = String(lastYearNum + 1);
     setAccreditationYears((prev) => [...prev, nextYear]);
     (Object.keys(accreditationInputData) as Array<keyof CampusData>).forEach((campus) => {
       setAccreditationInputData((prev) => ({
@@ -140,9 +118,8 @@ export default function DashboardTab() {
     });
   };
 
-  // ✅ Ubah Nilai Akreditasi
   const handleAccreditationChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
-    const num = value === "" ? 0 : Math.max(0, Math.min(100, Number(value))); // Batasi 0–100
+    const num = value === "" ? 0 : Math.max(0, Math.min(100, Number(value)));
     if (isNaN(num)) return;
     setAccreditationInputData((prev) => ({
       ...prev,
@@ -150,17 +127,9 @@ export default function DashboardTab() {
     }));
   };
 
-  // ✅ Simpan Data
   const handleGenerate = () => {
     if (modalMode === 'student') {
-      const newStudentData = studentYears.map((year, idx) => ({
-        tahun: year,
-        Jakarta: studentInputData["Tel-U Jakarta"][idx] || 0,
-        Surabaya: studentInputData["Tel-U Surabaya"][idx] || 0,
-        Purwokerto: studentInputData["Tel-U Purwokerto"][idx] || 0,
-        Bandung: studentInputData["Tel-U Bandung"][idx] || 0,
-      }));
-      setStudentData(newStudentData);
+      // Tidak perlu update studentData karena langsung pakai studentInputData
     } else if (modalMode === 'prodi') {
       const newData = accreditationYears.map((year, idx) => ({
         tahun: year,
@@ -174,7 +143,6 @@ export default function DashboardTab() {
     setShowModal(false);
   };
 
-  // ✅ Download CSV Akreditasi
   const handleDownload = () => {
     if (accreditationData.length === 0) {
       alert("Belum ada data akreditasi prodi untuk diunduh.");
@@ -203,7 +171,6 @@ export default function DashboardTab() {
     URL.revokeObjectURL(url);
   };
 
-  // Buka modal
   const openStudentModal = () => {
     setModalMode('student');
     setShowModal(true);
@@ -214,11 +181,65 @@ export default function DashboardTab() {
     setShowModal(true);
   };
 
+  // Data perkembangan variabel
+  const variableData = [
+    { tahun: "2021", variable: "Akademik", "Tel-U Jakarta": 88, "Tel-U Bandung": 92, "Tel-U Surabaya": 85, "Tel-U Purwokerto": 80 },
+    { tahun: "2021", variable: "SDM", "Tel-U Jakarta": 82, "Tel-U Bandung": 87, "Tel-U Surabaya": 80, "Tel-U Purwokerto": 78 },
+    { tahun: "2022", variable: "Akademik", "Tel-U Jakarta": 89, "Tel-U Bandung": 93, "Tel-U Surabaya": 87, "Tel-U Purwokerto": 82 },
+    { tahun: "2022", variable: "SDM", "Tel-U Jakarta": 84, "Tel-U Bandung": 88, "Tel-U Surabaya": 83, "Tel-U Purwokerto": 80 },
+    { tahun: "2023", variable: "Akademik", "Tel-U Jakarta": 90, "Tel-U Bandung": 94, "Tel-U Surabaya": 89, "Tel-U Purwokerto": 85 },
+    { tahun: "2023", variable: "SDM", "Tel-U Jakarta": 86, "Tel-U Bandung": 90, "Tel-U Surabaya": 85, "Tel-U Purwokerto": 83 },
+    { tahun: "2024", variable: "Akademik", "Tel-U Jakarta": 91, "Tel-U Bandung": 95, "Tel-U Surabaya": 91, "Tel-U Purwokerto": 87 },
+    { tahun: "2024", variable: "SDM", "Tel-U Jakarta": 88, "Tel-U Bandung": 92, "Tel-U Surabaya": 87, "Tel-U Purwokerto": 85 },
+  ];
+
+  const [selectedCampus, setSelectedCampus] = useState<"All" | CampusKey>("All");
+  const [selectedVariable, setSelectedVariable] = useState<string>("Akademik");
+
+  // Transform data untuk Student Body: X-axis = Kampus, Bar = Tahun
+  const studentDataByCampus = CAMPUS_LIST.map((campus) => {
+    const data: any = { kampus: campus.replace("Tel-U ", "") };
+    studentYears.forEach((year, idx) => {
+      data[year] = studentInputData[campus][idx] || 0;
+    });
+    return data;
+  });
+
+  // Siapkan data untuk grafik variabel
+  const filteredVariableData = variableData.filter(d => d.variable === selectedVariable);
+
+  const chartData = filteredVariableData.map(d => {
+    const row: any = { tahun: d.tahun };
+    if (selectedCampus === "All") {
+      CAMPUS_LIST.forEach(campus => {
+        row[campus] = d[campus];
+      });
+    } else {
+      row[selectedCampus] = d[selectedCampus];
+    }
+    return row;
+  });
+
+  // Warna untuk tiap kampus
+  const campusColors: Record<string, string> = {
+    "Tel-U Jakarta": "#8884d8",
+    "Tel-U Bandung": "#82ca9d",
+    "Tel-U Surabaya": "#ffc658",
+    "Tel-U Purwokerto": "#ff7300",
+  };
+
+  // 🔹 🔶 GANTI WARNA 🔶 🔹
+  const studentColors = [
+    "#A966FF", // 2021  
+    "#FF0000", // 2022 
+    "#5D77ff", // 2023 
+    "#FFB930", // 2024 
+  ];
+
   return (
     <div className="space-y-8 px-4 py-6">
-      {/* 4 Card */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
-        {/* 1. UPPS/Kampus Cabang */}
         <div
           className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
           style={{ backgroundImage: "url('/KC.png')" }}
@@ -229,18 +250,20 @@ export default function DashboardTab() {
               <Building2 className="text-white w-6 h-6" />
             </div>
             <span className="text-sm font-semibold">UPPS/Kampus Cabang</span>
-            <div className="absolute top-0 right-0 w-6 h-6 text-white text-sm font-bold rounded-full flex items-center justify-center" style={{ marginTop: '45px', marginRight: '90px' }}>
+            <div
+              className="absolute top-0 right-0 w-6 h-6 text-white text-sm font-bold rounded-full flex items-center justify-center"
+              style={{ marginTop: '45px', marginRight: '90px' }}
+            >
               8
             </div>
           </div>
         </div>
 
-        {/* 2. Jumlah Variabel & Pertanyaan */}
         <div
           className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
           style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
         >
-          <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
           <div className="relative flex flex-col items-center space-y-2 z-10">
             <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
               <BookOpenCheckIcon className="text-white w-6 h-6" />
@@ -249,12 +272,11 @@ export default function DashboardTab() {
           </div>
         </div>
 
-        {/* 3. Assessment Submitted */}
         <div
           className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
           style={{ backgroundImage: "url('/Assessment Submitted.png')" }}
         >
-          <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
           <div className="relative flex flex-col items-center space-y-2 z-10">
             <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
               <ClipboardList className="text-white w-6 h-6" />
@@ -263,12 +285,11 @@ export default function DashboardTab() {
           </div>
         </div>
 
-        {/* 4. Assessment Approved */}
         <div
           className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
           style={{ backgroundImage: "url('/Assessment Approve.png')" }}
         >
-          <div className="absolute inset-0  bg-opacity-50 rounded-xl"></div>
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
           <div className="relative flex flex-col items-center space-y-2 z-10">
             <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
               <ClipboardCheck className="text-white w-6 h-6" />
@@ -278,7 +299,7 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Progress + Radar */}
+      {/* Progress & Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Progress Assessment</h3>
@@ -299,58 +320,47 @@ export default function DashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Student Body */}
+        {/* Student Body - X-axis: Kampus, Color: Tahun */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
             <div className="flex space-x-3">
-              <button
-                onClick={openStudentModal}
-                className="text-gray-500 hover:text-gray-700"
-                title="Edit Data Mahasiswa"
-              >
+              <button onClick={openStudentModal} className="text-gray-500 hover:text-gray-700" title="Edit Data Mahasiswa">
                 <Pencil size={18} />
               </button>
-              <button
-                className="text-gray-500 hover:text-gray-700"
-                title="Unduh Data"
-              >
+              <button className="text-gray-500 hover:text-gray-700" title="Unduh Data">
                 <Download size={18} />
               </button>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={studentData}>
+            <BarChart data={studentDataByCampus}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tahun" />
+              <XAxis dataKey="kampus" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Jakarta" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Bandung" fill="#34d399" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Purwokerto" fill="#facc15" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Surabaya" fill="#fb923c" radius={[4, 4, 0, 0]} />
+              {studentYears.map((year, index) => (
+                <Bar
+                  key={year}
+                  dataKey={year}
+                  fill={studentColors[index % studentColors.length]} // 🔥 Warna di sini
+                  radius={[10, 10, 0, 0]}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Pertumbuhan Akreditasi Prodi */}
+        {/* Accreditation Line Chart */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
             <div className="flex space-x-3">
-              <button
-                onClick={openProdiModal}
-                className="text-gray-500 hover:text-gray-700"
-                title="Edit Data Prodi"
-              >
+              <button onClick={openProdiModal} className="text-gray-500 hover:text-gray-700" title="Edit Data Prodi">
                 <Pencil size={18} />
               </button>
-              <button
-                onClick={handleDownload}
-                className="text-gray-500 hover:text-gray-700"
-                title="Unduh Data Akreditasi"
-              >
+              <button onClick={handleDownload} className="text-gray-500 hover:text-gray-700" title="Unduh Data Akreditasi">
                 <Download size={18} />
               </button>
             </div>
@@ -371,25 +381,98 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Tabel Assessment */}
+      {/* Variable Chart */}
+      <div className="bg-white rounded-xl shadow p-6">
+        <div className="flex items-start justify-between mb-6">
+          <h3 className="text-base font-bold text-gray-700">📈 Perkembangan Variabel per Kampus</h3>
+          <div className="flex flex-wrap gap-4 ml-auto">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filter by UPPS/KC</label>
+              <select
+                value={selectedCampus}
+                onChange={(e) => setSelectedCampus(e.target.value as "All" | CampusKey)}
+                className="border border-gray-300 rounded-md px-3 py-1 text-sm min-w-[160px]"
+              >
+                <option value="All">Semua Kampus</option>
+                {CAMPUS_LIST.map(campus => (
+                  <option key={campus} value={campus}>{campus}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Variabel</label>
+              <select
+                value={selectedVariable}
+                onChange={(e) => setSelectedVariable(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1 text-sm min-w-[140px]"
+              >
+                <option value="Akademik">Akademik</option>
+                <option value="SDM">SDM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={400}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="tahun" />
+            <YAxis domain={[0, 100]} />
+            <Tooltip formatter={(value) => Number(value).toFixed(2)} />
+            <Legend />
+            {selectedCampus === "All"
+              ? CAMPUS_LIST.map(campus => (
+                  <Line
+                    key={campus}
+                    type="monotone"
+                    dataKey={campus}
+                    stroke={campusColors[campus]}
+                    name={campus.replace("Tel-U ", "")}
+                  />
+                ))
+              : (
+                  <Line
+                    type="monotone"
+                    dataKey={selectedCampus}
+                    stroke={campusColors[selectedCampus]}
+                    name={selectedCampus.replace("Tel-U ", "")}
+                  />
+                )
+            }
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Table */}
       <div className="mt-6">
         <AssessmentTable hideStartButton={true} />
       </div>
 
-      {/* ✅ Modal Dinamis: Ubah Data Mahasiswa atau Prodi */}
+      {/* Modal */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
         onConfirm={handleGenerate}
         header={modalMode === 'student' ? 'Ubah Data Mahasiswa' : 'Ubah Data Prodi'}
         title=""
-        confirmLabel="Simpan"
-        cancelLabel="Batal"
-        hideDefaultButtons
+        footer={
+          <div className="flex justify-end gap-4 pt-4">
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 font-medium"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleGenerate}
+              className="px-6 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 font-medium"
+            >
+              Simpan
+            </button>
+          </div>
+        }
       >
         {modalMode === 'student' ? (
           <>
-            {/* Tambah Tahun - Mahasiswa */}
             <div className="flex justify-end mb-4">
               <Button
                 onClick={handleAddYear}
@@ -398,8 +481,6 @@ export default function DashboardTab() {
                 + Tambah Tahun
               </Button>
             </div>
-
-            {/* Tabel Mahasiswa dengan Scroll Horizontal */}
             <div className="overflow-x-auto max-w-full">
               <table className="w-full border-collapse text-center min-w-max">
                 <thead>
@@ -433,7 +514,6 @@ export default function DashboardTab() {
           </>
         ) : (
           <>
-            {/* Tambah Tahun - Akreditasi Prodi */}
             <div className="flex justify-end mb-4">
               <Button
                 onClick={handleAddAccreditationYear}
@@ -442,8 +522,6 @@ export default function DashboardTab() {
                 + Tambah Tahun
               </Button>
             </div>
-
-            {/* Tabel Akreditasi Prodi dengan Scroll Horizontal */}
             <div className="overflow-x-auto max-w-full">
               <table className="w-full border-collapse text-center min-w-max">
                 <thead>
@@ -478,22 +556,6 @@ export default function DashboardTab() {
             </div>
           </>
         )}
-
-        {/* Tombol Aksi */}
-        <div className="flex justify-center gap-4 mt-6">
-          <button
-            onClick={() => setShowModal(false)}
-            className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 font-medium"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleGenerate}
-            className="px-6 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 font-medium"
-          >
-            Simpan
-          </button>
-        </div>
       </ModalConfirm>
     </div>
   );

@@ -8,21 +8,21 @@ import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 
 export default function DeskripsiVariabelTable() {
   const router = useRouter();
-  const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill(""));
+  const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill("")); // default kosong
   const [showCancel, setShowCancel] = useState(false);
 
-  // ambil data sementara kalau sudah pernah diisi
+  // ✅ Muat data dari maturityTempForm saat pertama kali
   useEffect(() => {
-    const saved = localStorage.getItem("deskripsiPerVariabelTemp");
-    if (saved) {
-      setDeskripsi(JSON.parse(saved));
-    } else {
-      const savedForm = localStorage.getItem("maturityTempForm");
-      if (savedForm) {
-        const parsed = JSON.parse(savedForm);
-        if (Array.isArray(parsed.deskripsiPerVariabel)) {
-          setDeskripsi(parsed.deskripsiPerVariabel);
-        }
+    const savedForm = localStorage.getItem("maturityTempForm");
+    if (savedForm) {
+      const parsed = JSON.parse(savedForm);
+      if (parsed.deskripsiPerVariabel && Array.isArray(parsed.deskripsiPerVariabel)) {
+        // Isi dengan data lama, tetap pastikan jumlahnya 5
+        const loaded = [...parsed.deskripsiPerVariabel];
+        const filled = Array(5)
+          .fill("")
+          .map((_, i) => loaded[i] || "");
+        setDeskripsi(filled);
       }
     }
   }, []);
@@ -31,10 +31,15 @@ export default function DeskripsiVariabelTable() {
   const allFilled = deskripsi.every((desc) => desc.trim() !== "");
 
   const handleSave = () => {
+    // Simpan ke localStorage temp
     localStorage.setItem("deskripsiPerVariabelTemp", JSON.stringify(deskripsi));
+
+    // Update maturityTempForm
     const savedForm = JSON.parse(localStorage.getItem("maturityTempForm") || "{}");
     savedForm.deskripsiPerVariabel = deskripsi;
     localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
+
+    // Kembali ke halaman sebelumnya
     router.back();
   };
 
@@ -48,10 +53,7 @@ export default function DeskripsiVariabelTable() {
       <div className="bg-white rounded-2xl shadow-sm p-6 w-full max-w-5xl">
         <div className="grid grid-cols-2 gap-6">
           {deskripsi.map((value, index) => (
-            <div
-              key={index}
-              className={`${index === 4 ? "col-span-2 w-1/2" : ""}`}
-            >
+            <div key={index} className={`${index === 4 ? "col-span-2 w-1/2" : ""}`}>
               <label className="block mb-2 text-sm font-semibold text-gray-700">
                 Deskripsi Skor {index}
               </label>
@@ -72,10 +74,11 @@ export default function DeskripsiVariabelTable() {
         {/* Tombol */}
         <div className="flex justify-end gap-4 mt-8">
           <Button
-            variant="outline"
+            variant="ghost"
             icon={X}
+            iconColor="text-red-600"
             iconPosition="left"
-            className="rounded-[12px] px-17 py-2"
+            className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             onClick={() => setShowCancel(true)}
           >
             Batal

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Button from '@/components/button';
-import { X, Save } from 'lucide-react';
+import { X, Save, Eye, EyeOff } from 'lucide-react';
+import TableUpdate from '@/components/TableUpdate';
 
 // Interface untuk data assessment
 interface AssessmentItem {
@@ -38,6 +39,10 @@ export default function SubmitExcelPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editNomor, setEditNomor] = useState<number | null>(null);
 
+  // 🔍 Preview state
+  const [previewData, setPreviewData] = useState<AssessmentItem[]>([]);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false); // Toggle preview
+
   // Load data dari editData
   useEffect(() => {
     const editData = localStorage.getItem('editData');
@@ -45,11 +50,8 @@ export default function SubmitExcelPage() {
 
     try {
       const data = JSON.parse(editData);
-
       setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
       setEditNomor(data.nomor ?? null);
-
-      // Tentukan mode: hanya edit jika ada nomor
       if (data.nomor !== undefined && data.nomor !== null && data.nomor !== '') {
         setIsEditMode(true);
       }
@@ -75,10 +77,117 @@ export default function SubmitExcelPage() {
     const selectedFile = e.target.files?.[0];
     if (selectedFile && (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls'))) {
       setFile(selectedFile);
+      setPreviewData([]); // Reset preview
+      setIsPreviewOpen(false); // Tutup preview saat ganti file
     } else {
       alert('Harap pilih file Excel (.xlsx atau .xls)');
       e.target.value = ''; // reset input
     }
+  };
+
+  // 🔍 Fungsi Preview (Toggle)
+  const handlePreview = () => {
+    if (!file) {
+      alert('Harap unggah file Excel terlebih dahulu.');
+      return;
+    }
+    if (!status) {
+      alert('Harap pilih status terlebih dahulu.');
+      return;
+    }
+
+    // Jika sudah terbuka, tutup
+    if (isPreviewOpen) {
+      setIsPreviewOpen(false);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => alert('Gagal membaca file. File mungkin rusak.');
+
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) throw new Error('File tidak terbaca');
+
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error('Sheet tidak ditemukan');
+
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (json.length < 2) {
+          alert('File Excel tidak memiliki data.');
+          return;
+        }
+
+        const headers = json[0] as string[];
+        const rows = json.slice(1);
+
+        // Validasi kolom wajib
+        const requiredColumns = [
+          'Variable',
+          'Indikator',
+          'Pertanyaan',
+          'Deskripsi Skor 0',
+          'Deskripsi Skor 1',
+          'Deskripsi Skor 2',
+          'Deskripsi Skor 3',
+          'Deskripsi Skor 4',
+          'Urutan',
+        ];
+
+        const missingColumns = requiredColumns.filter((col) => {
+          const idx = headers.indexOf(col);
+          return idx === -1;
+        });
+
+        if (missingColumns.length > 0) {
+          alert(`Kolom berikut tidak ditemukan:\n${missingColumns.join(', ')}\n\nPastikan template Excel digunakan dengan benar.`);
+          return;
+        }
+
+        // Ambil indeks
+        const variableIdx = headers.indexOf('Variable');
+        const indikatorIdx = headers.indexOf('Indikator');
+        const pertanyaanIdx = headers.indexOf('Pertanyaan');
+        const deskripsi0Idx = headers.indexOf('Deskripsi Skor 0');
+        const deskripsi1Idx = headers.indexOf('Deskripsi Skor 1');
+        const deskripsi2Idx = headers.indexOf('Deskripsi Skor 2');
+        const deskripsi3Idx = headers.indexOf('Deskripsi Skor 3');
+        const deskripsi4Idx = headers.indexOf('Deskripsi Skor 4');
+        const urutanIdx = headers.indexOf('Urutan');
+
+        // Konversi status
+        const finalStatus: 'Active' | 'Inactive' = status === 'Aktif' ? 'Active' : 'Inactive';
+
+        // Konversi baris ke objek
+        const previewItems: AssessmentItem[] = rows.map((row: any, index: number) => ({
+          nomor: index + 1,
+          variable: row[variableIdx]?.toString().trim() || 'Tidak tersedia',
+          bobot: 1,
+          indikator: row[indikatorIdx]?.toString().trim() || 'Tidak tersedia',
+          pertanyaan: row[pertanyaanIdx]?.toString().trim() || 'Tidak tersedia',
+          tipeSoal: 'Submit Jawaban Excel',
+          status: finalStatus,
+          deskripsiSkor0: row[deskripsi0Idx]?.toString().trim() || 'Tidak ada deskripsi',
+          deskripsiSkor1: row[deskripsi1Idx]?.toString().trim() || 'Tidak ada deskripsi',
+          deskripsiSkor2: row[deskripsi2Idx]?.toString().trim() || 'Tidak ada deskripsi',
+          deskripsiSkor3: row[deskripsi3Idx]?.toString().trim() || 'Tidak ada deskripsi',
+          deskripsiSkor4: row[deskripsi4Idx]?.toString().trim() || 'Tidak ada deskripsi',
+          urutan: parseInt(row[urutanIdx], 10) || 1,
+        }));
+
+        setPreviewData(previewItems);
+        setIsPreviewOpen(true); // Buka preview setelah sukses
+      } catch (error) {
+        console.error('Error parsing Excel:', error);
+        alert('Terjadi kesalahan saat membaca file Excel. Pastikan formatnya benar.');
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
   };
 
   // Simpan data dari Excel
@@ -213,7 +322,7 @@ export default function SubmitExcelPage() {
         try {
           localStorage.setItem('assessmentList', JSON.stringify(updatedList));
           localStorage.setItem('newDataAdded', 'true');
-          localStorage.removeItem('editData'); // ✅ Hapus setelah simpan
+          localStorage.removeItem('editData');
         } catch (err) {
           alert('Gagal menyimpan data. Storage penuh atau dibatasi.');
           console.error('localStorage error:', err);
@@ -240,6 +349,21 @@ export default function SubmitExcelPage() {
     router.push('/daftar-assessment');
   };
 
+  // 🔽 Kolom untuk preview — SUDAH TERMASUK DESKRIPSI SKOR
+  const previewColumns = [
+    { header: 'No', key: 'nomor', width: '60px', className: 'text-center', sortable: true },
+    { header: 'Variable', key: 'variable', width: '180px', sortable: true },
+    { header: 'Indikator', key: 'indikator', width: '200px', sortable: true },
+    { header: 'Pertanyaan', key: 'pertanyaan', width: '250px', sortable: true },
+    { header: 'Deskripsi Skor 0', key: 'deskripsiSkor0', width: '200px', sortable: true },
+    { header: 'Deskripsi Skor 1', key: 'deskripsiSkor1', width: '200px', sortable: true },
+    { header: 'Deskripsi Skor 2', key: 'deskripsiSkor2', width: '200px', sortable: true },
+    { header: 'Deskripsi Skor 3', key: 'deskripsiSkor3', width: '200px', sortable: true },
+    { header: 'Deskripsi Skor 4', key: 'deskripsiSkor4', width: '200px', sortable: true },
+    { header: 'Urutan', key: 'urutan', width: '80px', className: 'text-center', sortable: true },
+    { header: 'Status', key: 'status', width: '100px', className: 'text-center', sortable: true },
+  ];
+
   return (
     <div className="flex min-h-screen">
       <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
@@ -265,7 +389,7 @@ export default function SubmitExcelPage() {
             <p>pengisian di bawah ini.</p>
           </div>
 
-          {/* Type Soal & Dokumen */}
+          {/* Type Soal & Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Type Soal</label>
@@ -280,7 +404,6 @@ export default function SubmitExcelPage() {
                 <option value="submit-excel">Submit Jawaban Excel</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
@@ -295,6 +418,7 @@ export default function SubmitExcelPage() {
             </div>
           </div>
 
+          {/* Upload File */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen</label>
@@ -337,6 +461,16 @@ export default function SubmitExcelPage() {
           {/* Buttons */}
           <div className="flex justify-end space-x-4 mt-6">
             <Button
+              variant="outline"
+              icon={isPreviewOpen ? EyeOff : Eye}
+              iconPosition="left"
+              onClick={handlePreview}
+              disabled={!file || !status}
+              className="rounded-[12px] px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300"
+            >
+              {isPreviewOpen ? 'Tutup Preview' : 'Preview'}
+            </Button>
+            <Button
               variant="ghost"
               icon={X}
               iconPosition="left"
@@ -350,7 +484,7 @@ export default function SubmitExcelPage() {
               icon={Save}
               iconPosition="left"
               onClick={handleSimpan}
-              disabled={!file || !status}
+              disabled={!file || !status || loading}
               className="rounded-[12px] px-4 py-2 text-sm font-semibold"
             >
               {loading ? (
@@ -366,6 +500,24 @@ export default function SubmitExcelPage() {
               )}
             </Button>
           </div>
+
+          {/* 🔍 Bagian Preview (Toggle) */}
+          {isPreviewOpen && previewData.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                Preview Data dari Excel
+                <span className="ml-2 text-sm font-normal text-gray-500">({previewData.length} baris)</span>
+              </h3>
+              <div className="overflow-x-auto">
+                <TableUpdate
+                  columns={previewColumns}
+                  data={previewData}
+                  currentPage={1}
+                  rowsPerPage={10}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -8,7 +8,7 @@ import { Download, Printer, ChevronDown, Copy, } from "lucide-react";
 import { FaSearch, FaEdit,FaTimes, FaRedo } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 
-
+import TableUpdate from '@/components/TableUpdate';
 
 
 
@@ -42,8 +42,25 @@ export default function UserManagementPage() {
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   
+  const columns = [
+  { header: 'User ID', key: 'userId', width: '140px', sortable: true },
+  { header: 'User Name', key: 'username', width: '160px', sortable: true },
+  { header: 'Password', key: 'password', width: '120px', sortable: false },
+  { header: 'Nama User', key: 'namaUser', width: '200px', sortable: true },
+  { header: 'Role', key: 'role', width: '140px', sortable: true },
+  { header: 'Status', key: 'status', width: '100px', sortable: true },
+  { 
+    header: 'Aksi', 
+    key: 'action', 
+    width: '180px', 
+    sortable: false, 
+    className: 'sticky right-0 bg-white z-10' 
+  },
+];
+
 
   // Ambil data dari localStorage saat mount
   useEffect(() => {
@@ -74,30 +91,50 @@ export default function UserManagementPage() {
     setTab(path || 'welcome');
   }, [pathname]);
 
-  // ✅ Filter hanya field string agar pencarian tidak error
-const filteredUsers = userList.filter((user) => {
-  if (!searchTerm) return true; // Jika kosong, tampilkan semua
+  // ✅ Filter dan Sort data
+const processedUsers = React.useMemo(() => {
+  let result = [...userList];
 
-  const search = searchTerm.toLowerCase();
+  // 1. Filter berdasarkan pencarian
+  if (searchTerm) {
+    const search = searchTerm.toLowerCase();
+    result = result.filter((user) =>
+      user.userId.toLowerCase().includes(search) ||
+      user.username.toLowerCase().includes(search) ||
+      user.namaUser.toLowerCase().includes(search) ||
+      user.role.toLowerCase().includes(search) ||
+      user.status.toLowerCase().includes(search) ||
+      (user.namaPIC && user.namaPIC.toLowerCase().includes(search)) ||
+      (user.email && user.email.toLowerCase().includes(search)) ||
+      (user.nomorHp && user.nomorHp.toLowerCase().includes(search))
+    );
+  }
 
-  return (
-    user.userId.toLowerCase().includes(search) ||
-    user.username.toLowerCase().includes(search) ||
-    user.namaUser.toLowerCase().includes(search) ||
-    user.role.toLowerCase().includes(search) ||
-    user.status.toLowerCase().includes(search) ||
-    (user.namaPIC && user.namaPIC.toLowerCase().includes(search)) ||
-    (user.email && user.email.toLowerCase().includes(search)) ||
-    (user.nomorHp && user.nomorHp.toLowerCase().includes(search))
-  );
-});
+  // 2. Sort berdasarkan sortConfig
+  if (sortConfig) {
+    result.sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
 
-  // Pagination
-  const totalItems = filteredUsers.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+      // Case-insensitive untuk string
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  return result;
+}, [userList, searchTerm, sortConfig]);
+
+// Pagination
+const totalItems = processedUsers.length;
+const totalPages = Math.ceil(totalItems / itemsPerPage);
+const indexOfLastItem = currentPage * itemsPerPage;
+const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+const currentUsers = processedUsers.slice(indexOfFirstItem, indexOfLastItem);
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
@@ -119,12 +156,13 @@ const filteredUsers = userList.filter((user) => {
     router.push(`/user-management/add-user?role=${encodedRole}`);
   };
 
-  const toggleStatus = (index: number) => {
-    setPendingToggleIndex(indexOfFirstItem + index);
-    const nextStatus = currentUsers[index].status === 'active' ? 'inactive' : 'active';
-    setTargetStatus(nextStatus);
-    setShowModal(true);
-  };
+const toggleStatus = (index: number) => {
+  const globalIndex = indexOfFirstItem + index; // Konversi ke index global
+  setPendingToggleIndex(globalIndex);
+  const nextStatus = userList[globalIndex].status === 'active' ? 'inactive' : 'active';
+  setTargetStatus(nextStatus);
+  setShowModal(true);
+};
 
   const handleConfirm = () => {
     if (pendingToggleIndex !== null) {
@@ -146,7 +184,7 @@ const filteredUsers = userList.filter((user) => {
 
   const handleCopy = () => {
     const header = 'User ID,User Name,Nama User,Role,Status\n';
-    const rows = filteredUsers.map(
+    const rows = processedUsers.map(
       (user) =>
         `${user.userId},${user.username},${user.namaUser},${user.role},${user.status}`
     );
@@ -156,25 +194,47 @@ const filteredUsers = userList.filter((user) => {
     });
   };
 
-  const handlePrint = () => {
-  const table = document.getElementById('user-table');
-  if (!table) return;
+const handlePrint = () => {
+  // Ambil data yang sedang ditampilkan (sudah difilter & diurutkan)
+  const dataToPrint = processedUsers;
 
-  // Ambil konten tabel
-  const tableHTML = table.outerHTML;
+  // Buat header tabel
+  const tableHTML = `
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif;">
+      <thead>
+        <tr style="background-color: #f0f0f0; text-align: left;">
+          <th>User ID</th>
+          <th>User Name</th>
+          <th>Nama User</th>
+          <th>Role</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${dataToPrint.map(user => `
+          <tr>
+            <td>${user.userId}</td>
+            <td>${user.username}</td>
+            <td>${user.namaUser}</td>
+            <td>${user.role}</td>
+            <td>${user.status === 'active' ? 'Aktif' : 'Nonaktif'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 
-  // Buka jendela baru
-  const printWindow = window.open('', '', 'width=1000,height=800');
-  if (!printWindow) return;
-
-  // CSS khusus untuk print (termasuk media print)
+  // CSS untuk print
   const printCSS = `
     <style>
+      @page {
+        margin: 1.5cm;
+        size: landscape;
+      }
       body {
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: Arial, sans-serif;
         padding: 20px;
         color: #000;
-        background: #fff;
       }
       .print-header {
         text-align: center;
@@ -195,69 +255,21 @@ const filteredUsers = userList.filter((user) => {
       table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: auto;
         margin-top: 20px;
-        border: 1px solid #000;
       }
       th, td {
         border: 1px solid #000;
-        padding: 8px 10px;
+        padding: 8px;
         text-align: left;
-        vertical-align: top;
-        font-size: 0.85em;
-        word-wrap: break-word;
       }
       th {
         background-color: #eee;
         font-weight: bold;
-        text-transform: uppercase;
       }
-      img {
-        max-height: 30px;
-        max-width: 120px;
-        object-fit: contain;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-      .text-center {
-        text-align: center;
-      }
-      .text-right {
-        text-align: right;
-      }
-      .text-gray {
-        color: #666;
-      }
-      .no-data {
-        text-align: center;
-        font-style: italic;
-        color: #777;
-      }
-
-      /* Aturan khusus saat print */
       @media print {
         body {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
-          margin: 0;
-        }
-        @page {
-          margin: 1.5cm;
-          size: landscape;
-          orientation: landscape;
-        }
-        table {
-          page-break-inside: auto;
-        }
-        tr {
-          page-break-inside: avoid;
-          page-break-after: auto;
-        }
-        thead {
-          display: table-header-group;
-        }
-        tfoot {
-          display: table-footer-group;
         }
       }
     </style>
@@ -271,6 +283,10 @@ const filteredUsers = userList.filter((user) => {
     </div>
   `;
 
+  // Buka jendela baru
+  const printWindow = window.open('', '', 'width=1000,height=800');
+  if (!printWindow) return;
+
   // Tulis ke jendela print
   printWindow.document.write(`
     <html>
@@ -282,10 +298,8 @@ const filteredUsers = userList.filter((user) => {
         ${headerHTML}
         ${tableHTML}
         <script>
-          // Tunggu gambar termuat, lalu langsung print
           setTimeout(() => {
             window.print();
-            // Optional: tutup jendela setelah print
             window.onafterprint = () => window.close();
           }, 500);
         </script>
@@ -304,7 +318,7 @@ const handleDownload = () => {
   // Siapkan data untuk Excel
   const worksheetData = [
     ['User ID', 'User Name', 'Password', 'Nama User', 'Role', 'Status'], // Header
-    ...filteredUsers.map(user => [
+    ...processedUsers.map(user => [
       user.userId,
       user.username,
       '••••••••', // Hindari password asli
@@ -335,6 +349,20 @@ const handleDownload = () => {
   // Download file
   XLSX.writeFile(workbook, 'daftar_pengguna.xlsx');
 };
+
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (!prev || prev.key !== key) {
+        return { key, direction: "asc" };
+      }
+      if (prev.direction === "asc") {
+        return { key, direction: "desc" };
+      }
+      return null;
+    });
+  };
+
 
 
 
@@ -425,70 +453,24 @@ const handleDownload = () => {
             </div>
           </div>
 
-          {/* Table */}
+
 {/* Table */}
-<div className="overflow-x-auto w-full max-h-[600px]">
-  <table
-    id="user-table"
-    className="w-full border border-gray-300 text-sm bg-white"
-    style={{ tableLayout: 'auto', minWidth: 'max-content' }}
-  >
-    <thead className="bg-gray-200 sticky top-0 z-50">
-      <tr>
-        <th className="px-4 py-3 border w-auto">User ID</th>
-        <th className="px-4 py-3 border w-auto">User Name</th>
-        <th className="px-4 py-3 border w-auto">Password</th>
-        <th className="px-4 py-3 border w-auto">Nama User</th>
-        <th className="px-4 py-3 border w-auto">Role</th>
-        <th className="px-4 py-3 border sticky right-0 bg-gray-200 z-50 w-auto">Aksi</th>
-      </tr>
-    </thead>
-    <tbody>
-      {currentUsers.length === 0 ? (
-        <tr>
-          <td colSpan={6} className="text-center p-4 text-gray-500 bg-white">
-            Belum ada user yang ditambahkan.
-          </td>
-        </tr>
-      ) : (
-        currentUsers.map((user, index) => (
-          <tr key={index} className="hover:bg-gray-50 align-top">
-            <td className="px-4 py-3 border">{user.userId}</td>
-            <td className="px-4 py-3 border">{user.username}</td>
-            <td className="px-4 py-3 border">••••••••</td>
-            <td className="px-4 py-3 border">{user.namaUser}</td>
-            <td className="px-4 py-3 border">{user.role}</td>
-            <td className="px-4 py-5 sticky right-0 bg-white z-40 border whitespace-nowrap">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleEditUser(user)}
-                  className="text-blue-500 flex items-center gap-1 hover:underline"
-                >
-                  <FaEdit /> Edit
-                </button>
-                {user.status === 'active' ? (
-                  <button
-                    onClick={() => toggleStatus(index)}
-                    className="text-red-600 flex items-center gap-1 hover:underline"
-                  >
-                    <FaTimes /> Deactivate
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => toggleStatus(index)}
-                    className="text-green-500 flex items-center gap-1 hover:underline"
-                  >
-                    <FaRedo /> Reactivate
-                  </button>
-                )}
-              </div>
-            </td>
-          </tr>
-        ))
-      )}
-    </tbody>
-  </table>
-</div>
+<TableUpdate
+  columns={columns}
+  data={currentUsers.map(user => ({
+    ...user,
+    password: '••••••••',
+    // ❌ JANGAN ubah status! Biarkan tetap 'active' atau 'inactive'
+  }))}
+  currentPage={currentPage}
+  rowsPerPage={itemsPerPage}
+  onEdit={handleEditUser}
+  onDeactivate={(index) => toggleStatus(index)}
+  onReactivate={(index) => toggleStatus(index)}
+  onSort={handleSort}
+ sortConfig={sortConfig}
+/>
+
 
           {/* Pagination */}
           <div className="flex justify-between items-center mt-4 px-4">
@@ -531,7 +513,7 @@ const handleDownload = () => {
               </button>
             </div>
 
-            <div>Total {filteredUsers.length}</div>
+            <div>Total {processedUsers.length}</div>
           </div>
         </div>
 

@@ -1,4 +1,7 @@
-// app/page.tsx
+// src/app/page.tsx
+import { redirect } from 'next/navigation';
+
 export default function Home() {
-  return null; // halaman kosong
+  // redirect('/login');
+  redirect('/welcome'); // Build demonstration
 }
