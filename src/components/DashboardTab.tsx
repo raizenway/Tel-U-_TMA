@@ -25,6 +25,7 @@ import ModalConfirm from './StarAssessment/ModalConfirm';
 import Button from './button';
 import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
 
+// Data Radar
 const radarData = [
   { subject: "Akademik", A: 90 },
   { subject: "SDM", A: 85 },
@@ -34,6 +35,7 @@ const radarData = [
   { subject: "Publikasi", A: 95 },
 ];
 
+// Daftar Kampus
 const CAMPUS_LIST = [
   "Tel-U Jakarta",
   "Tel-U Surabaya",
@@ -43,6 +45,7 @@ const CAMPUS_LIST = [
 
 type CampusKey = typeof CAMPUS_LIST[number];
 
+// Tipe data input kampus
 interface CampusData {
   "Tel-U Jakarta": number[];
   "Tel-U Surabaya": number[];
@@ -54,6 +57,7 @@ export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
 
+  // Data Student Body
   const [studentYears, setStudentYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [studentInputData, setStudentInputData] = useState<CampusData>({
     "Tel-U Jakarta": [100, 120, 125, 135],
@@ -62,6 +66,7 @@ export default function DashboardTab() {
     "Tel-U Bandung": [140, 135, 160, 170],
   });
 
+  // Data Akreditasi Prodi
   const [accreditationYears, setAccreditationYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
     "Tel-U Jakarta": [85, 87, 89, 90],
@@ -70,7 +75,13 @@ export default function DashboardTab() {
     "Tel-U Bandung": [90, 91, 92, 93],
   });
 
-  const [accreditationData, setAccreditationData] = useState<{ tahun: string; Jakarta: number; Bandung: number; Purwokerto: number; Surabaya: number }[]>([]);
+  const [accreditationData, setAccreditationData] = useState<{
+    tahun: string;
+    Jakarta: number;
+    Bandung: number;
+    Purwokerto: number;
+    Surabaya: number;
+  }[]>([]);
 
   useEffect(() => {
     const initialData = accreditationYears.map((year, idx) => ({
@@ -83,6 +94,7 @@ export default function DashboardTab() {
     setAccreditationData(initialData);
   }, [accreditationInputData, accreditationYears]);
 
+  // Tambah tahun
   const handleAddYear = () => {
     const lastYearStr = studentYears.at(-1);
     const lastYearNum = lastYearStr ? parseInt(lastYearStr, 10) : 2024;
@@ -129,7 +141,7 @@ export default function DashboardTab() {
 
   const handleGenerate = () => {
     if (modalMode === 'student') {
-      // Tidak perlu update studentData karena langsung pakai studentInputData
+      // Data langsung digunakan
     } else if (modalMode === 'prodi') {
       const newData = accreditationYears.map((year, idx) => ({
         tahun: year,
@@ -181,22 +193,15 @@ export default function DashboardTab() {
     setShowModal(true);
   };
 
-  // Data perkembangan variabel
-  const variableData = [
-    { tahun: "2021", variable: "Akademik", "Tel-U Jakarta": 88, "Tel-U Bandung": 92, "Tel-U Surabaya": 85, "Tel-U Purwokerto": 80 },
-    { tahun: "2021", variable: "SDM", "Tel-U Jakarta": 82, "Tel-U Bandung": 87, "Tel-U Surabaya": 80, "Tel-U Purwokerto": 78 },
-    { tahun: "2022", variable: "Akademik", "Tel-U Jakarta": 89, "Tel-U Bandung": 93, "Tel-U Surabaya": 87, "Tel-U Purwokerto": 82 },
-    { tahun: "2022", variable: "SDM", "Tel-U Jakarta": 84, "Tel-U Bandung": 88, "Tel-U Surabaya": 83, "Tel-U Purwokerto": 80 },
-    { tahun: "2023", variable: "Akademik", "Tel-U Jakarta": 90, "Tel-U Bandung": 94, "Tel-U Surabaya": 89, "Tel-U Purwokerto": 85 },
-    { tahun: "2023", variable: "SDM", "Tel-U Jakarta": 86, "Tel-U Bandung": 90, "Tel-U Surabaya": 85, "Tel-U Purwokerto": 83 },
-    { tahun: "2024", variable: "Akademik", "Tel-U Jakarta": 91, "Tel-U Bandung": 95, "Tel-U Surabaya": 91, "Tel-U Purwokerto": 87 },
-    { tahun: "2024", variable: "SDM", "Tel-U Jakarta": 88, "Tel-U Bandung": 92, "Tel-U Surabaya": 87, "Tel-U Purwokerto": 85 },
+  // --- Warna untuk Student Body ---
+  const studentColors = [
+    "#A966FF", // 2021
+    "#FF0000", // 2022
+    "#5D77ff", // 2023
+    "#FFB930", // 2024
   ];
 
-  const [selectedCampus, setSelectedCampus] = useState<"All" | CampusKey>("All");
-  const [selectedVariable, setSelectedVariable] = useState<string>("Akademik");
-
-  // Transform data untuk Student Body: X-axis = Kampus, Bar = Tahun
+  // --- Data Student Body: X-axis = Kampus, Bar = Tahun ---
   const studentDataByCampus = CAMPUS_LIST.map((campus) => {
     const data: any = { kampus: campus.replace("Tel-U ", "") };
     studentYears.forEach((year, idx) => {
@@ -205,36 +210,80 @@ export default function DashboardTab() {
     return data;
   });
 
-  // Siapkan data untuk grafik variabel
-  const filteredVariableData = variableData.filter(d => d.variable === selectedVariable);
+  // --- DATA PER SEMESTER UNTUK VARIABEL ---
+  const semesterData = [
+    { kampus: "Tel-U Jakarta", periode: "2021 Ganjil", Akademik: 88, SDM: 82, Keuangan: 75, Kemahasiswaan: 70 },
+    { kampus: "Tel-U Jakarta", periode: "2021 Genap", Akademik: 89, SDM: 83, Keuangan: 76, Kemahasiswaan: 72 },
+    { kampus: "Tel-U Jakarta", periode: "2022 Ganjil", Akademik: 90, SDM: 85, Keuangan: 78, Kemahasiswaan: 75 },
+    { kampus: "Tel-U Jakarta", periode: "2022 Genap", Akademik: 91, SDM: 86, Keuangan: 80, Kemahasiswaan: 77 },
+    { kampus: "Tel-U Jakarta", periode: "2023 Ganjil", Akademik: 92, SDM: 88, Keuangan: 82, Kemahasiswaan: 80 },
+    { kampus: "Tel-U Jakarta", periode: "2023 Genap", Akademik: 93, SDM: 89, Keuangan: 84, Kemahasiswaan: 82 },
+    { kampus: "Tel-U Jakarta", periode: "2024 Ganjil", Akademik: 94, SDM: 90, Keuangan: 86, Kemahasiswaan: 85 },
 
-  const chartData = filteredVariableData.map(d => {
-    const row: any = { tahun: d.tahun };
-    if (selectedCampus === "All") {
-      CAMPUS_LIST.forEach(campus => {
-        row[campus] = d[campus];
+    { kampus: "Tel-U Bandung", periode: "2021 Ganjil", Akademik: 92, SDM: 87, Keuangan: 85, Kemahasiswaan: 80 },
+    { kampus: "Tel-U Bandung", periode: "2021 Genap", Akademik: 93, SDM: 88, Keuangan: 86, Kemahasiswaan: 82 },
+    { kampus: "Tel-U Bandung", periode: "2022 Ganjil", Akademik: 94, SDM: 90, Keuangan: 88, Kemahasiswaan: 85 },
+    { kampus: "Tel-U Bandung", periode: "2022 Genap", Akademik: 95, SDM: 91, Keuangan: 90, Kemahasiswaan: 87 },
+    { kampus: "Tel-U Bandung", periode: "2023 Ganjil", Akademik: 96, SDM: 92, Keuangan: 91, Kemahasiswaan: 89 },
+    { kampus: "Tel-U Bandung", periode: "2023 Genap", Akademik: 97, SDM: 93, Keuangan: 92, Kemahasiswaan: 90 },
+    { kampus: "Tel-U Bandung", periode: "2024 Ganjil", Akademik: 98, SDM: 94, Keuangan: 93, Kemahasiswaan: 91 },
+
+    { kampus: "Tel-U Surabaya", periode: "2021 Ganjil", Akademik: 85, SDM: 80, Keuangan: 70, Kemahasiswaan: 68 },
+    { kampus: "Tel-U Surabaya", periode: "2021 Genap", Akademik: 86, SDM: 81, Keuangan: 72, Kemahasiswaan: 70 },
+    { kampus: "Tel-U Surabaya", periode: "2022 Ganjil", Akademik: 87, SDM: 83, Keuangan: 75, Kemahasiswaan: 73 },
+    { kampus: "Tel-U Surabaya", periode: "2022 Genap", Akademik: 88, SDM: 84, Keuangan: 77, Kemahasiswaan: 75 },
+    { kampus: "Tel-U Surabaya", periode: "2023 Ganjil", Akademik: 89, SDM: 85, Keuangan: 79, Kemahasiswaan: 78 },
+    { kampus: "Tel-U Surabaya", periode: "2023 Genap", Akademik: 90, SDM: 86, Keuangan: 80, Kemahasiswaan: 80 },
+    { kampus: "Tel-U Surabaya", periode: "2024 Ganjil", Akademik: 91, SDM: 87, Keuangan: 82, Kemahasiswaan: 82 },
+
+    { kampus: "Tel-U Purwokerto", periode: "2021 Ganjil", Akademik: 80, SDM: 75, Keuangan: 68, Kemahasiswaan: 65 },
+    { kampus: "Tel-U Purwokerto", periode: "2021 Genap", Akademik: 82, SDM: 76, Keuangan: 70, Kemahasiswaan: 67 },
+    { kampus: "Tel-U Purwokerto", periode: "2022 Ganjil", Akademik: 84, SDM: 78, Keuangan: 73, Kemahasiswaan: 70 },
+    { kampus: "Tel-U Purwokerto", periode: "2022 Genap", Akademik: 85, SDM: 79, Keuangan: 75, Kemahasiswaan: 72 },
+    { kampus: "Tel-U Purwokerto", periode: "2023 Ganjil", Akademik: 86, SDM: 81, Keuangan: 77, Kemahasiswaan: 75 },
+    { kampus: "Tel-U Purwokerto", periode: "2023 Genap", Akademik: 87, SDM: 82, Keuangan: 79, Kemahasiswaan: 77 },
+    { kampus: "Tel-U Purwokerto", periode: "2024 Ganjil", Akademik: 88, SDM: 83, Keuangan: 81, Kemahasiswaan: 79 },
+  ];
+
+  // Daftar Variabel
+  const ALL_VARIABLES = ["Akademik", "SDM", "Keuangan", "Kemahasiswaan"] as const;
+  type Variable = typeof ALL_VARIABLES[number];
+
+  // State Filter
+  const [selectedCampus, setSelectedCampus] = useState<CampusKey | "All">("All");
+  const [selectedVariables, setSelectedVariables] = useState<Variable[]>(["Akademik"]);
+  const [showVariableDropdown, setShowVariableDropdown] = useState(false);
+
+  // Filter data berdasarkan kampus dan variabel terpilih
+  const filteredVariableData = semesterData
+    .filter((d) => selectedCampus === "All" || d.kampus === selectedCampus)
+    .map((d) => {
+      const row: any = { periode: d.periode };
+      selectedVariables.forEach((variable) => {
+        row[variable] = d[variable as keyof typeof d];
       });
-    } else {
-      row[selectedCampus] = d[selectedCampus];
-    }
-    return row;
-  });
+      return row;
+    });
 
-  // Warna untuk tiap kampus
-  const campusColors: Record<string, string> = {
-    "Tel-U Jakarta": "#8884d8",
-    "Tel-U Bandung": "#82ca9d",
-    "Tel-U Surabaya": "#ffc658",
-    "Tel-U Purwokerto": "#ff7300",
+  // Warna untuk variabel
+  const variableColors = {
+    Akademik: "#6366f1",
+    SDM: "#ec4899",
+    Keuangan: "#10b981",
+    Kemahasiswaan: "#f59e0b",
   };
 
-  // 🔹 🔶 GANTI WARNA 🔶 🔹
-  const studentColors = [
-    "#A966FF", // 2021  
-    "#FF0000", // 2022 
-    "#5D77ff", // 2023 
-    "#FFB930", // 2024 
-  ];
+  // Tutup dropdown saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.variable-dropdown-wrapper')) {
+        setShowVariableDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   return (
     <div className="space-y-8 px-4 py-6">
@@ -320,7 +369,7 @@ export default function DashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Student Body - X-axis: Kampus, Color: Tahun */}
+        {/* Student Body */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
@@ -344,7 +393,7 @@ export default function DashboardTab() {
                 <Bar
                   key={year}
                   dataKey={year}
-                  fill={studentColors[index % studentColors.length]} // 🔥 Warna di sini
+                  fill={studentColors[index % studentColors.length]}
                   radius={[10, 10, 0, 0]}
                 />
               ))}
@@ -352,7 +401,7 @@ export default function DashboardTab() {
           </ResponsiveContainer>
         </div>
 
-        {/* Accreditation Line Chart */}
+        {/* Accreditation */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
@@ -381,68 +430,103 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Variable Chart */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-start justify-between mb-6">
-          <h3 className="text-base font-bold text-gray-700">📈 Perkembangan Variabel per Kampus</h3>
+      {/* 🔥 Perkembangan Variabel per Kampus - Bar Chart + Dropdown Checklist */}
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">📊 Perkembangan Variabel per Kampus</h3>
+            <p className="text-sm text-gray-500 mt-1">Skor perkembangan per semester akademik (Ganjil/Genap)</p>
+          </div>
+
           <div className="flex flex-wrap gap-4 ml-auto">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Filter by UPPS/KC</label>
+            {/* Filter Kampus */}
+            <div className="min-w-[180px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">FilterWhere Kampus</label>
               <select
                 value={selectedCampus}
-                onChange={(e) => setSelectedCampus(e.target.value as "All" | CampusKey)}
-                className="border border-gray-300 rounded-md px-3 py-1 text-sm min-w-[160px]"
+                onChange={(e) => setSelectedCampus(e.target.value as CampusKey | "All")}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               >
                 <option value="All">Semua Kampus</option>
-                {CAMPUS_LIST.map(campus => (
-                  <option key={campus} value={campus}>{campus}</option>
+                {CAMPUS_LIST.map((campus) => (
+                  <option key={campus} value={campus}>
+                    {campus.replace("Tel-U ", "")}
+                  </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Variabel</label>
-              <select
-                value={selectedVariable}
-                onChange={(e) => setSelectedVariable(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1 text-sm min-w-[140px]"
-              >
-                <option value="Akademik">Akademik</option>
-                <option value="SDM">SDM</option>
-              </select>
+
+            {/* Filter Variabel - Dropdown Checklist */}
+            <div className="min-w-[200px] variable-dropdown-wrapper">
+              <label className="block text-sm font-medium text-gray-700 mb-1">FilterWhere Variabel</label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowVariableDropdown(!showVariableDropdown)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                >
+                  {selectedVariables.length === 0
+                    ? "Pilih Variabel"
+                    : `${selectedVariables.length} variabel dipilih`}
+                </button>
+
+                {showVariableDropdown && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {ALL_VARIABLES.map((variable) => (
+                      <label
+                        key={variable}
+                        className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedVariables.includes(variable)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedVariables((prev) => [...prev, variable]);
+                            } else {
+                              setSelectedVariables((prev) => prev.filter((v) => v !== variable));
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        {variable}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="tahun" />
-            <YAxis domain={[0, 100]} />
-            <Tooltip formatter={(value) => Number(value).toFixed(2)} />
-            <Legend />
-            {selectedCampus === "All"
-              ? CAMPUS_LIST.map(campus => (
-                  <Line
-                    key={campus}
-                    type="monotone"
-                    dataKey={campus}
-                    stroke={campusColors[campus]}
-                    name={campus.replace("Tel-U ", "")}
-                  />
-                ))
-              : (
-                  <Line
-                    type="monotone"
-                    dataKey={selectedCampus}
-                    stroke={campusColors[selectedCampus]}
-                    name={selectedCampus.replace("Tel-U ", "")}
-                  />
-                )
-            }
-          </LineChart>
+          <BarChart data={filteredVariableData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+            <CartesianGrid stroke="#f0f0f0" strokeDasharray="4 4" />
+            <XAxis dataKey="periode" tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} />
+            <YAxis domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} label={{ value: 'Skor (%)', angle: -90, position: 'insideLeft', offset: -10, fill: '#6b7280', fontSize: 12 }} />
+            <Tooltip
+              cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+              contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+              formatter={(value: number) => [value.toFixed(2) + '%', 'Skor']}
+              labelStyle={{ color: '#fff' }}
+            />
+            <Legend iconType="circle" iconSize={10} />
+
+            {selectedVariables.map((variable) => (
+              <Bar
+                key={variable}
+                dataKey={variable}
+                fill={variableColors[variable]}
+                name={variable}
+                radius={[8, 8, 0, 0]}
+                animationDuration={600}
+              />
+            ))}
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Table */}
+      {/* Tabel */}
       <div className="mt-6">
         <AssessmentTable hideStartButton={true} />
       </div>
