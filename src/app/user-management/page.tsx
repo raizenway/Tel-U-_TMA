@@ -194,25 +194,47 @@ const toggleStatus = (index: number) => {
     });
   };
 
-  const handlePrint = () => {
-  const table = document.getElementById('user-table');
-  if (!table) return;
+const handlePrint = () => {
+  // Ambil data yang sedang ditampilkan (sudah difilter & diurutkan)
+  const dataToPrint = processedUsers;
 
-  // Ambil konten tabel
-  const tableHTML = table.outerHTML;
+  // Buat header tabel
+  const tableHTML = `
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif;">
+      <thead>
+        <tr style="background-color: #f0f0f0; text-align: left;">
+          <th>User ID</th>
+          <th>User Name</th>
+          <th>Nama User</th>
+          <th>Role</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${dataToPrint.map(user => `
+          <tr>
+            <td>${user.userId}</td>
+            <td>${user.username}</td>
+            <td>${user.namaUser}</td>
+            <td>${user.role}</td>
+            <td>${user.status === 'active' ? 'Aktif' : 'Nonaktif'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 
-  // Buka jendela baru
-  const printWindow = window.open('', '', 'width=1000,height=800');
-  if (!printWindow) return;
-
-  // CSS khusus untuk print (termasuk media print)
+  // CSS untuk print
   const printCSS = `
     <style>
+      @page {
+        margin: 1.5cm;
+        size: landscape;
+      }
       body {
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: Arial, sans-serif;
         padding: 20px;
         color: #000;
-        background: #fff;
       }
       .print-header {
         text-align: center;
@@ -233,69 +255,21 @@ const toggleStatus = (index: number) => {
       table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: auto;
         margin-top: 20px;
-        border: 1px solid #000;
       }
       th, td {
         border: 1px solid #000;
-        padding: 8px 10px;
+        padding: 8px;
         text-align: left;
-        vertical-align: top;
-        font-size: 0.85em;
-        word-wrap: break-word;
       }
       th {
         background-color: #eee;
         font-weight: bold;
-        text-transform: uppercase;
       }
-      img {
-        max-height: 30px;
-        max-width: 120px;
-        object-fit: contain;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-      .text-center {
-        text-align: center;
-      }
-      .text-right {
-        text-align: right;
-      }
-      .text-gray {
-        color: #666;
-      }
-      .no-data {
-        text-align: center;
-        font-style: italic;
-        color: #777;
-      }
-
-      /* Aturan khusus saat print */
       @media print {
         body {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
-          margin: 0;
-        }
-        @page {
-          margin: 1.5cm;
-          size: landscape;
-          orientation: landscape;
-        }
-        table {
-          page-break-inside: auto;
-        }
-        tr {
-          page-break-inside: avoid;
-          page-break-after: auto;
-        }
-        thead {
-          display: table-header-group;
-        }
-        tfoot {
-          display: table-footer-group;
         }
       }
     </style>
@@ -309,6 +283,10 @@ const toggleStatus = (index: number) => {
     </div>
   `;
 
+  // Buka jendela baru
+  const printWindow = window.open('', '', 'width=1000,height=800');
+  if (!printWindow) return;
+
   // Tulis ke jendela print
   printWindow.document.write(`
     <html>
@@ -320,10 +298,8 @@ const toggleStatus = (index: number) => {
         ${headerHTML}
         ${tableHTML}
         <script>
-          // Tunggu gambar termuat, lalu langsung print
           setTimeout(() => {
             window.print();
-            // Optional: tutup jendela setelah print
             window.onafterprint = () => window.close();
           }, 500);
         </script>

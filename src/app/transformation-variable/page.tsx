@@ -3,18 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
+import TableUpdate from '@/components/TableUpdate';
+import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import {
   Search,
   Copy,
   Printer,
   ChevronDown,
-  Pencil,
-  X,
-  Check,
-  Info as LucideInfo,
   Building,
+  Info as LucideInfo,
 } from 'lucide-react';
-import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
+import SuccessNotification from '@/components/SuccessNotification';
 
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,57 +21,13 @@ export default function AssessmentPage() {
   const router = useRouter();
   const [tableData, setTableData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-
-  // State untuk modal konfirmasi
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // Fungsi: Toggle status Active ↔ Inactive
-  const handleToggleStatus = (id: number) => {
-    const saved = localStorage.getItem('transformationVariables');
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved);
-      const updated = parsed.map((item: any) =>
-        item.id === id
-          ? { ...item, status: item.status === 'Active' ? 'Inactive' : 'Active' }
-          : item
-      );
-
-      localStorage.setItem('transformationVariables', JSON.stringify(updated));
-      loadTableData(); // Refresh tabel
-    } catch (error) {
-      console.error('Gagal update status:', error);
-    }
-  };
-
-  // Fungsi: Buka modal konfirmasi
-  const openConfirmModal = (id: number, action: 'activate' | 'deactivate') => {
-    setItemId(id);
-    setModalAction(action);
-    setShowModal(true);
-  };
-
-  // Fungsi: Konfirmasi dari modal
-  const handleConfirm = () => {
-    if (itemId !== null) {
-      handleToggleStatus(itemId);
-    }
-    setShowModal(false);
-    setItemId(null);
-    setModalAction(null);
-  };
-
-  // Fungsi: Batal dari modal
-  const handleCancel = () => {
-    setShowModal(false);
-    setItemId(null);
-    setModalAction(null);
-  };
-
-  // Fungsi: Baca dari localStorage & format untuk tabel
+  // 🔹 Load data dari localStorage
   const loadTableData = () => {
     const saved = localStorage.getItem('transformationVariables');
     if (!saved) {
@@ -90,91 +45,140 @@ export default function AssessmentPage() {
         pertanyaan: item.pertanyaan || '-',
         deskripsi: item.deskripsi || '-',
         referensi: item.referensi || '-',
-        logoUrl: item.logoUrl || null, // Gunakan null agar fallback bekerja
-        status: (
-          <span
-            className={`inline-block px-2 py-1 text-xs font-semibold text-white rounded-full ${
-              item.status === 'Active'
-                ? 'bg-green-500'
-                : item.status === 'Inactive'
-                ? 'bg-red-500'
-                : 'bg-yellow-500'
-            }`}
-          >
-            {item.status}
-          </span>
-        ),
+        logoUrl: item.logoUrl || null,
+        status: item.status === 'Active' || item.status === 'active' ? 'Active' : 'Inactive', // Normalisasi
       }));
-
       setTableData(formatted);
     } catch (error) {
-      console.error('Gagal parsing data:', error);
+      console.error('Gagal parsing ', error);
       setTableData([]);
     }
   };
 
-  // Load data saat komponen mount
   useEffect(() => {
     loadTableData();
+
+    if (localStorage.getItem('newDataAdded') === 'true') {
+      setShowSuccess(true);
+      localStorage.removeItem('newDataAdded');
+    }
   }, []);
 
-  // Fungsi: Copy
-  const handleCopy = () => {
-    const content = tableData
-      .map((row) => [
-        row.nama,
-        row.variable,
-        row.bobot,
-        row.pertanyaan,
-        row.deskripsi,
-        row.referensi,
-        row.status.props.children,
-      ].join('\t'))
-      .join('\n');
+  // 🔹 Sorting
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (!prev || prev.key !== key) {
+        return { key, direction: 'asc' };
+      }
+      if (prev.direction === 'asc') {
+        return { key, direction: 'desc' };
+      }
+      return null;
+    });
+  };
 
+  // 🔹 Urutkan data
+  const sortedData = React.useMemo(() => {
+    if (!sortConfig) return tableData;
+
+    return [...tableData].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [tableData, sortConfig]);
+
+  // 🔹 Filter
+  const filteredData = sortedData.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val).toLowerCase().includes(search.toLowerCase())
+    )
+  );
+
+  // 🔹 Pagination
+  const totalData = filteredData.length;
+  const totalPages = Math.ceil(totalData / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const currentData = filteredData.slice(startIndex, startIndex + rowsPerPage);
+
+  // 🔹 Buka modal
+  const openConfirmModal = (id: number, action: 'activate' | 'deactivate') => {
+    setItemId(id);
+    setModalAction(action);
+    setShowModal(true);
+  };
+
+  // 🔹 Toggle status
+  const handleToggleStatus = () => {
+    if (itemId === null) return;
+
+    const saved = localStorage.getItem('transformationVariables');
+    if (!saved) return;
+
+    try {
+      const parsed = JSON.parse(saved);
+      const updated = parsed.map((item: any) =>
+        item.id === itemId
+          ? { ...item, status: item.status === 'Active' ? 'Inactive' : 'Active' }
+          : item
+      );
+      localStorage.setItem('transformationVariables', JSON.stringify(updated));
+      loadTableData(); // Refresh UI
+    } catch (error) {
+      console.error('Gagal update status:', error);
+    }
+  };
+
+  // 🔹 Konfirmasi
+  const handleConfirm = () => {
+    handleToggleStatus();
+    setShowModal(false);
+    setItemId(null);
+    setModalAction(null);
+  };
+
+  const handleCancel = () => {
+    setShowModal(false);
+    setItemId(null);
+    setModalAction(null);
+  };
+
+  // 🔹 Ekspor
+  const handleCopy = () => {
+    const content = currentData
+      .map((row) => [row.nama, row.variable, row.bobot, row.pertanyaan, row.deskripsi, row.referensi, row.status].join('\t'))
+      .join('\n');
     navigator.clipboard.writeText(content)
       .then(() => alert('Data berhasil disalin!'))
       .catch(() => alert('Gagal menyalin.'));
   };
 
-  // Fungsi: Print
   const handlePrint = () => {
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return alert('Pop-up diblokir.');
-
-    const rows = tableData
-      .map(
-        (row) => `
-      <tr>
-        <td>${row.nama}</td>
-        <td>${row.bobot}</td>
-        <td>${row.pertanyaan}</td>
-        <td>${row.deskripsi}</td>
-        <td>${row.referensi}</td>
-        <td>${row.status.props.children}</td>
-      </tr>
-    `
-      )
-      .join('');
-
+    const rows = currentData
+      .map(row => `
+        <tr>
+          <td>${row.nama}</td>
+          <td>${row.bobot}</td>
+          <td>${row.pertanyaan}</td>
+          <td>${row.deskripsi}</td>
+          <td>${row.referensi}</td>
+          <td>${row.status}</td>
+        </tr>
+      `).join('');
     printWindow.document.write(`
       <html>
         <head><title>Print Assessment</title></head>
         <body>
           <h2>Daftar Assessment</h2>
-          <table border="1" cellpadding="5">
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Bobot</th>
-                <th>Pertanyaan</th>
-                <th>Deskripsi</th>
-                <th>Referensi</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
+          <table border="1">${rows}</table>
         </body>
       </html>
     `);
@@ -182,21 +186,19 @@ export default function AssessmentPage() {
     printWindow.print();
   };
 
-  // Fungsi: Download CSV
   const handleDownload = () => {
     const headers = 'Nama,Variable,Bobot,Pertanyaan,Deskripsi,Referensi,Status';
-    const rows = tableData
-      .map((row) => [
+    const rows = currentData
+      .map(row => [
         `"${row.nama}"`,
         `"${row.variable}"`,
         `"${row.bobot}"`,
         `"${row.pertanyaan}"`,
         `"${row.deskripsi}"`,
         `"${row.referensi}"`,
-        `"${row.status.props.children}"`,
+        `"${row.status === 'Active' ? 'Active' : 'Inactive'}"`
       ].join(','))
       .join('\n');
-
     const csv = [headers, rows].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -206,31 +208,50 @@ export default function AssessmentPage() {
     link.click();
   };
 
-  // Pagination
-  const totalData = tableData.length;
-  const totalPages = Math.ceil(totalData / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const currentData = tableData.slice(startIndex, startIndex + rowsPerPage);
-
-  const handleTambah = () => {
-    localStorage.removeItem('editData');
-    router.push('/transformation-variable/tambah-variable');
-  };
+  // 🔹 Kolom
+  const columns = [
+    { header: 'Nomor', key: 'nomor', width: '80px', className: 'text-center', sortable: true },
+    { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
+    { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: true },
+    { header: 'Pertanyaan', key: 'pertanyaan', width: '250px', sortable: true },
+    { header: 'Deskripsi', key: 'deskripsi', width: '300px', sortable: true },
+    { header: 'Referensi', key: 'referensi', width: '180px', sortable: true },
+    {
+      header: 'Logo UPPS/KC',
+      key: 'logo',
+      width: '80px',
+      className: 'text-center',
+      sortable: false,
+    },
+    {
+      header: 'Aksi',
+      key: 'action',
+      width: '150px',
+      className: 'text-center sticky right-0 z-10 bg-gray-100',
+    },
+  ];
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md border mx-auto w-full max-w-6xl mt-18">
-      {/* Header */}
+    <div className="p-6 bg-white rounded-lg shadow-md border mx-auto w-full max-w-5xl mt-18">
+      {/* 🔔 Notifikasi */}
+      <SuccessNotification
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Variable baru berhasil ditambahkan!"
+      />
+
+      {/* 🔎 Search & tombol */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
-            <Search className="w-4 h-4 text-gray-500" />
-            <input
+          <Search className="w-4 h-4 text-gray-500" />
+          <input
             type="text"
             placeholder="Cari..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-            />
-          </div>
+          />
+        </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
             Copy
@@ -241,137 +262,58 @@ export default function AssessmentPage() {
           <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
             Download
           </Button>
-          <Button variant="primary" onClick={handleTambah}>
+          <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
             Tambah Variable
           </Button>
         </div>
       </div>
 
-      {/* Tabel */}
-      <div className="w-full overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-700 uppercase">
-              <th className="px-4 py-3 text-center border border-gray-300" style={{ width: '80px', minWidth: '80px' }}>
-                Nomor
-              </th>
-              <th className="px-4 py-3 border border-gray-300" style={{ width: '150px', minWidth: '150px' }}>
-                Nama Variable
-              </th>
-              <th className="px-4 py-3 text-center border border-gray-300" style={{ width: '80px', minWidth: '80px' }}>
-                Bobot
-              </th>
-              <th className="px-4 py-3 border border-gray-300" style={{ width: '250px', minWidth: '250px' }}>
-                Pertanyaan
-              </th>
-              <th className="px-4 py-3 border border-gray-300" style={{ width: '300px', minWidth: '300px' }}>
-                Deskripsi
-              </th>
-              <th className="px-4 py-3 border border-gray-300" style={{ width: '180px', minWidth: '180px' }}>
-                Referensi
-              </th>
-              <th className="px-4 py-3 text-center border border-gray-300" style={{ width: '80px', minWidth: '80px' }}>
-                Logo UPPS/KC
-              </th>
-              <th
-                className="sticky right-0 bg-gray-100 z-10 border border-gray-100 text-center whitespace-nowrap"
-                style={{ width: '150px', minWidth: '150px' }}
-              >
-                Aksi
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentData.length > 0 ? (
-              currentData.map((row, index) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-center border border-gray-200">{startIndex + index + 1}</td>
-                  <td className="px-4 py-3 border border-gray-200">{row.nama}</td>
-                  <td className="px-4 py-3 text-center border border-gray-200">{row.bobot}</td>
-                  <td className="px-4 py-3 border border-gray-200">{row.pertanyaan}</td>
-                  <td className="px-4 py-3 border border-gray-200">{row.deskripsi}</td>
-                  <td className="px-4 py-3 border border-gray-200">{row.referensi}</td>
-                  <td className="px-4 py-3 border border-gray-200">
-                    <div className="flex items-center justify-center">
-                      {row.logoUrl ? (
-                        <img
-                          src={row.logoUrl}
-                          alt="Logo"
-                          className="w-8 h-8 object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
-                          <Building size={16} className="text-gray-600" />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td
-                    className="sticky right-0 bg-white z-10 border border-gray-200 text-center whitespace-nowrap shadow-sm"
-                    style={{ boxShadow: '-2px 0 5px -2px rgba(0,0,0,0.1)' }}
-                  >
-                    <div className="flex justify-center gap-2 px-2 py-1">
-                      <button
-                        className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium"
-                        onClick={() => {
-                          localStorage.setItem('editData', JSON.stringify(tableData[startIndex + index]));
-                          router.push('/transformation-variable/tambah-variable');
-                        }}
-                      >
-                        <Pencil size={14} className="mr-1" /> Edit
-                      </button>
-                      <button
-                        className={`flex items-center gap-1 text-xs font-medium ${
-                          row.status.props.children === 'Active'
-                            ? 'text-red-600 hover:text-red-800'
-                            : 'text-green-600 hover:text-green-800'
-                        }`}
-                        onClick={() => {
-                          if (row.status.props.children === 'Active') {
-                            openConfirmModal(row.id, 'deactivate');
-                          } else {
-                            openConfirmModal(row.id, 'activate');
-                          }
-                        }}
-                      >
-                        {row.status.props.children === 'Active' ? (
-                          <>
-                            <X size={14} className="mr-1" /> Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <Check size={14} className="mr-1" /> Reactivate
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500 border-t">
-                  Tidak ada data ditemukan
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* 📊 Tabel */}
+      <TableUpdate
+        columns={columns}
+        data={currentData.map((item, index) => ({
+          ...item,
+          nomor: startIndex + index + 1,
+          logo: (
+            <div className="flex items-center justify-center">
+              {item.logoUrl ? (
+                <img
+                  src={item.logoUrl}
+                  alt="Logo"
+                  className="w-8 h-8 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
+                  <Building size={16} className="text-gray-600" />
+                </div>
+              )}
+            </div>
+          ),
+          // ✅ JANGAN ubah status! Biarkan tetap 'Active' / 'Inactive'
+          // ❌ Jangan: status: 'Aktif'
+        }))}
+        currentPage={currentPage}
+        rowsPerPage={rowsPerPage}
+        onEdit={(item) => {
+          const { logo, ...safeItem } = item;
+          localStorage.setItem('editData', JSON.stringify(safeItem));
+          router.push('/transformation-variable/tambah-variable');
+        }}
+        onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
+        onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
+        onSort={handleSort}
+        sortConfig={sortConfig}
+      />
 
-      {/* 🔢 Pagination Lengkap (Inline) */}
+      {/* 🔢 Pagination */}
       <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50">
         <span>{currentData.length} Data ditampilkan</span>
-
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
             disabled={currentPage === 1}
-            className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Halaman sebelumnya"
+            className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
           >
             {'<'}
           </button>
@@ -381,31 +323,25 @@ export default function AssessmentPage() {
           <button
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
             disabled={currentPage === totalPages}
-            className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Halaman berikutnya"
+            className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
           >
             {'>'}
           </button>
         </div>
-
         <span>Total: {totalData}</span>
       </div>
 
-      {/* 🔔 Modal Konfirmasi */}
+      {/* 🛑 Modal */}
       {showModal && (
         <ModalConfirm
           isOpen={showModal}
           onCancel={handleCancel}
           onConfirm={handleConfirm}
-          header={
-            modalAction === 'deactivate'
-              ? 'Non Aktifkan Data'
-              : 'Aktifkan Kembali Data'
-          }
+          header={modalAction === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Data'}
           title={
             modalAction === 'deactivate'
-              ? 'Apakah kamu yakin, kamu akan menonaktifkan data ini?'
-              : 'Apakah kamu yakin, kamu akan mengaktifkan kembali data ini?'
+              ? 'Apakah kamu yakin ingin mengaktifkan data ini?'
+              : 'Apakah kamu yakin ingin menonaktifkan data ini? '
           }
           confirmLabel="Ya, lakukan"
           cancelLabel="Batal"
@@ -416,8 +352,8 @@ export default function AssessmentPage() {
               <div className="font-semibold">Informasi</div>
               <div className="text-sm">
                 {modalAction === 'deactivate'
-                  ? 'Kamu bisa mengembalikan kembali data yang sudah dinonaktifkan.'
-                  : 'Kamu bisa menampilkan kembali data yang sudah diaktifkan.'}
+                  ? 'Kamu bisa menonaktifkan kembali data yang sudah diaktifkan.'
+                  : 'Kamu bisa mengaktifkan kembali data yang sudah dinonaktifkan.'}
               </div>
             </div>
           </div>
