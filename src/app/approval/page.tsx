@@ -31,7 +31,7 @@ const TablePage = () => {
   ];
 
   const columns = [
-    { header: "No", key: "nomor", width: "60px", sortable: true },
+    { header: "Nomor", key: "nomor", width: "100px", sortable: true },
     { header: "Nama Variable", key: "variable", width: "300px", sortable: true },
     { header: "Indikator", key: "indikator", width: "319px" },
     { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
