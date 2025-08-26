@@ -134,9 +134,16 @@ export default function LoginPage() {
       </div>
 
       {/* KANAN: BACKGROUND */}
-      <div className="hidden md:flex w-1/2 relative">
-        <img src="/konten.png" alt="Tel-U Background" className="object-cover w-full h-full" />
-      </div>
+<div className="hidden md:flex w-1/2 relative">
+  <Image
+    src="/Konten.png"  // ← sesuaikan dengan nama file
+    alt="Tel-U Background"
+    fill
+    className="object-cover"
+    priority
+    unoptimized
+  />
+</div>
     </div>
   );
 }
