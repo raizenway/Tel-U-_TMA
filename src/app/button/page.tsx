@@ -122,7 +122,8 @@ export default function UniversalButtonPage() {
               </div>
             </Section>      
 
-            <Section title="19. Button Simpan">
+           
+              <Section title="19. Button Simpan">
               <Button
                 variant="ghost"
                 icon={X}
