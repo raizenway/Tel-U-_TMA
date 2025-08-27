@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import Table from "@/components/Table";
+import TableUpdate from "@/components/TableUpdate";
 import { Copy, Printer, Download, Pencil, Trash2, Plus, Eye, ChevronDown, Search } from "lucide-react";
 import Button from "@/components/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -226,8 +226,12 @@ const TablePage = () => {
     { header: "Skor Maximum", key: "skorMax", width: "160px" },
     { header: "Deskripsi Umum", key: "deskripsiUmum", width: "250px" },
     { header: "Deskripsi Per Variabel", key: "deskripsiPerVariabel", width: "250px" },
-    { header: "Aksi", key: "aksi", width: "160px" },
-  ];
+    {
+     header: 'Aksi',
+     key: 'aksi',
+     width: '200px',
+     className: 'text-center sticky right-0 border border-gray-200 z-10 bg-gray-100',
+    },  ];
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 mt-16">
@@ -270,23 +274,25 @@ const TablePage = () => {
 
         {/* Table */}
         <div className="overflow-x-auto w-full">
-          <Table
-            columns={columns}
-            data={dataDenganAksi.map((row) => {
-              const newRow: any = {};
-              Object.keys(row).forEach((key) => {
-                newRow[key] = (
-                  <div className="whitespace-normal break-words max-w-xs">
-                    {row[key]}
-                  </div>
-                );
-              });
-              return newRow;
-            })}
-            currentPage={currentPage}
-            rowsPerPage={10}
-          />
-        </div>
+           <TableUpdate
+              columns={columns}
+              data={dataDenganAksi}
+              currentPage={currentPage}
+              rowsPerPage={10}
+              onEdit={(item) => {
+                const realIndex = data.findIndex(d => d.level === item.level);
+                if (realIndex !== -1) {
+                  localStorage.setItem("editMaturityData", JSON.stringify(data[realIndex]));
+                  router.push(`/maturity-level/edit-maturity/${realIndex}`);
+                }
+              }}
+              onDeactivate={(index) => {
+                setDeleteIndex(index);
+                setShowDelete(true);
+              }}
+            />
+          </div>
+
 
         {/* Pagination */}
         <div className="flex justify-between items-center mt-4 flex-wrap gap-2">
