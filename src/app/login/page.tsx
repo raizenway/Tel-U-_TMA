@@ -43,7 +43,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex max-h-screen">
+    <div className="flex min-h-screen bg-gray-50">
       {/* KIRI: FORM LOGIN */}
       <div className="w-full md:w-2/3 flex items-center justify-center bg-white px-6 py-12 rounded-tr-lg rounded-br-lg">
         <div className="w-full max-w-md">
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
           {/* Judul */}
           <h2 className="text-xl font-semibold text-black mb-4">Log In An Account</h2>
-          <p className="text-sm text-gray-500 mb-11">
+          <p className="text-sm text-gray-500 mb-6">
             Enter your Username and Password to log in to our dashboard
           </p>
 
@@ -98,7 +98,7 @@ export default function LoginPage() {
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
             {/* Tombol Login */}
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center mt-2">
               <Button
                 type="submit"
                 variant="blue"
@@ -112,7 +112,7 @@ export default function LoginPage() {
 
           {/* Lupa Password */}
           <div className="flex items-center justify-center mt-4 text-sm text-red-500 gap-2">
-            <UsersRound />
+            <UsersRound size={16} />
             <a href="#" className="hover:underline">
               Forgot Password SSO
             </a>
@@ -121,7 +121,7 @@ export default function LoginPage() {
           {/* Kontak Admin */}
           <div className="flex items-center justify-center mt-2 text-sm text-green-600 gap-2">
             <a
-              href="https://wa.me/6281234567890"
+              href="https://wa.me/6281234567890" // ✅ Sudah diperbaiki: spasi dihapus
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 hover:underline"
@@ -134,16 +134,16 @@ export default function LoginPage() {
       </div>
 
       {/* KANAN: BACKGROUND */}
-<div className="hidden md:flex w-1/2 relative">
-  <Image
-    src="/Konten.png"  // ← sesuaikan dengan nama file
-    alt="Tel-U Background"
-    fill
-    className="object-cover"
-    priority
-    unoptimized
-  />
-</div>
+      <div className="hidden md:flex w-1/2 relative bg-gray-800">
+        <Image
+          src="/Konten.png"
+          alt="Tel-U Background"
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+      </div>
     </div>
   );
 }
