@@ -220,7 +220,7 @@ export default function AssessmentPage() {
         {/* Container */}
         <div
           className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mx-auto mt-17"
-          style={{ width: '1100px', minHeight: '650px' }}
+          style={{ width: '1000px', minHeight: '650px' }}
         >
           {/* Toolbar */}
           <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">

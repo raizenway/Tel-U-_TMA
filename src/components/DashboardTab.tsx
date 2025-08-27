@@ -94,11 +94,13 @@ export default function DashboardTab() {
     setAccreditationData(initialData);
   }, [accreditationInputData, accreditationYears]);
 
-  // Tambah tahun
+  // ✅ Fix: handleAddYear - Pastikan lastYearNum adalah number
   const handleAddYear = () => {
-    const lastYearStr = studentYears.at(-1);
-    const lastYearNum = lastYearStr ? parseInt(lastYearStr, 10) : 2024;
-    const nextYear = String(lastYearNum + 1);
+    const lastYearStr = studentYears[studentYears.length - 1] ?? '';
+    const lastYearNum = Number(lastYearStr);
+    const nextYearNum = isNaN(lastYearNum) ? 2024 + 1 : lastYearNum + 1;
+    const nextYear = String(nextYearNum);
+
     setStudentYears((prev) => [...prev, nextYear]);
     (Object.keys(studentInputData) as Array<keyof CampusData>).forEach((campus) => {
       setStudentInputData((prev) => ({
@@ -109,7 +111,7 @@ export default function DashboardTab() {
   };
 
   const handleInputChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
-    const num = value === "" ? 0 : Number(value);
+    const num = value === '' ? 0 : Number(value);
     if (isNaN(num)) return;
     setStudentInputData((prev) => ({
       ...prev,
@@ -117,10 +119,13 @@ export default function DashboardTab() {
     }));
   };
 
+  // ✅ Fix: handleAddAccreditationYear - Pastikan lastYearNum adalah number
   const handleAddAccreditationYear = () => {
-    const lastYearStr = accreditationYears.at(-1);
-    const lastYearNum = lastYearStr ? parseInt(lastYearStr, 10) : 2024;
-    const nextYear = String(lastYearNum + 1);
+    const lastYearStr = accreditationYears[accreditationYears.length - 1] ?? '';
+    const lastYearNum = Number(lastYearStr);
+    const nextYearNum = isNaN(lastYearNum) ? 2024 + 1 : lastYearNum + 1;
+    const nextYear = String(nextYearNum);
+
     setAccreditationYears((prev) => [...prev, nextYear]);
     (Object.keys(accreditationInputData) as Array<keyof CampusData>).forEach((campus) => {
       setAccreditationInputData((prev) => ({
@@ -131,7 +136,7 @@ export default function DashboardTab() {
   };
 
   const handleAccreditationChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
-    const num = value === "" ? 0 : Math.max(0, Math.min(100, Number(value)));
+    const num = value === '' ? 0 : Math.max(0, Math.min(100, Number(value)));
     if (isNaN(num)) return;
     setAccreditationInputData((prev) => ({
       ...prev,
@@ -203,7 +208,7 @@ export default function DashboardTab() {
 
   // --- Data Student Body: X-axis = Kampus, Bar = Tahun ---
   const studentDataByCampus = CAMPUS_LIST.map((campus) => {
-    const data: any = { kampus: campus.replace("Tel-U ", "") };
+    const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
     studentYears.forEach((year, idx) => {
       data[year] = studentInputData[campus][idx] || 0;
     });
@@ -258,7 +263,7 @@ export default function DashboardTab() {
   const filteredVariableData = semesterData
     .filter((d) => selectedCampus === "All" || d.kampus === selectedCampus)
     .map((d) => {
-      const row: any = { periode: d.periode };
+      const row: { [key: string]: any } = { periode: d.periode };
       selectedVariables.forEach((variable) => {
         row[variable] = d[variable as keyof typeof d];
       });
@@ -430,7 +435,7 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* 🔥 Perkembangan Variabel per Kampus - Bar Chart + Dropdown Checklist */}
+      {/* 🔥 Perkembangan Variabel per Kampus - Bar Chart (Sumbu X = Variabel, Warna = Periode) */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -456,7 +461,7 @@ export default function DashboardTab() {
               </select>
             </div>
 
-            {/* Filter Variabel - Dropdown Checklist */}
+            {/* Filter Variabel */}
             <div className="min-w-[200px] variable-dropdown-wrapper">
               <label className="block text-sm font-medium text-gray-700 mb-1">FilterWhere Variabel</label>
               <div className="relative">
@@ -499,10 +504,32 @@ export default function DashboardTab() {
           </div>
         </div>
 
+        {/* Bar Chart: X-axis = Variabel, Warna = Periode */}
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={filteredVariableData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+          <BarChart
+            data={(() => {
+              const campuses = selectedCampus === "All" ? CAMPUS_LIST : [selectedCampus];
+              const periods = Array.from(new Set(semesterData.map(d => d.periode)));
+
+              return selectedVariables.map(variable => {
+                const row: { [key: string]: any } = { variabel: variable };
+                periods.forEach(period => {
+                  const scores = campuses
+                    .map(campus => {
+                      const data = semesterData.find(d => d.kampus === campus && d.periode === period);
+                      return data ? data[variable as keyof typeof data] : 0;
+                    })
+                    .filter(score => typeof score === 'number');
+                  const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+                  row[period] = Math.round(avg * 100) / 100;
+                });
+                return row;
+              });
+            })()}
+            margin={{ top: 20, right: 30, left: 10, bottom: 60 }}
+          >
             <CartesianGrid stroke="#f0f0f0" strokeDasharray="4 4" />
-            <XAxis dataKey="periode" tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} />
+            <XAxis dataKey="variabel" tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} label={{ value: 'Skor (%)', angle: -90, position: 'insideLeft', offset: -10, fill: '#6b7280', fontSize: 12 }} />
             <Tooltip
               cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
@@ -510,16 +537,24 @@ export default function DashboardTab() {
               formatter={(value: number) => [value.toFixed(2) + '%', 'Skor']}
               labelStyle={{ color: '#fff' }}
             />
-            <Legend iconType="circle" iconSize={10} />
-
-            {selectedVariables.map((variable) => (
+            <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }} />
+            {Array.from(new Set(semesterData.map(d => d.periode))).map(period => (
               <Bar
-                key={variable}
-                dataKey={variable}
-                fill={variableColors[variable]}
-                name={variable}
-                radius={[8, 8, 0, 0]}
+                key={period}
+                dataKey={period}
+                fill={{
+                  '2021 Ganjil': '#6366f1',
+                  '2021 Genap': '#8b5cf6',
+                  '2022 Ganjil': '#ec4899',
+                  '2022 Genap': '#f59e0b',
+                  '2023 Ganjil': '#10b981',
+                  '2023 Genap': '#06b6d4',
+                  '2024 Ganjil': '#ef4444',
+                }[period]}
+                name={period}
+                radius={[6, 6, 0, 0]}
                 animationDuration={600}
+                maxBarSize={60}
               />
             ))}
           </BarChart>
