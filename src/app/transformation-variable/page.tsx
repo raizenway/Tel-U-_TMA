@@ -232,7 +232,7 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md border mx-auto w-full max-w-5xl mt-18">
+    <div className="p-6 bg-white rounded-lg shadow-md border mx-auto w-full max-w-4xl mt-18">
       {/* 🔔 Notifikasi */}
       <SuccessNotification
         isOpen={showSuccess}
