@@ -209,17 +209,17 @@ const TablePage = () => {
             </div>
           </div>
 
-        
-          
-            <TableUpdate
-              columns={columns}
-              data={paginatedData}
-              currentPage={currentPage}
-              rowsPerPage={rowsPerPage}
-              onSort={handleSort}
-              sortConfig={sortConfig}
-            />
-         
+       
+    <TableUpdate
+      columns={columns}
+      data={paginatedData}
+      currentPage={currentPage}
+      rowsPerPage={rowsPerPage}
+      onSort={handleSort}
+      sortConfig={sortConfig}
+    />
+
+
 
           {/* Pagination & Actions */}
           <div className="flex justify-between items-center mt-4 flex-wrap gap-4">
