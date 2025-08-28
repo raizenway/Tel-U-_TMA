@@ -5,7 +5,7 @@ interface ReportProps {
   description: string;
 }
 
-export default function TableReportComponent({ data }: { data: any }) {
+export default function TableReportComponent({  }: { data: any }) {
   const reports: ReportProps[] = [
     {
       name: 'V1 (Akademik)',

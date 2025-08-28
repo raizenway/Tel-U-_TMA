@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import { saveAs } from "file-saver";
+
 import * as XLSX from "xlsx";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
@@ -11,18 +11,8 @@ import { useRouter } from "next/navigation";
 import SuccessNotification from "./SuccessNotification";
 import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 import {
-  Plus,
-  Edit2,
-  Trash2,
-  Eye,
-  Loader2,
-  LogOut,
-  Info,
-  Upload,
-  Copy,
-  ExternalLink,
+
   ArrowRight,
-  DoorOpen,
   ArrowLeft,
 } from "lucide-react";
 
@@ -65,15 +55,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   const current = questions[currentIndex];
   const isLast = current.id === 30;
 
-  const handleOptionChange = (value: string) => {
-    setAnswers((prev) => ({ ...prev, [current.id]: value }));
-    setIsFormDirty(true);
-    setFormBelumDisimpan(true);
-  };
-
-  const handleReset = () => {
-    setAnswers((prev) => ({ ...prev, [current.id]: "" }));
-  };
+  
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) setCurrentIndex(currentIndex + 1);
@@ -83,14 +65,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
     if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
   };
 
-  const exportToExcel = (data: any[], fileName: string) => {
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, `${fileName}.xlsx`);
-  };
+
 
   const handleBrowseClick = () => fileInputRef.current?.click();
 
@@ -179,32 +154,6 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [formBelumDisimpan]);
-
-  const handleSidebarClick = (path: string) => {
-    if (formBelumDisimpan) {
-      setPendingPath(path);
-      setShowBlockModal(true);
-    } else {
-      router.push(path);
-    }
-  };
-
-  const handleConfirmLeave = () => {
-    if (pendingPath) {
-      router.push(pendingPath);
-      setShowBlockModal(false);
-      setPendingPath(null);
-    }
-  };
-
-  const handleNavigate = (path: string) => {
-    if (formBelumDisimpan) {
-      setShowBlockModal(true);
-      setPendingPath(path);
-    } else {
-      router.push(path);
-    }
-  };
 
   const allAnswered = questions.slice(0, 29).every((q) => {
     if (q.id === 1) {
@@ -465,7 +414,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
           <img src="/modal.png" alt="Confirm" className="w-40 h-40" />
           <h2 className="text-lg font-semibold text-gray-900">Kamu Telah Menyelesaikan Pengisian Assesment.</h2>
           <p className="text-sm text-gray-700">
-            Pastikan semua jawaban telah diisi dengan benar sebelum menekan tombol 'Submit'
+            Pastikan semua jawaban telah diisi dengan benar sebelum menekan tombol Submit
           </p>
         </div>
       </ModalConfirm>

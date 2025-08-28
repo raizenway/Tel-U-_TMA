@@ -24,13 +24,9 @@ export default function WelcomePage() {
     setTab(path || "welcome");
   }, [pathname]);
 
-  const handleNavClick = (item: any) => {
-    if (item.path) {
-      router.push(`/${item.path}`);
-    }
-  };
+  
 
-  const [isFormDirty, setIsFormDirty] = useState(false);
+  const [, setIsFormDirty] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-gray-100">

@@ -5,6 +5,7 @@ import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+
 export default function VariabelFormPage() {
   const router = useRouter();
 

@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+//import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronLeft,
@@ -31,7 +31,7 @@ type SidebarProps = {
 };
 
 export default function Sidebar({ onItemClick }: SidebarProps) {
-  const router = useRouter();
+  //const router = useRouter();
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);

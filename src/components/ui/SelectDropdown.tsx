@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
   useEffect,
-  PropsWithChildren,
+  
 } from 'react';
 import { FiChevronDown, FiX } from 'react-icons/fi';
 import clsx from 'clsx';
