@@ -8,9 +8,7 @@
           import SuccessNotification from '@/components/SuccessNotification'; // ✅ Import notifikasi
           import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
           import {
-              Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
-              DoorOpen,
-              ArrowLeft,
+              Info, Copy, 
               Printer,
               Search,
               ChevronDown

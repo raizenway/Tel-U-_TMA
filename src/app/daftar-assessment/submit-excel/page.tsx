@@ -277,7 +277,7 @@ export default function SubmitExcelPage() {
 
         // Ambil data dari localStorage
         const saved = localStorage.getItem('assessmentList');
-        let list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
+        const list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
 
         // Hitung nomor terakhir
         const lastNomor = list.length > 0 ? Math.max(...list.map((i) => i.nomor)) : 0;

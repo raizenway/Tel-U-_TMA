@@ -11,7 +11,7 @@ export default function EditUserPage() {
   const userIdFromQuery = searchParams.get('userId');
   const pathname = usePathname();
 
-  const [tab, setTab] = useState("welcome");
+  const [, setTab] = useState("welcome");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
 

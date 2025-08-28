@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Table from "@/components/Table";
-import { Copy, Printer, Download, Pencil, Trash2, Plus, Eye, ChevronDown, Search } from "lucide-react";
+import { Copy, Printer, Pencil, Trash2, Eye, ChevronDown, Search } from "lucide-react";
 import Button from "@/components/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";

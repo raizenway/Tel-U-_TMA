@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import clsx from 'clsx';
+//import clsx from 'clsx';
 
 interface FilterUPPSPopoverProps {
   open: boolean;
@@ -30,7 +30,7 @@ const periodeOptions = [
 
 export default function FilterUPPSPopover({
   open,   
-  onClose,
+ 
   defaultPeriode,
   defaultSelectedIds,
   onApply,

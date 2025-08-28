@@ -10,7 +10,7 @@ export default function UserManualTab() {
           1. Login ke Dashboard
         </h3>
         <p className="text-gray-600">
-          Klik tombol "Login", masukkan email dan password Anda, lalu tekan
+          Klik tombol Login, masukkan email dan password Anda, lalu tekan
           tombol Masuk.
         </p>
       </div>
@@ -20,7 +20,7 @@ export default function UserManualTab() {
           2. Memilih Kampus
         </h3>
         <p className="text-gray-600">
-          Pada halaman Welcome, klik tombol "Pilih" pada kampus yang Anda tuju.
+          Pada halaman Welcome, klik tombol Pilih pada kampus yang Anda tuju.
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export default function UserManualTab() {
           3. Mulai Assessment
         </h3>
         <p className="text-gray-600">
-          Setelah memilih kampus, klik tombol "Start Assessment" untuk mengisi
+          Setelah memilih kampus, klik tombol Start Assessment untuk mengisi
           penilaian.
         </p>
       </div>

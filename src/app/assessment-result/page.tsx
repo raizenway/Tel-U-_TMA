@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import Image from 'next/image';
 import clsx from 'clsx';
-import { ChevronDown, LogOut, User } from 'lucide-react';
-import { FaUser } from 'react-icons/fa';
 import { FiChevronDown } from 'react-icons/fi';
 import Button from '@/components/button';
 import { getPeriodeLabel } from "@/utils/periode";
 
-type Tab = "welcome" | "assessment-result" | "form" | "result";
+
 
 /* === Chart.js === */
 import {
@@ -244,7 +241,7 @@ function FilterUPPSPopover({
   defaultSelectedIds,
   onApply,
   onReset,
-  submitPeriode,
+
 }: FilterUPPSPopoverProps) {
   const [periode, setPeriode] = useState<string>(defaultPeriode);
   const [ids, setIds] = useState<string[]>(defaultSelectedIds);
@@ -339,7 +336,7 @@ function FilterUPPSPopover({
  * Main Page
  * =======================*/
 export default function WelcomePage() {
-  const [tab, setTab] = useState<'assessment-result'>('assessment-result');
+  const [tab] = useState<'assessment-result'>('assessment-result');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState(''); 
   const [filterIds, setFilterIds] = useState<string[]>([]); 

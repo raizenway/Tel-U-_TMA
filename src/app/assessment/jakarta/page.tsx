@@ -9,19 +9,12 @@ export default function AssessmentJakartaPage() {
   const router = useRouter();
 
   const [tab, setTab] = useState("assessment-form"); // bisa dikembangkan jika ada multiple tab
-  const [isFormDirty, setIsFormDirty] = useState(false);
+  const [, setIsFormDirty] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingNavItem, setPendingNavItem] = useState<any>(null);
 
   // Handler saat klik item di sidebar
-  const handleNavItemClick = (item: any) => {
-    if (isFormDirty) {
-      setPendingNavItem(item);
-      setIsModalOpen(true);
-    } else {
-      navigateTo(item);
-    }
-  };
+
 
   // Fungsi navigasi
   const navigateTo = (item: any) => {

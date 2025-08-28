@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+//import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -9,23 +9,10 @@ import {
   TooltipTrigger,
   TooltipContent
 } from "@/components/ui/tooltip";
+
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog";
-import {
-  Plus, Edit2, Trash2, Eye, Loader2, LogOut, Info, Upload, Copy, ExternalLink, ArrowRight,
-  DoorOpen, ArrowLeft, Printer, Search, ChevronDown, ChevronRight
+   Edit2, Eye, Info,  Copy, ExternalLink, ArrowRight,
+   ArrowLeft, Printer, Search, ChevronDown, ChevronRight
 } from "lucide-react";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
@@ -41,7 +28,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function UniversalButtonPage() {
-  const [toggle, setToggle] = useState(false);
+  //const [toggle, setToggle] = useState(false);
   const router = useRouter();
 
   const handleCopy = () => {
