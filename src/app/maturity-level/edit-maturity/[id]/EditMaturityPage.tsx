@@ -50,9 +50,9 @@ export default function EditMaturityPage() {
       const tempForm = localStorage.getItem("maturityTempForm");
       if (tempForm) {
         const tempData: MaturityType = JSON.parse(tempForm);
-        // Update hanya deskripsiPerVariabel jika ada perubahan
         setFormData((prev) => ({
           ...prev,
+          ...tempData,
           deskripsiPerVariabel: tempData.deskripsiPerVariabel,
         }));
       }
