@@ -235,7 +235,7 @@ const TablePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 mt-16">
-      <div className="bg-white rounded-4xl shadow p-6 w-full">
+      <div className="bg-white rounded-xl shadow px-3 p-6 w-full">
         {/* Search & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
