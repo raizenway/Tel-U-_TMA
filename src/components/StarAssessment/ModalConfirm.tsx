@@ -8,7 +8,7 @@
     onCancel: () => void;
     onConfirm?: () => void; // 🔥 tambahkan tanda ?
     title: string;
-    message?: string;
+   
     header?: string;
     confirmLabel?: string;
     cancelLabel?: string;
