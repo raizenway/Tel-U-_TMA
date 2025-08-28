@@ -1,4 +1,3 @@
-// app/daftar-assessment/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -179,8 +178,8 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="flex min-h-screen">
-      <div className="p-5 bg-gray-100 flex-1">
+    <div className="flex min-h-screen mt-20">
+      <div className="p-5  flex-1">
         {/* Notifikasi */}
         <SuccessNotification
           isOpen={showSuccess}
@@ -217,77 +216,79 @@ export default function AssessmentPage() {
           </ModalConfirm>
         )}
 
-        {/* Container */}
-        <div
-          className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mx-auto mt-17"
-          style={{ width: '1000px', minHeight: '650px' }}
-        >
-          {/* Toolbar */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
-                <Search className="w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Cari..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-                />
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
-                  Copy
-                </Button>
-                <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
-                  Print
-                </Button>
-                <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
-                  Download
-                </Button>
-                <Button variant="primary" onClick={handleTambah}>
-                  Tambah Assessment
-                </Button>
+        {/* Container - Sudah Diperbaiki: Lebar Penuh */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[650px] mx-auto max-w-full px-6">
+          <div className="p-6">
+            
+            {/* Toolbar */}
+            <div className="p-4 border-b border-gray-200  mb-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-full sm:w-64 bg-white">
+                  <Search className="w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Cari..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap bg-white">
+                  <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
+                    Copy
+                  </Button>
+                  <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
+                    Print
+                  </Button>
+                  <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
+                    Download
+                  </Button>
+                  <Button variant="primary" onClick={handleTambah}>
+                    Tambah Assessment
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Tabel */}
-          <TableUpdate
-            columns={columns}
-            data={currentData}
-            currentPage={page}
-            rowsPerPage={ITEMS_PER_PAGE}
-            onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
-            onDeactivate={(index) => toggleStatus(index)}
-            onReactivate={(index) => toggleStatus(index)}
-            onSort={handleSort}
-            sortConfig={sortConfig}
-          />
-
-          {/* Pagination */}
-          <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50 flex-shrink-0">
-            <span>{currentData.length} Data ditampilkan</span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                disabled={page === 1}
-                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-              >
-                {'<'}
-              </button>
-              <span className="font-medium bg-gray-150 w-8 h-8 flex items-center justify-center border rounded-full">
-                {page}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                disabled={page === totalPages}
-                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-              >
-                {'>'}
-              </button>
+            {/* Tabel */}
+            <div className="overflow-x-auto">
+              <TableUpdate
+                columns={columns}
+                data={currentData}
+                currentPage={page}
+                rowsPerPage={ITEMS_PER_PAGE}
+                onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
+                onDeactivate={(index) => toggleStatus(index)}
+                onReactivate={(index) => toggleStatus(index)}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+              />
             </div>
-            <span>Total: {totalData}</span>
+
+            {/* Pagination */}
+            <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50 mt-6">
+              <span>{currentData.length} Data ditampilkan</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+                >
+                  {'<'}
+                </button>
+                <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
+                  {page}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+                >
+                  {'>'}
+                </button>
+              </div>
+              <span>Total: {totalData}</span>
+            </div>
           </div>
         </div>
       </div>

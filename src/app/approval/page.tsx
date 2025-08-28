@@ -6,19 +6,17 @@ import { Printer, ChevronDown, Copy } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
 import * as XLSX from "xlsx";
-import { useRouter } from "next/navigation";
 
 const TablePage = () => {
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCampus, setSelectedCampus] = useState("Tel-U Jakarta");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
-  const [tab, setTab] = useState("approval-assessment");
+  const [tab, ] = useState("approval-assessment");
 
-  // ⬇️ state baru untuk sorting
+  
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
   const rowsPerPage = 10;
@@ -65,7 +63,7 @@ const TablePage = () => {
 
   // 🔽 sorting
   const sortedData = useMemo(() => {
-    let sortableData = [...filteredData];
+    const sortableData = [...filteredData];
     if (sortConfig !== null) {
       sortableData.sort((a, b) => {
         const aVal = sortConfig.key === "nomor"
@@ -211,7 +209,7 @@ const TablePage = () => {
             </div>
           </div>
 
-          {/* ⬇️ Table + Scroll */}
+        
           
             <TableUpdate
               columns={columns}

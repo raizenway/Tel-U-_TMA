@@ -26,7 +26,7 @@
     confirmLabel = 'Ya',
     cancelLabel = 'Batal',
     children,
-    hideHeader = false,
+    
     footer,
   }: ModalConfirmProps) {
     return (

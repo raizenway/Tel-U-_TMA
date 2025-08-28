@@ -9,19 +9,12 @@ export default function AssessmentFormPage() {
   const router = useRouter();
 
   const [tab, setTab] = useState("assessment-form");
-  const [isFormDirty, setIsFormDirty] = useState(false); // ✅ hanya satu kali
+  const [, setIsFormDirty] = useState(false); // ✅ hanya satu kali
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingNavItem, setPendingNavItem] = useState<any>(null);
 
   // Saat user klik menu sidebar
-  const handleNavItemClick = (item: any) => {
-    if (isFormDirty) {
-      setPendingNavItem(item); // simpan dulu kemana mau pergi
-      setIsModalOpen(true);    // buka modal konfirmasi
-    } else {
-      navigateTo(item);        // langsung navigasi
-    }
-  };
+
 
   // Fungsi navigasi (pindah tab atau halaman)
   const navigateTo = (item: any) => {

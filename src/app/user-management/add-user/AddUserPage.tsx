@@ -13,7 +13,7 @@ export default function AddUserPage() {
   const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
   const [logoPreview, setLogoPreview] = useState<string>(''); // base64 image
   const pathname = usePathname();
-  const [tab, setTab] = useState("welcome");
+  const [, setTab] = useState("welcome");
 
   const [form, setForm] = useState({
     userId: '',

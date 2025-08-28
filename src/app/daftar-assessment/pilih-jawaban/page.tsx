@@ -161,7 +161,7 @@ export default function PilihJawabanPage() {
   const handleConfirmSave = () => {
     try {
       const saved = localStorage.getItem('assessmentList');
-      let list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
+      const list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
 
       const parsedSkor = Object.keys(skor).reduce((acc, key) => {
         const level = Number(key);

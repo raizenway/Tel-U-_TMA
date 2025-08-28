@@ -135,7 +135,7 @@ export default function ApiIgraciasPage() {
 
     try {
       const saved = localStorage.getItem('assessmentList');
-      let list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
+      const list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
 
       // ✅ Konversi status UI → status data dengan tipe yang benar
       const finalStatus: 'Active' | 'Inactive' =

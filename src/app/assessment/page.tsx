@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+
 import Image from "next/image";
 import Button from "@/components/button";
 import { useRouter } from "next/navigation";
@@ -15,29 +15,9 @@ const campuses = [
 export default function AssessmentPage() {
   const router = useRouter();
 
-  // ================================
-  // STATE UNTUK MODAL KONFIRMASI
-  // ================================
-  const [isFormDirty, setIsFormDirty] = useState(false); // ← contoh
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pendingNavItem, setPendingNavItem] = useState<any>(null);
-
-  // ====================
-  // FUNGSI NAVIGASI
-  // ====================
-  const navigateTo = (item: any) => {
-    // Lakukan logika navigasi
-    router.push(item.href || "/welcome"); // Sesuaikan struktur item kamu
-  };
-
-  const handleNavItemClick = (item: any) => {
-    if (isFormDirty) {
-      setPendingNavItem(item);
-      setIsModalOpen(true);
-    } else {
-      navigateTo(item);
-    }
-  };
+  
+  
+  
 
   const handleSelectCampus = (campus: string) => {
     if (campus === "Tel-U Purwokerto") {
