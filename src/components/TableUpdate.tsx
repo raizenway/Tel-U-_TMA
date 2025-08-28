@@ -17,7 +17,7 @@ interface TableUpdateProps {
   data: any[];
   currentPage: number;
   rowsPerPage: number;
-  onEdit?: (item: any) => void;
+  onEdit?: (item: any) => void; // ✅ Terima seluruh item
   onDeactivate?: (index: number) => void;
   onReactivate?: (index: number) => void;
   onSort?: (key: string) => void;
@@ -36,115 +36,116 @@ export default function TableUpdate({
   sortConfig,
 }: TableUpdateProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm w-full">
-      {/* Scroll horizontal wrapper */}
-      <div className="overflow-x-auto">
-        {/* Scroll vertical di dalam */}
-        <div className="max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
-          <table className="table-auto w-full  border-collapse border border-gray-300 text-sm">
-            <thead className="bg-gray-100 text-gray-700 font-semibold sticky top-0 z-10">
-              <tr>
-                {columns.map((col) => (
-                  <th
-                    key={col.key}
-                    style={{ width: col.width || "auto" }}
-                    className={`px-4 py-3 border border-gray-300 text-left uppercase tracking-wide text-xs ${col.className || ""}`}
+    <div className="bg-white rounded-lg mx-auto w-full mt-6 shadow-sm">
+      {/* Scroll wrapper */}
+      <div className="overflow-x-auto max-h-[500px]">
+        <table className="w-full table-fixed border-collapse border border-gray-300 text-sm">
+          <thead className="bg-gray-100 text-gray-700 font-semibold">
+            <tr>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  style={{ width: col.width || "auto" }}
+                  className={`px-4 py-3 border border-gray-300 text-left uppercase tracking-wide text-xs ${col.className || ""}`}
+                >
+                  <div
+                    className={`flex items-center gap-1 ${col.sortable ? "cursor-pointer select-none" : ""}`}
                     onClick={() => col.sortable && onSort?.(col.key)}
                   >
-                    <div
-                      className={`flex items-center gap-1 ${col.sortable ? "cursor-pointer select-none" : ""}`}
-                    >
-                      {col.header}
-                      {col.sortable && (
-                        sortConfig?.key === col.key ? (
-                          sortConfig.direction === "asc" ? (
-                            <ChevronUp size={14} className="text-gray-500" />
-                          ) : (
-                            <ChevronDown size={14} className="text-gray-500" />
-                          )
+                    {col.header}
+                    {col.sortable && (
+                      sortConfig?.key === col.key ? (
+                        sortConfig.direction === "asc" ? (
+                          <ChevronUp size={14} className="text-gray-500" />
                         ) : (
-                          <ChevronsUpDown size={14} className="text-gray-400" />
+                          <ChevronDown size={14} className="text-gray-500" />
                         )
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.length > 0 ? (
-                data.map((item, index) => {
-                  const isActive = item.status?.toString().toLowerCase() === "active";
+                      ) : (
+                        <ChevronsUpDown size={14} className="text-gray-400" />
+                      )
+                    )}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.length > 0 ? (
+              data.map((item, index) => {
+                // ✅ Normalisasi status (case-insensitive)
+                const isActive = item.status?.toString().toLowerCase() === 'active';
 
-                  return (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
-                      {columns.map((col) => (
-                        <td
-                          key={col.key}
-                          className={`px-4 py-3 text-sm border border-gray-300 ${
-                            col.key === "action"
-                              ? "bg-white shadow-md shadow-black/10 z-10"
-                              : ""
-                          } ${col.className || ""}`}
-                        >
-                          {col.key === "nomor"
-                            ? (currentPage - 1) * rowsPerPage + index + 1
-                            : col.key === "action" ? (
-                              <div className="flex justify-center gap-2">
-                                {onEdit && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onEdit(item)}
-                                    className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium transition"
-                                  >
-                                    <Pencil size={14} className="mr-1" /> Edit
-                                  </button>
-                                )}
-                                {isActive ? (
-                                  onDeactivate && (
-                                    <button
-                                      type="button"
-                                      onClick={() => onDeactivate(index)}
-                                      className="flex items-center text-red-600 hover:text-red-800 text-xs font-medium transition"
-                                    >
-                                      <X size={14} className="mr-1" /> Deactive
-                                    </button>
-                                  )
-                                ) : (
-                                  onReactivate && (
-                                    <button
-                                      type="button"
-                                      onClick={() => onReactivate(index)}
-                                      className="flex items-center text-green-600 hover:text-green-800 text-xs font-medium transition"
-                                    >
-                                      <Check size={14} className="mr-1" /> Reactive
-                                    </button>
-                                  )
-                                )}
-                              </div>
-                            ) : col.key === "status" ? (
-                              item.status === "active" ? "Aktif" : "Nonaktif"
-                            ) : (
-                              item[col.key]
-                            )}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-4 py-8 text-center text-gray-500 border-t border-gray-200"
+                return (
+                  <tr
+                    key={index}
+                    className="hover:bg-gray-50 transition-colors duration-150"
                   >
-                    Tidak ada data ditemukan
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    {columns.map((col) => (
+                      <td
+  key={col.key}
+  className={`px-4 py-3 text-sm border border-gray-300 ${
+    col.key === "action"
+      ? "bg-white shadow-md shadow-black/10 z-10"
+      : ""
+  } ${col.className || ""}`}
+>
+  {col.key === "nomor"
+    ? (currentPage - 1) * rowsPerPage + index + 1
+    : col.key === "action" ? (
+      <div className="flex justify-center gap-2">
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(item)}
+            className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium transition"
+          >
+            <Pencil size={14} className="mr-1" /> Edit
+          </button>
+        )}
+        {isActive ? (
+          onDeactivate && (
+            <button
+              type="button"
+              onClick={() => onDeactivate(index)}
+              className="flex items-center text-red-600 hover:text-red-800 text-xs font-medium transition"
+            >
+              <X size={14} className="mr-1" /> Deactive
+            </button>
+          )
+        ) : (
+          onReactivate && (
+            <button
+              type="button"
+              onClick={() => onReactivate(index)}
+              className="flex items-center text-green-600 hover:text-green-800 text-xs font-medium transition"
+            >
+              <Check size={14} className="mr-1" /> Reactive
+            </button>
+          )
+        )}
+      </div>
+    ) : col.key === "status" ? (
+      item.status === 'active' ? 'Aktif' : 'Nonaktif'
+    ) : (
+      item[col.key]
+    )}
+</td>
+                    ))}
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-8 text-center text-gray-500 border-t border-gray-200"
+                >
+                  Tidak ada data ditemukan
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

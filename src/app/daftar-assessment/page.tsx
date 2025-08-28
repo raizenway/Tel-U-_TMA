@@ -179,7 +179,7 @@ export default function AssessmentPage() {
 
   return (
     <div className="flex min-h-screen mt-20">
-      <div className="p-5  flex-1">
+      <div className="p-5 w-full flex-1">
         {/* Notifikasi */}
         <SuccessNotification
           isOpen={showSuccess}

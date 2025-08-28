@@ -58,7 +58,7 @@
               <main
                 className={`${
                   showSidebar ? "" : "ml-0"
-                } flex-1 min-h-screen bg-gray-50 transition-all duration-300 ease-in-out relative overflow-visible`}
+                } flex-1 min-h-screen bg-gray-50 transition-all duration-300 ease-in-out relative overflow-auto`}
               >
                 {/* 🔔 Tampilkan UserIconWithBadge dan Dropdown hanya jika bukan di halaman login */}
                 {showUserComponents && (
