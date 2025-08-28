@@ -4,8 +4,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
  import Button  from "@/components/button";
-import {  Printer, ChevronDown, Copy, } from "lucide-react";
-import { FaSearch} from "react-icons/fa";
+import { Download, Printer, ChevronDown, Copy, } from "lucide-react";
+import { FaSearch, FaEdit,FaTimes, FaRedo } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 
 import TableUpdate from '@/components/TableUpdate';
@@ -29,7 +29,7 @@ export default function UserManagementPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [, setTab] = useState('welcome');
+  const [tab, setTab] = useState('welcome');
   const [userList, setUserList] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
