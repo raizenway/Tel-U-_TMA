@@ -178,8 +178,8 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="flex min-h-screen">
-      <div className="p-5 bg-gray-100 flex-1">
+    <div className="flex min-h-screen mt-20">
+      <div className="p-5  flex-1">
         {/* Notifikasi */}
         <SuccessNotification
           isOpen={showSuccess}
@@ -216,18 +216,14 @@ export default function AssessmentPage() {
           </ModalConfirm>
         )}
 
-        {/* Container dengan jarak yang benar */}
-        <div
-          className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mx-auto my-19"
-          style={{ width: '1000px', minHeight: '650px' }}
-        >
-          {/* ✅ JARAK DITAMBAHKAN DI SINI: p-6 memberi ruang ke semua sisi */}
+        {/* Container - Sudah Diperbaiki: Lebar Penuh */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[650px] mx-auto max-w-full px-6">
           <div className="p-6">
             
             {/* Toolbar */}
-            <div className="p-4 border-b border-gray-200 bg-gray mb-6">
+            <div className="p-4 border-b border-gray-200  mb-6">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-full sm:w-64 bg-white">
                   <Search className="w-4 h-4 text-gray-500" />
                   <input
                     type="text"
@@ -255,17 +251,19 @@ export default function AssessmentPage() {
             </div>
 
             {/* Tabel */}
-            <TableUpdate
-              columns={columns}
-              data={currentData}
-              currentPage={page}
-              rowsPerPage={ITEMS_PER_PAGE}
-              onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
-              onDeactivate={(index) => toggleStatus(index)}
-              onReactivate={(index) => toggleStatus(index)}
-              onSort={handleSort}
-              sortConfig={sortConfig}
-            />
+            <div className="overflow-x-auto">
+              <TableUpdate
+                columns={columns}
+                data={currentData}
+                currentPage={page}
+                rowsPerPage={ITEMS_PER_PAGE}
+                onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
+                onDeactivate={(index) => toggleStatus(index)}
+                onReactivate={(index) => toggleStatus(index)}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+              />
+            </div>
 
             {/* Pagination */}
             <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50 mt-6">
@@ -278,7 +276,7 @@ export default function AssessmentPage() {
                 >
                   {'<'}
                 </button>
-                <span className="font-medium bg-gray-150 w-8 h-8 flex items-center justify-center border rounded-full">
+                <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
                   {page}
                 </span>
                 <button
