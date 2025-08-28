@@ -4,8 +4,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
  import Button  from "@/components/button";
-import {  Printer, ChevronDown, Copy, } from "lucide-react";
-import { FaSearch} from "react-icons/fa";
+import { Download, Printer, ChevronDown, Copy, } from "lucide-react";
+import { FaSearch, FaEdit,FaTimes, FaRedo } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 
 import TableUpdate from '@/components/TableUpdate';
@@ -29,7 +29,7 @@ export default function UserManagementPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [, setTab] = useState('welcome');
+  const [tab, setTab] = useState('welcome');
   const [userList, setUserList] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,7 +44,7 @@ export default function UserManagementPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  
+  // Kolom Tabel
   const columns = [
   { header: 'User ID', key: 'userId', width: '140px', sortable: true },
   { header: 'User Name', key: 'username', width: '160px', sortable: true },
@@ -57,7 +57,7 @@ export default function UserManagementPage() {
     key: 'action', 
     width: '180px', 
     sortable: false, 
-    className: 'sticky right-0 bg-white z-10' 
+    className: 'sticky right-0 bg-gray-100 z-10' 
   },
 ];
 
@@ -405,18 +405,18 @@ const handleDownload = () => {
                 </Button>
 
               <Button
-                             variant="outline"
-                             icon={Printer}
-                            iconPosition="left" 
-                            onClick={handlePrint}
-                             >
-                              Print
-                              </Button>
+               variant="outline"
+               icon={Printer}
+               iconPosition="left" 
+               onClick={handlePrint}
+               >
+               Print
+              </Button>
 
               <Button
                variant="outline"
                icon={ChevronDown}
-              iconPosition="right" 
+               iconPosition="right" 
                   onClick={handleDownload}
                >
                 Download

@@ -8,7 +8,7 @@
     onCancel: () => void;
     onConfirm?: () => void; // 🔥 tambahkan tanda ?
     title: string;
-    message?: string;
+   message?: string;
     header?: string;
     confirmLabel?: string;
     cancelLabel?: string;
@@ -26,7 +26,7 @@
     confirmLabel = 'Ya',
     cancelLabel = 'Batal',
     children,
-    
+    hideHeader = false,
     footer,
   }: ModalConfirmProps) {
     return (
