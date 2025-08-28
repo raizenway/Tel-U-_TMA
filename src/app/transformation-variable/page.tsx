@@ -46,7 +46,7 @@ export default function AssessmentPage() {
         deskripsi: item.deskripsi || '-',
         referensi: item.referensi || '-',
         logoUrl: item.logoUrl || null,
-        status: item.status === 'Active' || item.status === 'active' ? 'Active' : 'Inactive', // Normalisasi
+        status: item.status === 'Active' || item.status === 'active' ? 'Active' : 'Inactive',
       }));
       setTableData(formatted);
     } catch (error) {
@@ -232,133 +232,141 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md border mx-auto w-full max-w-5xl mt-18">
-      {/* 🔔 Notifikasi */}
-      <SuccessNotification
-        isOpen={showSuccess}
-        onClose={() => setShowSuccess(false)}
-        message="Variable baru berhasil ditambahkan!"
-      />
-
-      {/* 🔎 Search & tombol */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
-          <Search className="w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Cari..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+    <div className="flex min-h-screen bg-gray-100 mt-20">
+      {/* Container utama: penuh layar */}
+      <div className="flex-1 p-6">
+        <div className="bg-white rounded-lg shadow-md border overflow-hidden">
+          
+          {/* Notifikasi */}
+          <SuccessNotification
+            isOpen={showSuccess}
+            onClose={() => setShowSuccess(false)}
+            message="Variable baru berhasil ditambahkan!"
           />
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
-            Copy
-          </Button>
-          <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
-            Print
-          </Button>
-          <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
-            Download
-          </Button>
-          <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
-            Tambah Variable
-          </Button>
-        </div>
-      </div>
 
-      {/* 📊 Tabel */}
-      <TableUpdate
-        columns={columns}
-        data={currentData.map((item, index) => ({
-          ...item,
-          nomor: startIndex + index + 1,
-          logo: (
-            <div className="flex items-center justify-center">
-              {item.logoUrl ? (
-                <img
-                  src={item.logoUrl}
-                  alt="Logo"
-                  className="w-8 h-8 object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          {/* Toolbar */}
+          <div className="p-4 border-b border-gray-200  ">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+              <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-full sm:w-64 bg-white">
+                <Search className="w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Cari..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
                 />
-              ) : (
-                <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
-                  <Building size={16} className="text-gray-600" />
-                </div>
-              )}
-            </div>
-          ),
-          // ✅ JANGAN ubah status! Biarkan tetap 'Active' / 'Inactive'
-          // ❌ Jangan: status: 'Aktif'
-        }))}
-        currentPage={currentPage}
-        rowsPerPage={rowsPerPage}
-        onEdit={(item) => {
-          const { logo, ...safeItem } = item;
-          localStorage.setItem('editData', JSON.stringify(safeItem));
-          router.push('/transformation-variable/tambah-variable');
-        }}
-        onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
-        onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
-        onSort={handleSort}
-        sortConfig={sortConfig}
-      />
-
-      {/* 🔢 Pagination */}
-      <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50">
-        <span>{currentData.length} Data ditampilkan</span>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-            className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-          >
-            {'<'}
-          </button>
-          <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
-            {currentPage}
-          </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-          >
-            {'>'}
-          </button>
-        </div>
-        <span>Total: {totalData}</span>
-      </div>
-
-      {/* 🛑 Modal */}
-      {showModal && (
-        <ModalConfirm
-          isOpen={showModal}
-          onCancel={handleCancel}
-          onConfirm={handleConfirm}
-          header={modalAction === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Data'}
-          title={
-            modalAction === 'deactivate'
-              ? 'Apakah kamu yakin ingin mengaktifkan data ini?'
-              : 'Apakah kamu yakin ingin menonaktifkan data ini? '
-          }
-          confirmLabel="Ya, lakukan"
-          cancelLabel="Batal"
-        >
-          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md text-sm flex items-start gap-3 mt-2">
-            <LucideInfo size={20} className="mt-0.5 text-blue-500" />
-            <div>
-              <div className="font-semibold">Informasi</div>
-              <div className="text-sm">
-                {modalAction === 'deactivate'
-                  ? 'Kamu bisa menonaktifkan kembali data yang sudah diaktifkan.'
-                  : 'Kamu bisa mengaktifkan kembali data yang sudah dinonaktifkan.'}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
+                  Copy
+                </Button>
+                <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
+                  Print
+                </Button>
+                <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
+                  Download
+                </Button>
+                <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
+                  Tambah Variable
+                </Button>
               </div>
             </div>
           </div>
-        </ModalConfirm>
-      )}
+
+          {/* Tabel */}
+          <div className="overflow-x-auto">
+            <TableUpdate
+              columns={columns}
+              data={currentData.map((item, index) => ({
+                ...item,
+                nomor: startIndex + index + 1,
+                logo: (
+                  <div className="flex items-center justify-center">
+                    {item.logoUrl ? (
+                      <img
+                        src={item.logoUrl}
+                        alt="Logo"
+                        className="w-8 h-8 object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
+                        <Building size={16} className="text-gray-600" />
+                      </div>
+                    )}
+                  </div>
+                ),
+              }))}
+              currentPage={currentPage}
+              rowsPerPage={rowsPerPage}
+              onEdit={(item) => {
+                const { logo, ...safeItem } = item;
+                localStorage.setItem('editData', JSON.stringify(safeItem));
+                router.push('/transformation-variable/tambah-variable');
+              }}
+              onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
+              onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
+              onSort={handleSort}
+              sortConfig={sortConfig}
+            />
+          </div>
+
+          {/* Pagination */}
+          <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50">
+            <span>{currentData.length} Data ditampilkan</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+              >
+                {'<'}
+              </button>
+              <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
+                {currentPage}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
+              >
+                {'>'}
+              </button>
+            </div>
+            <span>Total: {totalData}</span>
+          </div>
+        </div>
+
+        {/* Modal */}
+        {showModal && (
+          <ModalConfirm
+            isOpen={showModal}
+            onCancel={handleCancel}
+            onConfirm={handleConfirm}
+            header={modalAction === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Data'}
+            title={
+              modalAction === 'deactivate'
+                ? 'Apakah kamu yakin ingin mengaktifkan data ini?'
+                : 'Apakah kamu yakin ingin menonaktifkan data ini? '
+            }
+            confirmLabel="Ya, lakukan"
+            cancelLabel="Batal"
+          >
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md text-sm flex items-start gap-3 mt-2">
+              <LucideInfo size={20} className="mt-0.5 text-blue-500" />
+              <div>
+                <div className="font-semibold">Informasi</div>
+                <div className="text-sm">
+                  {modalAction === 'deactivate'
+                    ? 'Kamu bisa menonaktifkan kembali data yang sudah diaktifkan.'
+                    : 'Kamu bisa mengaktifkan kembali data yang sudah dinonaktifkan.'}
+                </div>
+              </div>
+            </div>
+          </ModalConfirm>
+        )}
+      </div>
     </div>
   );
 }

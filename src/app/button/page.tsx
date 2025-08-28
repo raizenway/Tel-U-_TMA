@@ -105,7 +105,7 @@ export default function UniversalButtonPage() {
               <div className="inline-flex rounded-md shadow-sm" role="group">
                 <Button variant="outline">Prev</Button>
                 
-                <Button variant="outline">Next</Button>
+                <Button variant="outline">Next</Button> 
               </div>
             </Section>      
 
