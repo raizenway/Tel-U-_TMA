@@ -210,12 +210,12 @@ export default function AssessmentPage() {
 
   // 🔹 Kolom
   const columns = [
-    { header: 'Nomor', key: 'nomor', width: '80px', className: 'text-center', sortable: true },
+    { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
     { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: true },
     { header: 'Pertanyaan', key: 'pertanyaan', width: '250px', sortable: true },
     { header: 'Deskripsi', key: 'deskripsi', width: '300px', sortable: true },
-    { header: 'Referensi', key: 'referensi', width: '180px', sortable: true },
+    { header: 'Referensi', key: 'referensi', width: '100px', sortable: true },
     {
       header: 'Logo UPPS/KC',
       key: 'logo',
