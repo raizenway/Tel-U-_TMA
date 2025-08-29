@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import Container from "@/components/Container";
-import Transformationvariablepage from "./TransformationVariablePage";
+import TransformationVariablePage from "./TransformationVariablePage";
 
 export default function Page() {
   return (
     <Container>
-        <Transformationvariablepage />
+        <TransformationVariablePage />
     </Container>
   );
 }

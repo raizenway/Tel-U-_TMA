@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import Container from "@/components/Container";
-import Daftarassessmentpage from "./DaftarAssessmentPage";
+import DaftarAssessmentPage from "./DaftarAssessmentPage";
 
 export default function Page() {
   return (
     <Container>
-        <Daftarassessmentpage />
+        <DaftarAssessmentPage />
     </Container>
   );
 }
