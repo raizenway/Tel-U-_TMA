@@ -153,7 +153,7 @@ const TablePage = () => {
   return (
     <div className="flex min-h-screen">
       {tab === "approval-assessment" && (
-        <div className="bg-white rounded-xl shadow m-6 w-full">
+        <div className="bg-white rounded-xl shadow  w-full">
           {/* Filter & Tools */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
             <input
