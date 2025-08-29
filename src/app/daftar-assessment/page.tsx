@@ -5,9 +5,7 @@ import Daftarassessmentpage from "./Daftarassessmentpage";
 export default function Page() {
   return (
     <Container>
-      <Suspense fallback={<div>Loading...</div>}>
         <Daftarassessmentpage />
-      </Suspense>
     </Container>
   );
 }
