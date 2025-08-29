@@ -232,10 +232,10 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-100 mt-20">
+    <div className="flex min-h-screen">
       {/* Container utama: penuh layar */}
-      <div className="flex-1 p-6">
-        <div className="bg-white rounded-lg shadow-md border overflow-hidden">
+      <div className="flex-1">
+        <div className=" rounded-lg shadow-md border overflow-hidden">
           
           {/* Notifikasi */}
           <SuccessNotification
