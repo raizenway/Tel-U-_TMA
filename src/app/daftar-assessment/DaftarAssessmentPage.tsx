@@ -6,6 +6,7 @@ import Button from '@/components/button';
 import SuccessNotification from '@/components/SuccessNotification';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableUpdate from '@/components/TableUpdate';
+import TableButton from '@/components/Tablebutton';
 import { Search, Copy, Printer, ChevronDown, Info } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
@@ -234,15 +235,7 @@ export default function AssessmentPage() {
                   />
                 </div>
                 <div className="flex gap-2 flex-wrap bg-white">
-                  <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
-                    Copy
-                  </Button>
-                  <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
-                    Print
-                  </Button>
-                  <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
-                    Download
-                  </Button>
+                  <TableButton data={currentData}/>
                   <Button variant="primary" onClick={handleTambah}>
                     Tambah Assessment
                   </Button>
