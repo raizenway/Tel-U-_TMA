@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
-import TableButton from '@/components/Tablebutton';
+import TableButton from '@/components/TableButton';
 import {
   Search,
   Copy,
