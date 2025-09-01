@@ -6,7 +6,7 @@ import Button from '@/components/button';
 import SuccessNotification from '@/components/SuccessNotification';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableUpdate from '@/components/TableUpdate';
-import TableButton from '@/components/Tablebutton';
+import TableButton from '@/components/TableButton';
 import { Search, Copy, Printer, ChevronDown, Info } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
