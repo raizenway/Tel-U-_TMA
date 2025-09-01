@@ -6,7 +6,7 @@ import {  Pencil, Trash2, Eye } from "lucide-react";
 import Button from "@/components/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
-import TableButton from "@/components/Tablebutton";
+import TableButton from "@/components/TableButton";
 import SearchTable from "@/components/SearchTable";
 
   const TablePage = () => {
