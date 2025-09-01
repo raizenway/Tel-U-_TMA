@@ -5,7 +5,7 @@ import TableUpdate from "@/components/TableUpdate";
 import { ChevronDown } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
-import Tablebutton from "@/components/Tablebutton";
+import TableButton from "@/components/TableButton";
 import Pagination from "@/components/Pagination";
 
 const TablePage = () => {
@@ -126,7 +126,7 @@ const TablePage = () => {
             />
 
             <div className="flex gap-2 items-center">
-              <Tablebutton data={data} />
+              <TableButton data={data} />
 
               {/* Dropdown Kampus */}
               <div className="relative">
