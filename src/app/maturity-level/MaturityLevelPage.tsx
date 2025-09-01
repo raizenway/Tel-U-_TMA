@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import TableUpdate from "@/components/TableUpdate";
-import { Copy, Printer, Download, Pencil, Trash2, Plus, Eye, ChevronDown, Search } from "lucide-react";
+import {  Pencil, Trash2, Eye } from "lucide-react";
 import Button from "@/components/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
+import TableButton from "@/components/Tablebutton";
+import SearchTable from "@/components/SearchTable";
 
-const TablePage = () => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const TablePage = () => {
+  const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [data, setData] = useState<any[]>([]);
   const router = useRouter();
@@ -89,12 +91,17 @@ const TablePage = () => {
     }
   }, [searchParams]);
 
-  // Filter pencarian
-  const filteredData = data.filter((row) =>
-    Object.values(row).some((val) =>
-      String(val).toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredData = data.filter((item) =>
+  Object.values(item).some((val) =>
+    String(val ?? "")
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  )
+);
+
+const sortedData = Array.isArray(data)
+  ? [...data].sort((a, b) => String(a.level).localeCompare(String(b.level)))
+  : [];
 
   const totalPages = Math.ceil(filteredData.length / 10);
   const paginatedData = filteredData.slice(
@@ -126,51 +133,6 @@ const TablePage = () => {
 
   setShowDelete(false);
 };
-
-
-  const handlePrint = () => window.print();
-
-  const handleDownload = () => {
-    const headers = ["Level", "Nama Level", "Skor Minimum", "Skor Maximum", "Deskripsi Umum", "Deskripsi Per Variabel"];
-    const rows = filteredData
-      .map((row) => [
-        row.level,
-        row.namaLevel,
-        row.skorMin,
-        row.skorMax,
-        row.deskripsiUmum,
-        Array.isArray(row.deskripsiPerVariabel) ? row.deskripsiPerVariabel.join(" | ") : "",
-      ].join("\t"))
-      .join("\n");
-
-    const tsv = headers.join("\t") + "\n" + rows;
-    const blob = new Blob([tsv], { type: "text/tab-separated-values" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "maturity-level.tsv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleCopy = () => {
-    const headers = ["Level", "Nama Level", "Skor Minimum", "Skor Maximum", "Deskripsi Umum", "Deskripsi Per Variabel"];
-    const rows = filteredData
-      .map((row) => [
-        row.level,
-        row.namaLevel,
-        row.skorMin,
-        row.skorMax,
-        row.deskripsiUmum,
-        Array.isArray(row.deskripsiPerVariabel) ? row.deskripsiPerVariabel.join(" | ") : "",
-      ].join("\t"))
-      .join("\n");
-
-    const textToCopy = headers.join("\t") + "\n" + rows;
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      alert("✅ Data berhasil disalin ke clipboard!");
-    });
-  };
 
   // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
@@ -233,31 +195,28 @@ const TablePage = () => {
      className: 'text-center sticky right-0 border border-gray-200 z-10 bg-gray-100',
     },  ];
 
+    const dataForExport = paginatedData.map((item, index) => ({
+  Nomor: (currentPage - 1) * 10 + index + 1,
+  Level: item.level,
+  NamaLevel: item.namaLevel,
+  SkorMinimum: item.skorMin,
+  SkorMaximum: item.skorMax, 
+  DeskripsiUmum: item.deskripsiUmum,
+  DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
+    ? item.deskripsiPerVariabel.join(" | ")
+    : "",
+  Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
+}));
+
+
   return (
-    <div>
+    <div className="">
+      <div className="bg-white rounded-xl w-full">
         {/* Search & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-64 bg-white">
-            <Search className="w-4 h-4 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Cari"
-              className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
+          <SearchTable value={search} onChange={setSearch} />
           <div className="flex items-center gap-2">
-            <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
-              Copy
-            </Button>
-            <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
-              Print
-            </Button>
-            <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
-              Download
-            </Button>
+            <TableButton data={dataForExport}/>
             <Button className="px-8" onClick={handleTambah}>
               Tambah Maturity Level
             </Button>
@@ -321,6 +280,7 @@ const TablePage = () => {
             </button>
           </div>
         </div>
+      </div>
 
       {/* Modal konfirmasi hapus */}
       <ModalConfirm
@@ -344,33 +304,33 @@ const TablePage = () => {
 
       {/* Modal Deskripsi per Variabel */}
      {/* Modal Deskripsi per Variabel */}
-      <ModalConfirm
-        isOpen={showModal}
-        onCancel={() => setShowModal(false)}
-        onConfirm={() => {}}
-        title=""
-        header="Deskripsi per Variabel"
-        footer={
-          <div className="flex justify-center pt-4">
-            <Button variant="simpan" className="px-30 py-2 text-lg rounded-md" onClick={() => setShowModal(false)}>
-              Tutup
-            </Button>
-          </div>
-        }
-      >
-        {Array.isArray(selectedDeskripsiList) && selectedDeskripsiList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {selectedDeskripsiList.map((desc, i) => (
-              <div key={i} className="bg-purple-50 border rounded p-3">
-                <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-                <p className="text-sm text-gray-700">{desc || "(Tidak ada deskripsi)"}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
-        )}
-      </ModalConfirm>
+<ModalConfirm
+  isOpen={showModal}
+  onCancel={() => setShowModal(false)}
+  onConfirm={() => {}}
+  title=""
+  header="Deskripsi per Variabel"
+  footer={
+    <div className="flex justify-center pt-4">
+       <Button variant="simpan" className="px-30 py-2 text-lg rounded-md" onClick={() => setShowModal(false)}>
+        Tutup
+       </Button>
+    </div>
+  }
+>
+  {Array.isArray(selectedDeskripsiList) && selectedDeskripsiList.length > 0 ? (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {selectedDeskripsiList.map((desc, i) => (
+        <div key={i} className="bg-purple-50 border rounded p-3">
+          <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
+          <p className="text-sm text-gray-700">{desc || "(Tidak ada deskripsi)"}</p>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
+  )}
+</ModalConfirm>
 
     </div>
   );
