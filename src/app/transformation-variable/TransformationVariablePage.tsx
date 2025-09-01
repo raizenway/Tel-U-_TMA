@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
+import TableButton from '@/components/Tablebutton';
 import {
   Search,
   Copy,
@@ -149,64 +150,6 @@ export default function AssessmentPage() {
     setModalAction(null);
   };
 
-  // 🔹 Ekspor
-  const handleCopy = () => {
-    const content = currentData
-      .map((row) => [row.nama, row.variable, row.bobot, row.pertanyaan, row.deskripsi, row.referensi, row.status].join('\t'))
-      .join('\n');
-    navigator.clipboard.writeText(content)
-      .then(() => alert('Data berhasil disalin!'))
-      .catch(() => alert('Gagal menyalin.'));
-  };
-
-  const handlePrint = () => {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) return alert('Pop-up diblokir.');
-    const rows = currentData
-      .map(row => `
-        <tr>
-          <td>${row.nama}</td>
-          <td>${row.bobot}</td>
-          <td>${row.pertanyaan}</td>
-          <td>${row.deskripsi}</td>
-          <td>${row.referensi}</td>
-          <td>${row.status}</td>
-        </tr>
-      `).join('');
-    printWindow.document.write(`
-      <html>
-        <head><title>Print Assessment</title></head>
-        <body>
-          <h2>Daftar Assessment</h2>
-          <table border="1">${rows}</table>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-  };
-
-  const handleDownload = () => {
-    const headers = 'Nama,Variable,Bobot,Pertanyaan,Deskripsi,Referensi,Status';
-    const rows = currentData
-      .map(row => [
-        `"${row.nama}"`,
-        `"${row.variable}"`,
-        `"${row.bobot}"`,
-        `"${row.pertanyaan}"`,
-        `"${row.deskripsi}"`,
-        `"${row.referensi}"`,
-        `"${row.status === 'Active' ? 'Active' : 'Inactive'}"`
-      ].join(','))
-      .join('\n');
-    const csv = [headers, rows].join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `assessment-data-${new Date().toISOString().slice(0, 10)}.csv`);
-    link.click();
-  };
 
   // 🔹 Kolom
   const columns = [
@@ -231,11 +174,23 @@ export default function AssessmentPage() {
     },
   ];
 
+  const dataForExport = currentData.map((item, index) => ({
+  Nomor: startIndex + index + 1,
+  'Nama Variable': item.nama,
+  Variable: item.variable,
+  Bobot: item.bobot,
+  Pertanyaan: item.pertanyaan,
+  Deskripsi: item.deskripsi,
+  Referensi: item.referensi,
+  'Logo URL': item.logoUrl || '-',
+  Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan'
+}));
+
   return (
-    <div className="flex min-h-screen bg-gray-100 mt-20">
+    <div className="flex min-h-screen">
       {/* Container utama: penuh layar */}
-      <div className="flex-1 p-6">
-        <div className="bg-white rounded-lg shadow-md border overflow-hidden">
+      <div className="flex-1">
+        <div className=" rounded-lg shadow-md border overflow-hidden">
           
           {/* Notifikasi */}
           <SuccessNotification
@@ -258,15 +213,10 @@ export default function AssessmentPage() {
                 />
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
-                  Copy
-                </Button>
-                <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
-                  Print
-                </Button>
-                <Button variant="outline" icon={ChevronDown} iconPosition="right" onClick={handleDownload}>
-                  Download
-                </Button>
+                <TableButton 
+                  data={dataForExport}
+                  columns={['Nomor', 'Nama Variable', 'Variable', 'Bobot', 'Pertanyaan', 'Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
+                />
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
                   Tambah Variable
                 </Button>
