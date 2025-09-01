@@ -22,48 +22,84 @@ export default function AssessmentPage() {
   const router = useRouter();
   const [tableData, setTableData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // 🔹 Load data dari localStorage
-  const loadTableData = () => {
-    const saved = localStorage.getItem('transformationVariables');
-    if (!saved) {
-      setTableData([]);
-      return;
-    }
+const dataDummy: any = [
+  {
+    id: 1,
+    name: "John Doe",
+    email: "johndoe@mail.com",
+    role: "Admin",
+  },
+  {
+    id: 2,
+    name: "Jane Smith",
+    email: "janesmith@mail.com",
+    role: "User",
+  },
+  {
+    id: 3,
+    name: "Michael Johnson",
+    email: "michaelj@mail.com",
+    role: "Moderator",
+  },
+];
 
-    try {
-      const parsed = JSON.parse(saved);
-      const formatted = parsed.map((item: any) => ({
-        id: item.id,
-        nama: item.namaVariabel || '-',
-        variable: item.variable || '-',
-        bobot: item.bobot || '-',
-        pertanyaan: item.pertanyaan || '-',
-        deskripsi: item.deskripsi || '-',
-        referensi: item.referensi || '-',
-        logoUrl: item.logoUrl || null,
-        status: item.status === 'Active' || item.status === 'active' ? 'Active' : 'Inactive',
-      }));
-      setTableData(formatted);
-    } catch (error) {
-      console.error('Gagal parsing ', error);
-      setTableData([]);
-    }
-  };
+
+  // 🔹 Load data dari localStorage
+  // 🔹 Load data dari API
+const loadTableData = async () => {
+  setLoading(true);
+  try {
+    const res = await fetch('http://localhost:3000/api/assessment/variable', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-cache',
+    });
+
+    if (!res.ok) throw new Error(`Gagal ambil data: ${res.status}`);
+
+    const data = await res.json();
+
+    const formatted = data.map((item: any) => ({
+      id: item.id,
+      nama: item.name || '-',
+      variable: '-',
+      bobot: item.weight || '-',
+      pertanyaan: '-',
+      deskripsi: item.description || '-',
+      referensi: item.reference || '-',
+      logoUrl: null,
+      status: item.status === 'active' ? 'Active' : 'Inactive',
+    }));
+
+    setTableData(formatted);
+  } catch (error) {
+    console.error('Gagal ambil data dari API:', error);
+    setTableData([]);
+    alert('Tidak bisa terhubung ke server.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
-    loadTableData();
+  const fetchData = async () => {
+    await loadTableData();
 
     if (localStorage.getItem('newDataAdded') === 'true') {
       setShowSuccess(true);
       localStorage.removeItem('newDataAdded');
     }
-  }, []);
+  };
+
+  fetchData();
+}, []);
 
   // 🔹 Sorting
   const handleSort = (key: string) => {
@@ -116,25 +152,37 @@ export default function AssessmentPage() {
   };
 
   // 🔹 Toggle status
-  const handleToggleStatus = () => {
-    if (itemId === null) return;
+  // 🔹 Toggle status via API
+const handleToggleStatus = async () => {
+  if (itemId === null) return;
 
-    const saved = localStorage.getItem('transformationVariables');
-    if (!saved) return;
+  try {
+    const currentItem = tableData.find(item => item.id === itemId);
+    const newStatus = currentItem?.status === 'Active' ? 'Inactive' : 'Active';
 
-    try {
-      const parsed = JSON.parse(saved);
-      const updated = parsed.map((item: any) =>
-        item.id === itemId
-          ? { ...item, status: item.status === 'Active' ? 'Inactive' : 'Active' }
-          : item
-      );
-      localStorage.setItem('transformationVariables', JSON.stringify(updated));
-      loadTableData(); // Refresh UI
-    } catch (error) {
-      console.error('Gagal update status:', error);
+    const res = await fetch(`http://localhost:3000/api/assessment/variable/${itemId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Update gagal');
     }
-  };
+
+    // Refresh data dari API
+    await loadTableData();
+    setShowModal(false);
+    setItemId(null);
+    setModalAction(null);
+  } catch (error: any) {
+    console.error('Gagal update status:', error);
+    alert(error.message || 'Gagal mengubah status');
+  }
+};
 
   // 🔹 Konfirmasi
   const handleConfirm = () => {
@@ -224,43 +272,27 @@ export default function AssessmentPage() {
             </div>
           </div>
 
-          {/* Tabel */}
-          <div className="overflow-x-auto">
-            <TableUpdate
-              columns={columns}
-              data={currentData.map((item, index) => ({
-                ...item,
-                nomor: startIndex + index + 1,
-                logo: (
-                  <div className="flex items-center justify-center">
-                    {item.logoUrl ? (
-                      <img
-                        src={item.logoUrl}
-                        alt="Logo"
-                        className="w-8 h-8 object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
-                        <Building size={16} className="text-gray-600" />
-                      </div>
-                    )}
-                  </div>
-                ),
-              }))}
-              currentPage={currentPage}
-              rowsPerPage={rowsPerPage}
-              onEdit={(item) => {
-                const { logo, ...safeItem } = item;
-                localStorage.setItem('editData', JSON.stringify(safeItem));
-                router.push('/transformation-variable/tambah-variable');
-              }}
-              onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
-              onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
-              onSort={handleSort}
-              sortConfig={sortConfig}
-            />
-          </div>
+         {loading ? (
+  <div className="p-10 text-center text-gray-500">Memuat data...</div>
+) : (
+  <div className="overflow-x-auto">
+    <TableUpdate
+      columns={columns}
+      data={currentData}
+      currentPage={currentPage}
+      rowsPerPage={rowsPerPage}
+      onEdit={(item) => {
+        const { logo, ...safeItem } = item;
+        localStorage.setItem('editData', JSON.stringify(safeItem));
+        router.push('/transformation-variable/tambah-variable');
+      }}
+      onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
+      onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
+      onSort={handleSort}
+      sortConfig={sortConfig}
+    />
+  </div>
+)}
 
           {/* Pagination */}
           <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50">
