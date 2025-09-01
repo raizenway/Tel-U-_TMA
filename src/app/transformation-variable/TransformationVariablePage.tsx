@@ -187,10 +187,10 @@ export default function AssessmentPage() {
 }));
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex">
       {/* Container utama: penuh layar */}
       <div className="flex-1">
-        <div className=" rounded-lg shadow-md border overflow-hidden">
+        <div className=" rounded-lg overflow-hidden">
           
           {/* Notifikasi */}
           <SuccessNotification
