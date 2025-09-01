@@ -13,7 +13,6 @@ interface TableButtonProps {
 
 const TableButton: React.FC<TableButtonProps> = ({ data, columns }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
   // Jika tidak ada data
   if (!data || data.length === 0) {
     return null; // Atau tampilkan pesan
