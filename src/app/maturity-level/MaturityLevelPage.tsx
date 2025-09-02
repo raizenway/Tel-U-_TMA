@@ -8,12 +8,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import TableButton from "@/components/TableButton";
 import SearchTable from "@/components/SearchTable";
+import Pagination from "@/components/Pagination";
 
   const TablePage = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [data, setData] = useState<any[]>([]);
   const router = useRouter();
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const searchParams = useSearchParams();
@@ -108,7 +110,11 @@ const sortedData = Array.isArray(data)
     (currentPage - 1) * 10,
     currentPage * 10
   );
+  const handlePageChange = (page: number) => {
+  setCurrentPage(page);
+};
 
+const totalItems = filteredData.length;
   const handleTambah = () => {
     router.push("/maturity-level/add-maturity");
   };
@@ -196,17 +202,17 @@ const sortedData = Array.isArray(data)
     },  ];
 
     const dataForExport = paginatedData.map((item, index) => ({
-  Nomor: (currentPage - 1) * 10 + index + 1,
-  Level: item.level,
-  NamaLevel: item.namaLevel,
-  SkorMinimum: item.skorMin,
-  SkorMaximum: item.skorMax, 
-  DeskripsiUmum: item.deskripsiUmum,
-  DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
-    ? item.deskripsiPerVariabel.join(" | ")
-    : "",
-  Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
-}));
+      Nomor: (currentPage - 1) * 10 + index + 1,
+      Level: item.level,
+      NamaLevel: item.namaLevel,
+      SkorMinimum: item.skorMin,
+      SkorMaximum: item.skorMax, 
+      DeskripsiUmum: item.deskripsiUmum,
+      DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
+        ? item.deskripsiPerVariabel.join(" | ")
+        : "",
+      Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
+    }));
 
 
   return (
@@ -214,7 +220,11 @@ const sortedData = Array.isArray(data)
       <div className="bg-white rounded-xl w-full">
         {/* Search & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <SearchTable value={search} onChange={setSearch} />
+            <SearchTable
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari level maturity..."
+            />
           <div className="flex items-center gap-2">
             <TableButton data={dataForExport}/>
             <Button className="px-8" onClick={handleTambah}>
@@ -252,34 +262,17 @@ const sortedData = Array.isArray(data)
           </div>
 
 
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-4 flex-wrap gap-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="w-8 h-8 border rounded-full disabled:opacity-50"
-            >
-              {"<"}
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-8 h-8 border rounded-full ${currentPage === i + 1 ? "bg-blue-100 font-bold" : ""}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="w-8 h-8 border rounded-full disabled:opacity-50"
-            >
-              {">"}
-            </button>
-          </div>
-        </div>
+       {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onItemsPerPageChange={(value) => setItemsPerPage(value)}
+          showItemsPerPage={true}
+          showTotalItems={true}
+        />
       </div>
 
       {/* Modal konfirmasi hapus */}

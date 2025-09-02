@@ -15,8 +15,15 @@ type MaturityType = {
 };
 
 export default function EditMaturityPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // id bisa array di App Router
   const router = useRouter();
+
+  // Ambil id sebagai string
+  const realId = Array.isArray(id) ? id[0] : id;
+  if (!realId) {
+    router.push("/maturity-level");
+    return null; // Hindari render jika id tidak valid
+  }
 
   const [formData, setFormData] = useState<MaturityType>({
     level: "",
@@ -24,80 +31,82 @@ export default function EditMaturityPage() {
     skorMin: "",
     skorMax: "",
     deskripsiUmum: "",
-    deskripsiPerVariabel: [],
+    deskripsiPerVariabel: Array(5).fill(""), // default 5 elemen
   });
 
-  // Fungsi untuk ambil data dari localStorage
-  const loadData = () => {
+  // Key unik untuk localStorage
+  const tempKey = `maturityTempForm_${realId}`;
+
+  // Muat data dari localStorage
+  useEffect(() => {
     const savedData = localStorage.getItem("maturityData");
-    if (savedData && id !== undefined) {
+    if (savedData) {
       const parsed: MaturityType[] = JSON.parse(savedData);
-      const record = parsed[Number(id)];
+      const record = parsed[Number(realId)]; // pakai Number(realId) sebagai index
       if (record) {
-        setFormData(record);
+        setFormData({
+          ...record,
+          deskripsiPerVariabel: Array.isArray(record.deskripsiPerVariabel)
+            ? record.deskripsiPerVariabel
+            : Array(5).fill(""),
+        });
       }
     }
-  };
+  }, [realId]);
 
-  // Ambil data awal dari maturityData
+  // Muat data sementara saat kembali
   useEffect(() => {
-    loadData();
-  }, [id]);
-
-  // Cek apakah data sementara diperbarui saat kembali dari halaman edit deskripsi
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const tempForm = localStorage.getItem("maturityTempForm");
+    const handleFocus = () => {
+      const tempForm = localStorage.getItem(tempKey);
       if (tempForm) {
-        const tempData: MaturityType = JSON.parse(tempForm);
-        setFormData((prev) => ({
-          ...prev,
-          ...tempData,
-          deskripsiPerVariabel: tempData.deskripsiPerVariabel,
-        }));
+        try {
+          const tempData: MaturityType = JSON.parse(tempForm);
+          setFormData((prev) => ({
+            ...prev,
+            ...tempData,
+            deskripsiPerVariabel: Array.isArray(tempData.deskripsiPerVariabel)
+              ? tempData.deskripsiPerVariabel
+              : prev.deskripsiPerVariabel,
+          }));
+        } catch (e) {
+          console.error("Error parsing temp data:", e);
+        }
       }
     };
 
-    // Cek setiap kali komponen muncul (misalnya setelah kembali dari navigasi)
-    window.addEventListener("focus", handleStorageChange);
+    window.addEventListener("focus", handleFocus);
+    handleFocus(); // cek saat mount
 
-    // Juga cek saat komponen mount (untuk kasus kembali dari halaman lain)
-    handleStorageChange();
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [tempKey]);
 
-    return () => {
-      window.removeEventListener("focus", handleStorageChange);
-    };
-  }, []);
-
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     const savedData = localStorage.getItem("maturityData");
-    if (savedData && id !== undefined) {
+    if (savedData && !isNaN(Number(realId))) {
       const parsed: MaturityType[] = JSON.parse(savedData);
-      parsed[Number(id)] = formData;
+      parsed[Number(realId)] = formData;
       localStorage.setItem("maturityData", JSON.stringify(parsed));
+      localStorage.removeItem(tempKey); // hapus data sementara
     }
 
-    router.push("/maturity-level");
+    router.push("/maturity-level?success=true");
+  };
+
+  const handleEditDeskripsi = () => {
+    localStorage.setItem(tempKey, JSON.stringify(formData));
+    router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
   };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl"
-      >
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl">
         {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
@@ -163,15 +172,11 @@ export default function EditMaturityPage() {
             </label>
             <button
               type="button"
-              onClick={() => {
-                // Simpan sementara sebelum pergi
-                localStorage.setItem("maturityTempForm", JSON.stringify(formData));
-                router.push(`/maturity-level/deskripsi-per-variabel`);
-              }}
+              onClick={handleEditDeskripsi}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
-              {formData.deskripsiPerVariabel && formData.deskripsiPerVariabel.length > 0
-                ? `Lihat Deskripsi (${formData.deskripsiPerVariabel.length})`
+              {formData.deskripsiPerVariabel.some((d) => d.trim())
+                ? `Lihat & Edit Deskripsi (${formData.deskripsiPerVariabel.filter(Boolean).length}/5)`
                 : "+ Tambah Deskripsi"}
             </button>
           </div>
@@ -185,7 +190,7 @@ export default function EditMaturityPage() {
             icon={X}
             iconColor="text-red-600"
             iconPosition="left"
-            className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+            className="rounded-[12px] px-4 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
           >
             Batal
           </Button>
@@ -195,7 +200,7 @@ export default function EditMaturityPage() {
             type="submit"
             icon={Save}
             iconPosition="left"
-            className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+            className="rounded-[12px] px-4 py-2 text-sm font-semibold"
           >
             Simpan
           </Button>
