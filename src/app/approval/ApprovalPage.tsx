@@ -5,9 +5,10 @@ import TableUpdate from "@/components/TableUpdate";
 import { ChevronDown } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
-import Tablebutton from "@/components/TableButton";
+import TableButton from "@/components/TableButton";
 import Pagination from "@/components/Pagination";
 import { useSort } from "@/hooks/useSort";
+import SearchTable from "@/components/SearchTable";
 
 const TablePage = () => {
   const [selectedCampus, setSelectedCampus] = useState("Tel-U Jakarta");
@@ -16,6 +17,7 @@ const TablePage = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
   const [tab] = useState("approval-assessment");
+  const [search, setSearch] = useState("");
 
   const rowsPerPage = 10;
 
@@ -70,7 +72,17 @@ const TablePage = () => {
         <div className="bg-white rounded-xl w-full">
           {/* Filter & Tools */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <div className="flex gap-2 items-center">
+            {/* Search di kiri */}
+            <div className="flex items-center gap-2">
+              <SearchTable 
+                value={search} 
+                onChange={setSearch} 
+                placeholder="Cari"
+                />
+            </div>
+
+            {/* Tombol + Dropdown di kanan */}
+            <div className="flex items-center gap-2">
               <TableButton data={data} />
 
               {/* Dropdown Kampus */}
@@ -104,10 +116,13 @@ const TablePage = () => {
 
           <TableUpdate
             columns={columns}
-            data={sortedData.slice(
-              (currentPage - 1) * rowsPerPage,
-              currentPage * rowsPerPage
-            )}
+            data={sortedData
+              .filter((row) =>
+                Object.values(row).some((value) =>
+                  value.toString().toLowerCase().includes(search.toLowerCase())
+                )
+              )
+              .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)}
             currentPage={currentPage}
             rowsPerPage={rowsPerPage}
             onSort={requestSort}
