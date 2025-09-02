@@ -7,15 +7,16 @@ import SuccessNotification from '@/components/SuccessNotification';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableUpdate from '@/components/TableUpdate';
 import TableButton from '@/components/TableButton';
-import Container from '@/components/Container';
-import { Search, Copy, Printer, ChevronDown, Info } from 'lucide-react';
+import SearchTable from '@/components/SearchTable';
+import Pagination from '@/components/Pagination'; // ← Pastikan sudah diimpor
 
-const ITEMS_PER_PAGE = 10;
+import { Info } from 'lucide-react';
 
 export default function AssessmentPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); // 🔁 Bisa diubah lewat dropdown
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
@@ -83,9 +84,9 @@ export default function AssessmentPage() {
   );
 
   const totalData = filteredData.length;
-  const totalPages = Math.ceil(totalData / ITEMS_PER_PAGE);
-  const indexOfLastItem = page * ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(totalData / itemsPerPage);
+  const indexOfLastItem = page * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
 
   // Toggle status
@@ -180,7 +181,7 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="flex ">
+    <div className="flex">
       <div className="w-full flex-1">
         {/* Notifikasi */}
         <SuccessNotification
@@ -218,25 +219,22 @@ export default function AssessmentPage() {
           </ModalConfirm>
         )}
 
-        {/* Container - Sudah Diperbaiki: Lebar Penuh */}
-        <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto ">
-          <div className="">
-            
+        {/* Container Utama */}
+        <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto">
+          <div className="p-0">
             {/* Toolbar */}
-            <div className="p-4 border-b border-gray-200  mb-6">
+            <div className="p-4 border-b border-gray-200 mb-6">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-full sm:w-64 bg-white">
-                  <Search className="w-4 h-4 text-gray-500" />
-                  <input
-                    type="text"
-                    placeholder="Cari..."
+                <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
+                  <SearchTable
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+                    onChange={setSearch}
+                    placeholder="Cari Daftar Assesment..."
+                    className="mb-4"
                   />
                 </div>
                 <div className="flex gap-2 flex-wrap bg-white">
-                  <TableButton data={currentData}/>
+                  <TableButton data={currentData} />
                   <Button variant="primary" onClick={handleTambah}>
                     Tambah Assessment
                   </Button>
@@ -250,7 +248,7 @@ export default function AssessmentPage() {
                 columns={columns}
                 data={currentData}
                 currentPage={page}
-                rowsPerPage={ITEMS_PER_PAGE}
+                rowsPerPage={itemsPerPage}
                 onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
                 onDeactivate={(index) => toggleStatus(index)}
                 onReactivate={(index) => toggleStatus(index)}
@@ -259,30 +257,17 @@ export default function AssessmentPage() {
               />
             </div>
 
-            {/* Pagination */}
-            <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50 mt-6">
-              <span>{currentData.length} Data ditampilkan</span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={page === 1}
-                  className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-                >
-                  {'<'}
-                </button>
-                <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
-                  {page}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={page === totalPages}
-                  className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-                >
-                  {'>'}
-                </button>
-              </div>
-              <span>Total: {totalData}</span>
-            </div>
+            {/* 🔁 Pagination: Sudah Pakai Komponen + Dropdown */}
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={totalData}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={setItemsPerPage}
+              showItemsPerPage={true}
+              showTotalItems={true}
+            />
           </div>
         </div>
       </div>

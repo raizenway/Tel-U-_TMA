@@ -8,9 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import TableButton from "@/components/TableButton";
 import SearchTable from "@/components/SearchTable";
+import MaturityLevelTable from "./MaturityLevelTable";
 import Pagination from "@/components/Pagination";
 
   const TablePage = () => {
+    
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [data, setData] = useState<any[]>([]);
@@ -242,24 +244,8 @@ const totalItems = filteredData.length;
 
         {/* Table */}
         <div className="overflow-x-auto w-full">
-           <TableUpdate
-              columns={columns}
-              data={dataDenganAksi}
-              currentPage={currentPage}
-              rowsPerPage={10}
-              onEdit={(item) => {
-                const realIndex = data.findIndex(d => d.level === item.level);
-                if (realIndex !== -1) {
-                  localStorage.setItem("editMaturityData", JSON.stringify(data[realIndex]));
-                  router.push(`/maturity-level/edit-maturity/${realIndex}`);
-                }
-              }}
-              onDeactivate={(index) => {
-                setDeleteIndex(index);
-                setShowDelete(true);
-              }}
-            />
-          </div>
+          <MaturityLevelTable></MaturityLevelTable>
+        </div>
 
 
        {/* Pagination */}

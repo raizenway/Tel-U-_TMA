@@ -4,10 +4,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
  import Button  from "@/components/button";
-import { Download, Printer, ChevronDown, Copy, } from "lucide-react";
+import { Download, Printer, ChevronDown, Copy, User, } from "lucide-react";
 import { FaSearch, FaEdit,FaTimes, FaRedo } from "react-icons/fa";
 import * as XLSX from 'xlsx';
-
+import DemoTable from './DemoTable';
+import UserTable from './UserManagementTable';
 import TableUpdate from '@/components/TableUpdate';
 
 
@@ -455,21 +456,8 @@ const handleDownload = () => {
 
 
 {/* Table */}
-<TableUpdate
-  columns={columns}
-  data={currentUsers.map(user => ({
-    ...user,
-    password: '••••••••',
-    // ❌ JANGAN ubah status! Biarkan tetap 'active' atau 'inactive'
-  }))}
-  currentPage={currentPage}
-  rowsPerPage={itemsPerPage}
-  onEdit={handleEditUser}
-  onDeactivate={(index) => toggleStatus(index)}
-  onReactivate={(index) => toggleStatus(index)}
-  onSort={handleSort}
- sortConfig={sortConfig}
-/>
+<DemoTable></DemoTable>
+<UserTable></UserTable>
 
 
           {/* Pagination */}
