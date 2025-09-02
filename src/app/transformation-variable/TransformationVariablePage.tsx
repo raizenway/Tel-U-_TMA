@@ -6,63 +6,71 @@ import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableButton from '@/components/TableButton';
-import {
-  Search,
-  Copy,
-  Printer,
-  ChevronDown,
-  Building,
-  Info as LucideInfo,
-} from 'lucide-react';
+import SearchTable from '@/components/SearchTable';
+import Pagination from '@/components/Pagination';
+import { Info as LucideInfo } from 'lucide-react';
 import SuccessNotification from '@/components/SuccessNotification';
 
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const [rowsPerPage, setRowsPerPage] = useState(10); // 🔁 Sekarang bisa diubah
   const router = useRouter();
   const [tableData, setTableData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // 🔹 Load data dari localStorage
-  const loadTableData = () => {
-    const saved = localStorage.getItem('transformationVariables');
-    if (!saved) {
-      setTableData([]);
-      return;
-    }
-
+  // 🔹 Load data dari API
+  const loadTableData = async () => {
+    setLoading(true);
     try {
-      const parsed = JSON.parse(saved);
-      const formatted = parsed.map((item: any) => ({
+      const res = await fetch('http://localhost:3000/api/assessment/variable', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-cache',
+      });
+
+      if (!res.ok) throw new Error(`Gagal ambil data: ${res.status}`);
+
+      const data = await res.json();
+
+      const formatted = data.map((item: any) => ({
         id: item.id,
-        nama: item.namaVariabel || '-',
-        variable: item.variable || '-',
-        bobot: item.bobot || '-',
-        pertanyaan: item.pertanyaan || '-',
-        deskripsi: item.deskripsi || '-',
-        referensi: item.referensi || '-',
-        logoUrl: item.logoUrl || null,
-        status: item.status === 'Active' || item.status === 'active' ? 'Active' : 'Inactive',
+        nama: item.name || '-',
+        variable: '-',
+        bobot: item.weight || '-',
+        pertanyaan: '-',
+        deskripsi: item.description || '-',
+        referensi: item.reference || '-',
+        logoUrl: null,
+        status: item.status === 'active' ? 'Active' : 'Inactive',
       }));
+
       setTableData(formatted);
     } catch (error) {
-      console.error('Gagal parsing ', error);
+      console.error('Gagal ambil data dari API:', error);
       setTableData([]);
+      alert('Tidak bisa terhubung ke server.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTableData();
+    const fetchData = async () => {
+      await loadTableData();
 
-    if (localStorage.getItem('newDataAdded') === 'true') {
-      setShowSuccess(true);
-      localStorage.removeItem('newDataAdded');
-    }
+      if (localStorage.getItem('newDataAdded') === 'true') {
+        setShowSuccess(true);
+        localStorage.removeItem('newDataAdded');
+      }
+    };
+
+    fetchData();
   }, []);
 
   // 🔹 Sorting
@@ -116,23 +124,33 @@ export default function AssessmentPage() {
   };
 
   // 🔹 Toggle status
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     if (itemId === null) return;
 
-    const saved = localStorage.getItem('transformationVariables');
-    if (!saved) return;
-
     try {
-      const parsed = JSON.parse(saved);
-      const updated = parsed.map((item: any) =>
-        item.id === itemId
-          ? { ...item, status: item.status === 'Active' ? 'Inactive' : 'Active' }
-          : item
-      );
-      localStorage.setItem('transformationVariables', JSON.stringify(updated));
-      loadTableData(); // Refresh UI
-    } catch (error) {
+      const currentItem = tableData.find(item => item.id === itemId);
+      const newStatus = currentItem?.status === 'Active' ? 'Inactive' : 'Active';
+
+      const res = await fetch(`http://localhost:3000/api/assessment/variable/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Update gagal');
+      }
+
+      await loadTableData();
+      setShowModal(false);
+      setItemId(null);
+      setModalAction(null);
+    } catch (error: any) {
       console.error('Gagal update status:', error);
+      alert(error.message || 'Gagal mengubah status');
     }
   };
 
@@ -150,8 +168,7 @@ export default function AssessmentPage() {
     setModalAction(null);
   };
 
-
-  // 🔹 Kolom
+  // 🔹 Kolom tabel
   const columns = [
     { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
@@ -174,25 +191,26 @@ export default function AssessmentPage() {
     },
   ];
 
+  // Data untuk export
   const dataForExport = currentData.map((item, index) => ({
-  Nomor: startIndex + index + 1,
-  'Nama Variable': item.nama,
-  Variable: item.variable,
-  Bobot: item.bobot,
-  Pertanyaan: item.pertanyaan,
-  Deskripsi: item.deskripsi,
-  Referensi: item.referensi,
-  'Logo URL': item.logoUrl || '-',
-  Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan'
-}));
+    Nomor: startIndex + index + 1,
+    'Nama Variable': item.nama,
+    Variable: item.variable,
+    Bobot: item.bobot,
+    Pertanyaan: item.pertanyaan,
+    Deskripsi: item.deskripsi,
+    Referensi: item.referensi,
+    'Logo URL': item.logoUrl || '-',
+    Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan',
+  }));
 
   return (
     <div className="flex">
-      {/* Container utama: penuh layar */}
+      {/* Container utama */}
       <div className="flex-1">
-        <div className=" rounded-lg overflow-hidden">
+        <div className="rounded-lg overflow-hidden">
           
-          {/* Notifikasi */}
+          {/* Notifikasi sukses */}
           <SuccessNotification
             isOpen={showSuccess}
             onClose={() => setShowSuccess(false)}
@@ -200,17 +218,15 @@ export default function AssessmentPage() {
           />
 
           {/* Toolbar */}
-          <div className="p-4 border-b border-gray-200  ">
+          <div className="p-4 border-b border-gray-200">
             <div className="flex flex-wrap justify-between items-center gap-4">
-              <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-full sm:w-64 bg-white">
-                <Search className="w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Cari..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-                />
+              <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
+                <SearchTable
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari Transformation variable .."
+              className="mb-4"
+            />
               </div>
               <div className="flex gap-2 flex-wrap">
                 <TableButton 
@@ -225,80 +241,52 @@ export default function AssessmentPage() {
           </div>
 
           {/* Tabel */}
-          <div className="overflow-x-auto">
-            <TableUpdate
-              columns={columns}
-              data={currentData.map((item, index) => ({
-                ...item,
-                nomor: startIndex + index + 1,
-                logo: (
-                  <div className="flex items-center justify-center">
-                    {item.logoUrl ? (
-                      <img
-                        src={item.logoUrl}
-                        alt="Logo"
-                        className="w-8 h-8 object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
-                        <Building size={16} className="text-gray-600" />
-                      </div>
-                    )}
-                  </div>
-                ),
-              }))}
-              currentPage={currentPage}
-              rowsPerPage={rowsPerPage}
-              onEdit={(item) => {
-                const { logo, ...safeItem } = item;
-                localStorage.setItem('editData', JSON.stringify(safeItem));
-                router.push('/transformation-variable/tambah-variable');
-              }}
-              onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
-              onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
-              onSort={handleSort}
-              sortConfig={sortConfig}
-            />
-          </div>
-
-          {/* Pagination */}
-          <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50">
-            <span>{currentData.length} Data ditampilkan</span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-              >
-                {'<'}
-              </button>
-              <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
-                {currentPage}
-              </span>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-              >
-                {'>'}
-              </button>
+          {loading ? (
+            <div className="p-10 text-center text-gray-500">Memuat data...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <TableUpdate
+                columns={columns}
+                data={currentData}
+                currentPage={currentPage}
+                rowsPerPage={rowsPerPage}
+                onEdit={(item) => {
+                  const { logo, ...safeItem } = item;
+                  localStorage.setItem('editData', JSON.stringify(safeItem));
+                  router.push('/transformation-variable/tambah-variable');
+                }}
+                onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
+                onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+              />
             </div>
-            <span>Total: {totalData}</span>
-          </div>
+          )}
+
+          {/* 🔁 Pagination: SUDAH PAKAI DROPDOWN */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={totalData}
+            itemsPerPage={rowsPerPage}
+            onItemsPerPageChange={setRowsPerPage}
+            showItemsPerPage={true}
+            showTotalItems={true}
+          />
         </div>
 
-        {/* Modal */}
+        {/* Modal Konfirmasi */}
         {showModal && (
           <ModalConfirm
             isOpen={showModal}
             onCancel={handleCancel}
             onConfirm={handleConfirm}
-            header={modalAction === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Data'}
+            header={modalAction === 'deactivate' ? 'Aktifkan Data' : 'Nonaktifkan Data'}
             title={
               modalAction === 'deactivate'
                 ? 'Apakah kamu yakin ingin mengaktifkan data ini?'
-                : 'Apakah kamu yakin ingin menonaktifkan data ini? '
+                : 'Apakah kamu yakin ingin menonaktifkan data ini?'
             }
             confirmLabel="Ya, lakukan"
             cancelLabel="Batal"
