@@ -3,20 +3,61 @@
 
 import { useState } from "react";
 import TableUpdate from "@/components/TableUpdate";
-import { useListUsers } from "@/hooks/useUserManagement";
-import { User } from "@/interfaces/user-management";
+import { useListUsers, useDeactivateUser, useCreateUser, useActivateUser } from "@/hooks/useUserManagementExample";
+import { User } from "@/interfaces/user-management-example";
 
 export default function UserTable() {
-  const { data, loading, error } = useListUsers(); // ✅ pake hook
+  const [refreshFlag, setRefreshFlag] = useState(0);
+  const { data, loading, error } = useListUsers(refreshFlag);
+  const { mutate: createUser } = useCreateUser();
+  const { mutate: deactivateUser } = useDeactivateUser();
+  const { mutate: activatedUser } = useActivateUser();
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
 
-  const rowsPerPage = 5;
+  const rowsPerPage = 10;
+  
+  const handleCreate = async () => {
+    try {
+      const newUser = await createUser({
+        fullname: "Admin9",
+        username: "admin9",
+        email: "atmin9@mail.com",
+        password: "admin",
+        phoneNumber: "111222333444",
+        roleId: 1,
+        branchId: 1,
+      });
+      console.log("New User:", newUser);
+      setRefreshFlag(prev => prev + 1);
+    } catch (err) {
+      console.error("Failed to create user:", err);
+    }
+  };
+  
+  const handleDeactivate = async (id: number) => {
+    try {
+      const deactivated = await deactivateUser(id);
+      console.log("Deactivated:", deactivated);
+      setRefreshFlag(prev => prev + 1);
+    } catch (err) {
+      console.error("Failed to deactivate user:", err);
+    }
+  };
 
-  // ✅ Sorting
+    const handleActivate = async (id: number) => {
+    try {
+      const activated = await activatedUser(id);
+      console.log("Activated:", activated);
+      setRefreshFlag(prev => prev + 1);
+    } catch (err) {
+      console.error("Failed to activated user:", err);
+    }
+  };
+
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig?.key === key && sortConfig.direction === "asc") {
@@ -62,14 +103,20 @@ export default function UserTable() {
 
   return (
     <div className="p-6">
+      <button
+        onClick={handleCreate}
+        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        Create User
+      </button>
       <TableUpdate
         columns={columns}
         data={paginatedUsers}
         currentPage={currentPage}
         rowsPerPage={rowsPerPage}
         onEdit={(item) => console.log("Edit:", item)}
-        onDeactivate={(index) => console.log("Deactivate:", index)}
-        onReactivate={(index) => console.log("Reactivate:", index)}
+        onDeactivate={(index) => handleDeactivate(paginatedUsers[index].id)}
+        onReactivate={(index) => handleActivate(paginatedUsers[index].id)}
         onSort={handleSort}
         sortConfig={sortConfig}
       />

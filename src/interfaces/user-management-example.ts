@@ -16,8 +16,12 @@ export interface User {
   updated_at: string; // ISO date
 }
 
-export interface ApiResponse<T> {
-  status: string;
-  message: string;
-  data: T;
+export interface CreateUserRequest {
+  fullname: string;
+  username: string;
+  email: string;
+  password: string;
+  phoneNumber?: string;
+  roleId: number;
+  branchId: number;
 }
