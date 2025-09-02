@@ -7,6 +7,7 @@ import SuccessNotification from '@/components/SuccessNotification';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableUpdate from '@/components/TableUpdate';
 import TableButton from '@/components/TableButton';
+import Container from '@/components/Container';
 import { Search, Copy, Printer, ChevronDown, Info } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
@@ -179,7 +180,7 @@ export default function AssessmentPage() {
   ];
 
   return (
-    <div className="flex min-h-screen ">
+    <div className="flex ">
       <div className="w-full flex-1">
         {/* Notifikasi */}
         <SuccessNotification
@@ -218,8 +219,8 @@ export default function AssessmentPage() {
         )}
 
         {/* Container - Sudah Diperbaiki: Lebar Penuh */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[650px] mx-auto max-w-full px-6">
-          <div className="p-6">
+        <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto ">
+          <div className="">
             
             {/* Toolbar */}
             <div className="p-4 border-b border-gray-200  mb-6">

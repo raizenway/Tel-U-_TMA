@@ -71,7 +71,7 @@ const TablePage = () => {
           {/* Filter & Tools */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
             <div className="flex gap-2 items-center">
-              <Tablebutton data={data} />
+              <TableButton data={data} />
 
               {/* Dropdown Kampus */}
               <div className="relative">
