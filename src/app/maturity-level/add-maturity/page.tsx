@@ -4,6 +4,7 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
+import SuccessNotification from "@/components/SuccessNotification";
 
 export default function AddMaturityLevelPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,8 @@ export default function AddMaturityLevelPage() {
 
   const [showNotif, setShowNotif] = useState(false);
   const router = useRouter();
+  const [ ShowSuccess, setShowSuccess ] = useState(false);
+
 
   // ✅ Muat data sementara hanya jika dari halaman tambah
   useEffect(() => {
@@ -151,18 +154,13 @@ export default function AddMaturityLevelPage() {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center relative">
-      {/* Notifikasi */}
-      {showNotif && (
-        <div className="absolute bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-md flex items-center justify-between min-w-[280px]">
-          <span className="font-medium">Data Berhasil Disimpan</span>
-          <button
-            onClick={() => setShowNotif(false)}
-            className="ml-4 text-white hover:text-gray-200"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+     {/* Notifikasi */}
+        <SuccessNotification
+           isOpen={ShowSuccess}
+           onClose={() => setShowSuccess(false)}
+           message="Data berhasil disimpan"
+        />
+
 
       {/* Form */}
       <form
@@ -238,7 +236,7 @@ export default function AddMaturityLevelPage() {
                     fromAdd: true,
                   })
                 );
-                router.push("/maturity-level/deskripsi-per-variabel");
+               router.push(`/maturity-level/deskripsi-per-variabel?mode=add`);
               }}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >

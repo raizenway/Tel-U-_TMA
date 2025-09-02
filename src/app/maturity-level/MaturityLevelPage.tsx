@@ -9,6 +9,7 @@ import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import TableButton from "@/components/TableButton";
 import SearchTable from "@/components/SearchTable";
 import MaturityLevelTable from "./MaturityLevelTable";
+import Pagination from "@/components/Pagination";
 
   const TablePage = () => {
     
@@ -16,6 +17,7 @@ import MaturityLevelTable from "./MaturityLevelTable";
   const [currentPage, setCurrentPage] = useState(1);
   const [data, setData] = useState<any[]>([]);
   const router = useRouter();
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const searchParams = useSearchParams();
@@ -110,7 +112,11 @@ const sortedData = Array.isArray(data)
     (currentPage - 1) * 10,
     currentPage * 10
   );
+  const handlePageChange = (page: number) => {
+  setCurrentPage(page);
+};
 
+const totalItems = filteredData.length;
   const handleTambah = () => {
     router.push("/maturity-level/add-maturity");
   };
@@ -198,17 +204,17 @@ const sortedData = Array.isArray(data)
     },  ];
 
     const dataForExport = paginatedData.map((item, index) => ({
-  Nomor: (currentPage - 1) * 10 + index + 1,
-  Level: item.level,
-  NamaLevel: item.namaLevel,
-  SkorMinimum: item.skorMin,
-  SkorMaximum: item.skorMax, 
-  DeskripsiUmum: item.deskripsiUmum,
-  DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
-    ? item.deskripsiPerVariabel.join(" | ")
-    : "",
-  Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
-}));
+      Nomor: (currentPage - 1) * 10 + index + 1,
+      Level: item.level,
+      NamaLevel: item.namaLevel,
+      SkorMinimum: item.skorMin,
+      SkorMaximum: item.skorMax, 
+      DeskripsiUmum: item.deskripsiUmum,
+      DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
+        ? item.deskripsiPerVariabel.join(" | ")
+        : "",
+      Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
+    }));
 
 
   return (
@@ -216,7 +222,11 @@ const sortedData = Array.isArray(data)
       <div className="bg-white rounded-xl w-full">
         {/* Search & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <SearchTable value={search} onChange={setSearch} />
+            <SearchTable
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari level maturity..."
+            />
           <div className="flex items-center gap-2">
             <TableButton data={dataForExport}/>
             <Button className="px-8" onClick={handleTambah}>
@@ -238,34 +248,17 @@ const sortedData = Array.isArray(data)
         </div>
 
 
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-4 flex-wrap gap-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="w-8 h-8 border rounded-full disabled:opacity-50"
-            >
-              {"<"}
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-8 h-8 border rounded-full ${currentPage === i + 1 ? "bg-blue-100 font-bold" : ""}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="w-8 h-8 border rounded-full disabled:opacity-50"
-            >
-              {">"}
-            </button>
-          </div>
-        </div>
+       {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onItemsPerPageChange={(value) => setItemsPerPage(value)}
+          showItemsPerPage={true}
+          showTotalItems={true}
+        />
       </div>
 
       {/* Modal konfirmasi hapus */}
@@ -288,35 +281,34 @@ const sortedData = Array.isArray(data)
         </div>
       </ModalConfirm>
 
-      {/* Modal Deskripsi per Variabel */}
      {/* Modal Deskripsi per Variabel */}
-<ModalConfirm
-  isOpen={showModal}
-  onCancel={() => setShowModal(false)}
-  onConfirm={() => {}}
-  title=""
-  header="Deskripsi per Variabel"
-  footer={
-    <div className="flex justify-center pt-4">
-       <Button variant="simpan" className="px-30 py-2 text-lg rounded-md" onClick={() => setShowModal(false)}>
-        Tutup
-       </Button>
-    </div>
-  }
->
-  {Array.isArray(selectedDeskripsiList) && selectedDeskripsiList.length > 0 ? (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {selectedDeskripsiList.map((desc, i) => (
-        <div key={i} className="bg-purple-50 border rounded p-3">
-          <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-          <p className="text-sm text-gray-700">{desc || "(Tidak ada deskripsi)"}</p>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
-  )}
-</ModalConfirm>
+      <ModalConfirm
+        isOpen={showModal}
+        onCancel={() => setShowModal(false)}
+        onConfirm={() => {}}
+        title=""
+        header="Deskripsi per Variabel"
+        footer={
+          <div className="flex justify-center pt-4">
+            <Button variant="simpan" className="px-30 py-2 text-lg rounded-md" onClick={() => setShowModal(false)}>
+              Tutup
+            </Button>
+          </div>
+        }
+      >
+        {Array.isArray(selectedDeskripsiList) && selectedDeskripsiList.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {selectedDeskripsiList.map((desc, i) => (
+              <div key={i} className="bg-purple-50 border rounded p-3">
+                <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
+                <p className="text-sm text-gray-700">{desc || "(Tidak ada deskripsi)"}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
+        )}
+      </ModalConfirm>
 
     </div>
   );

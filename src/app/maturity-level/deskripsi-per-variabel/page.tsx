@@ -1,23 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { X, Save } from "lucide-react";
 import Button from "@/components/button";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 
 export default function DeskripsiVariabelTable() {
   const router = useRouter();
-  const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill("")); // default kosong
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode") || "add"; // default add
+
+  const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill(""));
   const [showCancel, setShowCancel] = useState(false);
 
-  // ✅ Muat data dari maturityTempForm saat pertama kali
+  // ✅ Muat data dari localStorage sesuai mode
   useEffect(() => {
     const savedForm = localStorage.getItem("maturityTempForm");
     if (savedForm) {
       const parsed = JSON.parse(savedForm);
       if (parsed.deskripsiPerVariabel && Array.isArray(parsed.deskripsiPerVariabel)) {
-        // Isi dengan data lama, tetap pastikan jumlahnya 5
         const loaded = [...parsed.deskripsiPerVariabel];
         const filled = Array(5)
           .fill("")
@@ -39,13 +41,12 @@ export default function DeskripsiVariabelTable() {
     savedForm.deskripsiPerVariabel = deskripsi;
     localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
 
-    // Kembali ke halaman sebelumnya
-    router.back();
-  };
-
-  const handleCancel = () => {
-    router.push("/maturity-level");
-    setShowCancel(false);
+    // Kembali ke halaman asal sesuai mode
+    if (mode === "edit") {
+      router.push("/maturity-level/edit-maturity");
+    } else {
+      router.push("/maturity-level/add-maturity");
+    }
   };
 
   return (
@@ -102,7 +103,13 @@ export default function DeskripsiVariabelTable() {
       {/* Modal konfirmasi Batal */}
       <ModalConfirm
         isOpen={showCancel}
-        onConfirm={handleCancel}
+        onConfirm={() => {
+          if (mode === "edit") {
+            router.push("/maturity-level/edit-maturity");
+          } else {
+            router.push("/maturity-level/add-maturity");
+          }
+        }}
         onCancel={() => setShowCancel(false)}
         title="Apakah kamu yakin ingin membatalkan perubahan?"
         header="Konfirmasi"
