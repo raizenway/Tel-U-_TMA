@@ -102,7 +102,9 @@ export default function DeskripsiVariabelTable() {
       {/* Modal konfirmasi Batal */}
       <ModalConfirm
         isOpen={showCancel}
-        onConfirm={handleCancel}
+        onConfirm={() => {
+         router.push("/maturity-level/add-maturity");
+         }}  
         onCancel={() => setShowCancel(false)}
         title="Apakah kamu yakin ingin membatalkan perubahan?"
         header="Konfirmasi"
