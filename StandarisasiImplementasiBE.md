@@ -1,7 +1,16 @@
 # Standarisasi Implementasi BE
+> **Author** : Hari <br> **Date** : 2 Sep 2025 <br> **Version** : 1.1
 
 Dokumen ini merangkum best practices dalam membuat fungsi API, interface, hooks, dan penggunaannya di client component. Tujuannya: *konsistensi*, *readability*, dan *maintainability*.
 
+## 🕺Short Brief
+Berikut flow pengembangan fitur dengan BE:
+
+1. Buat file .ENV di root
+2. Buat interface untuk entitas/body JSON API di folder **interfaces**
+3. Buat fungsi Fetch API di folder **lib**. Tulis fungsi di file fiturnya masing-masing
+4. Buat hook untuk menjalankan handling loading/error untuk fungsi Fetch API. Gunakan folder **hooks**
+5. Gunakan hook yang telah dibuat di file Client
 
 ## 🌳 Struktur Project
 ``` bash
@@ -264,6 +273,8 @@ export default function DemoTable() {
   const { data, loading, error } = useListUsers(refreshFlag);
   let users: User[] = data?.data || [];
   
+  if (loading) return <p>Loading data...</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
   const columns = [
     // Cocokkan key dengan field pada interface
     { header: "Username", key: "username", sortable: true },
