@@ -1,26 +1,21 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import TableUpdate from "@/components/TableUpdate";
 import { ChevronDown } from "lucide-react";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
-import Tablebutton from "@/components/Tablebutton";
+import Tablebutton from "@/components/TableButton";
 import Pagination from "@/components/Pagination";
+import { useSort } from "@/hooks/useSort";
 
 const TablePage = () => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCampus, setSelectedCampus] = useState("Tel-U Jakarta");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
   const [tab] = useState("approval-assessment");
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: "asc" | "desc";
-  } | null>(null);
 
   const rowsPerPage = 10;
 
@@ -57,49 +52,7 @@ const TablePage = () => {
     tipeSoal: i % 2 === 0 ? "Pilihan Ganda" : "Isian",
   }));
 
-  // 🔍 search
-  const filteredData = data.filter((row) =>
-    Object.values(row).some((val) =>
-      val?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
-  // 🔽 sorting
-  const sortedData = useMemo(() => {
-    const sortableData = [...filteredData];
-    if (sortConfig !== null) {
-      sortableData.sort((a, b) => {
-        const aVal =
-          sortConfig.key === "nomor"
-            ? filteredData.indexOf(a) + 1
-            : a[sortConfig.key];
-        const bVal =
-          sortConfig.key === "nomor"
-            ? filteredData.indexOf(b) + 1
-            : b[sortConfig.key];
-
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return sortableData;
-  }, [filteredData, sortConfig]);
-
-  // 📄 pagination
-  const paginatedData = sortedData.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  // ⬇️ handle sort klik header
-  const handleSort = (key: string) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
+  const { sortedData, sortConfig, requestSort } = useSort(data);
 
   const handleConfirm = () => {
     alert(
@@ -117,14 +70,6 @@ const TablePage = () => {
         <div className="bg-white rounded-xl w-full">
           {/* Filter & Tools */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="Cari"
-              className="border px-3 py-2 rounded-md w-full max-w-xs"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
             <div className="flex gap-2 items-center">
               <Tablebutton data={data} />
 
@@ -157,51 +102,52 @@ const TablePage = () => {
             </div>
           </div>
 
-          {/* Table */}
           <TableUpdate
             columns={columns}
-            data={paginatedData}
+            data={sortedData.slice(
+              (currentPage - 1) * rowsPerPage,
+              currentPage * rowsPerPage
+            )}
             currentPage={currentPage}
             rowsPerPage={rowsPerPage}
-            onSort={handleSort}
+            onSort={requestSort}
             sortConfig={sortConfig}
           />
 
           {/* Pagination */}
           <div className="flex items-center justify-between mt-4 ">
             <div className="h-10 flex items-center">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={5} // misalnya 5 halaman
-              onPageChange={(page) => setCurrentPage(page)}
-            />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={5} // misalnya 5 halaman
+                onPageChange={(page) => setCurrentPage(page)}
+              />
             </div>
-         
 
-          {/* Action Buttons */}
-          <div className="flex  gap-4">
-            <Button
-              variant="success"
-              className="px-13 "
-              onClick={() => {
-                setModalType("approve");
-                setShowModal(true);
-              }}
-            >
-              Approve
-            </Button>
-            <Button
-              variant="danger"
-              className="px-13 "
-              onClick={() => {
-                setModalType("revisi");
-                setShowModal(true);
-              }}
-            >
-              Revisi
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <Button
+                variant="success"
+                className="px-13 "
+                onClick={() => {
+                  setModalType("approve");
+                  setShowModal(true);
+                }}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="danger"
+                className="px-13 "
+                onClick={() => {
+                  setModalType("revisi");
+                  setShowModal(true);
+                }}
+              >
+                Revisi
+              </Button>
+            </div>
           </div>
-           </div>
 
           <ModalConfirm
             isOpen={showModal}
