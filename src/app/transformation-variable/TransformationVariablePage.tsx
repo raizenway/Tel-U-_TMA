@@ -6,19 +6,14 @@ import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableButton from '@/components/TableButton';
-import {
-  Search,
-  Copy,
-  Printer,
-  ChevronDown,
-  Building,
-  Info as LucideInfo,
-} from 'lucide-react';
+import SearchTable from '@/components/SearchTable';
+import Pagination from '@/components/Pagination';
+import { Info as LucideInfo } from 'lucide-react';
 import SuccessNotification from '@/components/SuccessNotification';
 
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const [rowsPerPage, setRowsPerPage] = useState(10); // 🔁 Sekarang bisa diubah
   const router = useRouter();
   const [tableData, setTableData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -29,77 +24,54 @@ export default function AssessmentPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-const dataDummy: any = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "johndoe@mail.com",
-    role: "Admin",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "janesmith@mail.com",
-    role: "User",
-  },
-  {
-    id: 3,
-    name: "Michael Johnson",
-    email: "michaelj@mail.com",
-    role: "Moderator",
-  },
-];
-
-
-  // 🔹 Load data dari localStorage
   // 🔹 Load data dari API
-const loadTableData = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch('http://localhost:3000/api/assessment/variable', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-cache',
-    });
+  const loadTableData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/assessment/variable', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-cache',
+      });
 
-    if (!res.ok) throw new Error(`Gagal ambil data: ${res.status}`);
+      if (!res.ok) throw new Error(`Gagal ambil data: ${res.status}`);
 
-    const data = await res.json();
+      const data = await res.json();
 
-    const formatted = data.map((item: any) => ({
-      id: item.id,
-      nama: item.name || '-',
-      variable: '-',
-      bobot: item.weight || '-',
-      pertanyaan: '-',
-      deskripsi: item.description || '-',
-      referensi: item.reference || '-',
-      logoUrl: null,
-      status: item.status === 'active' ? 'Active' : 'Inactive',
-    }));
+      const formatted = data.map((item: any) => ({
+        id: item.id,
+        nama: item.name || '-',
+        variable: '-',
+        bobot: item.weight || '-',
+        pertanyaan: '-',
+        deskripsi: item.description || '-',
+        referensi: item.reference || '-',
+        logoUrl: null,
+        status: item.status === 'active' ? 'Active' : 'Inactive',
+      }));
 
-    setTableData(formatted);
-  } catch (error) {
-    console.error('Gagal ambil data dari API:', error);
-    setTableData([]);
-    alert('Tidak bisa terhubung ke server.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  useEffect(() => {
-  const fetchData = async () => {
-    await loadTableData();
-
-    if (localStorage.getItem('newDataAdded') === 'true') {
-      setShowSuccess(true);
-      localStorage.removeItem('newDataAdded');
+      setTableData(formatted);
+    } catch (error) {
+      console.error('Gagal ambil data dari API:', error);
+      setTableData([]);
+      alert('Tidak bisa terhubung ke server.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  fetchData();
-}, []);
+  useEffect(() => {
+    const fetchData = async () => {
+      await loadTableData();
+
+      if (localStorage.getItem('newDataAdded') === 'true') {
+        setShowSuccess(true);
+        localStorage.removeItem('newDataAdded');
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // 🔹 Sorting
   const handleSort = (key: string) => {
@@ -152,37 +124,35 @@ const loadTableData = async () => {
   };
 
   // 🔹 Toggle status
-  // 🔹 Toggle status via API
-const handleToggleStatus = async () => {
-  if (itemId === null) return;
+  const handleToggleStatus = async () => {
+    if (itemId === null) return;
 
-  try {
-    const currentItem = tableData.find(item => item.id === itemId);
-    const newStatus = currentItem?.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      const currentItem = tableData.find(item => item.id === itemId);
+      const newStatus = currentItem?.status === 'Active' ? 'Inactive' : 'Active';
 
-    const res = await fetch(`http://localhost:3000/api/assessment/variable/${itemId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status: newStatus }),
-    });
+      const res = await fetch(`http://localhost:3000/api/assessment/variable/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || 'Update gagal');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Update gagal');
+      }
+
+      await loadTableData();
+      setShowModal(false);
+      setItemId(null);
+      setModalAction(null);
+    } catch (error: any) {
+      console.error('Gagal update status:', error);
+      alert(error.message || 'Gagal mengubah status');
     }
-
-    // Refresh data dari API
-    await loadTableData();
-    setShowModal(false);
-    setItemId(null);
-    setModalAction(null);
-  } catch (error: any) {
-    console.error('Gagal update status:', error);
-    alert(error.message || 'Gagal mengubah status');
-  }
-};
+  };
 
   // 🔹 Konfirmasi
   const handleConfirm = () => {
@@ -198,8 +168,7 @@ const handleToggleStatus = async () => {
     setModalAction(null);
   };
 
-
-  // 🔹 Kolom
+  // 🔹 Kolom tabel
   const columns = [
     { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
@@ -222,25 +191,26 @@ const handleToggleStatus = async () => {
     },
   ];
 
+  // Data untuk export
   const dataForExport = currentData.map((item, index) => ({
-  Nomor: startIndex + index + 1,
-  'Nama Variable': item.nama,
-  Variable: item.variable,
-  Bobot: item.bobot,
-  Pertanyaan: item.pertanyaan,
-  Deskripsi: item.deskripsi,
-  Referensi: item.referensi,
-  'Logo URL': item.logoUrl || '-',
-  Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan'
-}));
+    Nomor: startIndex + index + 1,
+    'Nama Variable': item.nama,
+    Variable: item.variable,
+    Bobot: item.bobot,
+    Pertanyaan: item.pertanyaan,
+    Deskripsi: item.deskripsi,
+    Referensi: item.referensi,
+    'Logo URL': item.logoUrl || '-',
+    Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan',
+  }));
 
   return (
     <div className="flex">
-      {/* Container utama: penuh layar */}
+      {/* Container utama */}
       <div className="flex-1">
-        <div className=" rounded-lg overflow-hidden">
+        <div className="rounded-lg overflow-hidden">
           
-          {/* Notifikasi */}
+          {/* Notifikasi sukses */}
           <SuccessNotification
             isOpen={showSuccess}
             onClose={() => setShowSuccess(false)}
@@ -248,17 +218,15 @@ const handleToggleStatus = async () => {
           />
 
           {/* Toolbar */}
-          <div className="p-4 border-b border-gray-200  ">
+          <div className="p-4 border-b border-gray-200">
             <div className="flex flex-wrap justify-between items-center gap-4">
-              <div className="flex items-center gap-2 border rounded-lg px-3 py-2 w-full sm:w-64 bg-white">
-                <Search className="w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Cari..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
-                />
+              <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
+                <SearchTable
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari Transformation variable .."
+              className="mb-4"
+            />
               </div>
               <div className="flex gap-2 flex-wrap">
                 <TableButton 
@@ -272,65 +240,53 @@ const handleToggleStatus = async () => {
             </div>
           </div>
 
-         {loading ? (
-  <div className="p-10 text-center text-gray-500">Memuat data...</div>
-) : (
-  <div className="overflow-x-auto">
-    <TableUpdate
-      columns={columns}
-      data={currentData}
-      currentPage={currentPage}
-      rowsPerPage={rowsPerPage}
-      onEdit={(item) => {
-        const { logo, ...safeItem } = item;
-        localStorage.setItem('editData', JSON.stringify(safeItem));
-        router.push('/transformation-variable/tambah-variable');
-      }}
-      onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
-      onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
-      onSort={handleSort}
-      sortConfig={sortConfig}
-    />
-  </div>
-)}
-
-          {/* Pagination */}
-          <div className="flex justify-between items-center p-4 border-t border-gray-200 text-sm bg-gray-50">
-            <span>{currentData.length} Data ditampilkan</span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-              >
-                {'<'}
-              </button>
-              <span className="font-medium bg-white w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full">
-                {currentPage}
-              </span>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="bg-gray-200 w-8 h-8 flex items-center justify-center border rounded-full disabled:opacity-50"
-              >
-                {'>'}
-              </button>
+          {/* Tabel */}
+          {loading ? (
+            <div className="p-10 text-center text-gray-500">Memuat data...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <TableUpdate
+                columns={columns}
+                data={currentData}
+                currentPage={currentPage}
+                rowsPerPage={rowsPerPage}
+                onEdit={(item) => {
+                  const { logo, ...safeItem } = item;
+                  localStorage.setItem('editData', JSON.stringify(safeItem));
+                  router.push('/transformation-variable/tambah-variable');
+                }}
+                onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
+                onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+              />
             </div>
-            <span>Total: {totalData}</span>
-          </div>
+          )}
+
+          {/* 🔁 Pagination: SUDAH PAKAI DROPDOWN */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={totalData}
+            itemsPerPage={rowsPerPage}
+            onItemsPerPageChange={setRowsPerPage}
+            showItemsPerPage={true}
+            showTotalItems={true}
+          />
         </div>
 
-        {/* Modal */}
+        {/* Modal Konfirmasi */}
         {showModal && (
           <ModalConfirm
             isOpen={showModal}
             onCancel={handleCancel}
             onConfirm={handleConfirm}
-            header={modalAction === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Data'}
+            header={modalAction === 'deactivate' ? 'Aktifkan Data' : 'Nonaktifkan Data'}
             title={
               modalAction === 'deactivate'
                 ? 'Apakah kamu yakin ingin mengaktifkan data ini?'
-                : 'Apakah kamu yakin ingin menonaktifkan data ini? '
+                : 'Apakah kamu yakin ingin menonaktifkan data ini?'
             }
             confirmLabel="Ya, lakukan"
             cancelLabel="Batal"
