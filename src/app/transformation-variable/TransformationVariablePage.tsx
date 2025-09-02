@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
@@ -10,70 +10,45 @@ import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info as LucideInfo } from 'lucide-react';
 import SuccessNotification from '@/components/SuccessNotification';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10); // 🔁 Sekarang bisa diubah
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const router = useRouter();
-  const [tableData, setTableData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // 🔹 Load data dari API
-  const loadTableData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('http://localhost:3000/api/assessment/variable', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-cache',
-      });
+  // 🔹 Gunakan hook untuk ambil data
+  const { data, loading, error, refetch } = useTransformationVariableList();
 
-      if (!res.ok) throw new Error(`Gagal ambil data: ${res.status}`);
+  // Tampilkan error jika ada
+  if (error) {
+    return (
+      <div className="p-4 text-red-500 bg-red-50 border border-red-200 rounded">
+        ❌ {error} — Coba refresh atau cek koneksi ke server.
+      </div>
+    );
+  }
 
-      const data = await res.json();
+  // Format data untuk tabel
+  const tableData = data.map((item) => ({
+    id: item.id,
+    nama: item.name || '-',
+    variable: '-',
+    bobot: item.weight || '-',
+    pertanyaan: '-',
+    deskripsi: item.description || '-',
+    referensi: item.reference || '-',
+    logoUrl: null,
+    status: item.status === 'active' ? 'Active' : 'Inactive',
+  }));
 
-      const formatted = data.map((item: any) => ({
-        id: item.id,
-        nama: item.name || '-',
-        variable: '-',
-        bobot: item.weight || '-',
-        pertanyaan: '-',
-        deskripsi: item.description || '-',
-        referensi: item.reference || '-',
-        logoUrl: null,
-        status: item.status === 'active' ? 'Active' : 'Inactive',
-      }));
-
-      setTableData(formatted);
-    } catch (error) {
-      console.error('Gagal ambil data dari API:', error);
-      setTableData([]);
-      alert('Tidak bisa terhubung ke server.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      await loadTableData();
-
-      if (localStorage.getItem('newDataAdded') === 'true') {
-        setShowSuccess(true);
-        localStorage.removeItem('newDataAdded');
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // 🔹 Sorting
+  // 🔹 Fungsi Sorting (ini yang hilang!)
   const handleSort = (key: string) => {
     setSortConfig((prev) => {
       if (!prev || prev.key !== key) {
@@ -87,7 +62,7 @@ export default function AssessmentPage() {
   };
 
   // 🔹 Urutkan data
-  const sortedData = React.useMemo(() => {
+  const sortedData = useMemo(() => {
     if (!sortConfig) return tableData;
 
     return [...tableData].sort((a, b) => {
@@ -116,14 +91,14 @@ export default function AssessmentPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const currentData = filteredData.slice(startIndex, startIndex + rowsPerPage);
 
-  // 🔹 Buka modal
+  // 🔹 Buka modal konfirmasi
   const openConfirmModal = (id: number, action: 'activate' | 'deactivate') => {
     setItemId(id);
     setModalAction(action);
     setShowModal(true);
   };
 
-  // 🔹 Toggle status
+  // 🔹 Toggle status (update API)
   const handleToggleStatus = async () => {
     if (itemId === null) return;
 
@@ -144,7 +119,7 @@ export default function AssessmentPage() {
         throw new Error(error.message || 'Update gagal');
       }
 
-      await loadTableData();
+      refetch(); // 🔁 Refresh data via hook
       setShowModal(false);
       setItemId(null);
       setModalAction(null);
@@ -154,12 +129,9 @@ export default function AssessmentPage() {
     }
   };
 
-  // 🔹 Konfirmasi
+  // 🔹 Konfirmasi modal
   const handleConfirm = () => {
     handleToggleStatus();
-    setShowModal(false);
-    setItemId(null);
-    setModalAction(null);
   };
 
   const handleCancel = () => {
@@ -206,7 +178,6 @@ export default function AssessmentPage() {
 
   return (
     <div className="flex">
-      {/* Container utama */}
       <div className="flex-1">
         <div className="rounded-lg overflow-hidden">
           
@@ -222,11 +193,11 @@ export default function AssessmentPage() {
             <div className="flex flex-wrap justify-between items-center gap-4">
               <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
                 <SearchTable
-              value={search}
-              onChange={setSearch}
-              placeholder="Cari Transformation variable .."
-              className="mb-4"
-            />
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Cari Transformation variable .."
+                  className="mb-4"
+                />
               </div>
               <div className="flex gap-2 flex-wrap">
                 <TableButton 
@@ -242,7 +213,7 @@ export default function AssessmentPage() {
 
           {/* Tabel */}
           {loading ? (
-            <div className="p-10 text-center text-gray-500">Memuat data...</div>
+            <div className="p-10 text-center text-gray-500">Memuat data dari API...</div>
           ) : (
             <div className="overflow-x-auto">
               <TableUpdate
@@ -263,7 +234,7 @@ export default function AssessmentPage() {
             </div>
           )}
 
-          {/* 🔁 Pagination: SUDAH PAKAI DROPDOWN */}
+          {/* Pagination */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
