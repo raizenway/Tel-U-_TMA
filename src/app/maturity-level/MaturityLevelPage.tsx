@@ -2,33 +2,35 @@
 
 import { useState, useEffect } from "react";
 import TableUpdate from "@/components/TableUpdate";
-import {  Pencil, Trash2, Eye } from "lucide-react";
+import { Pencil, Trash2, Eye } from "lucide-react";
 import Button from "@/components/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import TableButton from "@/components/TableButton";
 import SearchTable from "@/components/SearchTable";
+import SuccessNotification from "@/components/SuccessNotification";
 import MaturityLevelTable from "./MaturityLevelTable";
 import Pagination from "@/components/Pagination";
+import { useSort } from "@/hooks/useSort";
 
-  const TablePage = () => {
-    
+const TablePage = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); 
   const [data, setData] = useState<any[]>([]);
   const router = useRouter();
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const searchParams = useSearchParams();
   const [showNotif, setShowNotif] = useState(false);
+  const [ShowSuccess, setShowSuccess] = useState(false);
 
   // Modal lihat deskripsi
   const [showModal, setShowModal] = useState(false);
   const [selectedDeskripsiList, setSelectedDeskripsiList] = useState<string[]>([]);
 
   // Fungsi untuk muat dan validasi data dari localStorage
-   const loadData = () => {
+  const loadData = () => {
     try {
       const savedData = localStorage.getItem("maturityData");
       if (savedData) {
@@ -51,7 +53,6 @@ import Pagination from "@/components/Pagination";
           throw new Error("Data tidak dalam format array");
         }
       } else {
-        // ❌ jangan ada data default
         setData([]);
         localStorage.setItem("maturityData", JSON.stringify([]));
       }
@@ -69,7 +70,7 @@ import Pagination from "@/components/Pagination";
   // Dengarkan perubahan localStorage (misal dari tab lain)
   useEffect(() => {
     const handleStorageChange = () => {
-      loadData(); // Reload dengan validasi
+      loadData();
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -95,7 +96,9 @@ import Pagination from "@/components/Pagination";
     }
   }, [searchParams]);
 
-  const filteredData = data.filter((item) =>
+    const { sortedData, requestSort, sortConfig } = useSort(data, "level");
+
+ const filteredData = sortedData.filter((item) =>
   Object.values(item).some((val) =>
     String(val ?? "")
       .toLowerCase()
@@ -103,44 +106,38 @@ import Pagination from "@/components/Pagination";
   )
 );
 
-const sortedData = Array.isArray(data)
-  ? [...data].sort((a, b) => String(a.level).localeCompare(String(b.level)))
-  : [];
-
-  const totalPages = Math.ceil(filteredData.length / 10);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage); 
   const paginatedData = filteredData.slice(
-    (currentPage - 1) * 10,
-    currentPage * 10
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
-  const handlePageChange = (page: number) => {
-  setCurrentPage(page);
-};
 
-const totalItems = filteredData.length;
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const totalItems = filteredData.length;
+
   const handleTambah = () => {
     router.push("/maturity-level/add-maturity");
   };
 
   const handleEdit = (index: number) => {
-    const realIndex = (currentPage - 1) * 10 + index;
+    const realIndex = (currentPage - 1) * itemsPerPage + index;
     const selectedData = data[realIndex];
     localStorage.setItem("editMaturityData", JSON.stringify(selectedData));
     router.push(`/maturity-level/edit-maturity/${realIndex}`);
   };
 
- const handleDelete = (index: number) => {
-  const realIndex = (currentPage - 1) * 10 + index;
-  const newData = [...data];
-  newData.splice(realIndex, 1);
+  const handleDelete = (index: number) => {
+    const realIndex = (currentPage - 1) * itemsPerPage + index;
+    const newData = [...data];
+    newData.splice(realIndex, 1);
 
-  // update state
-  setData(newData);
-
-  // update localStorage juga
-  localStorage.setItem("maturityData", JSON.stringify(newData));
-
-  setShowDelete(false);
-};
+    setData(newData);
+    localStorage.setItem("maturityData", JSON.stringify(newData));
+    setShowDelete(false);
+  };
 
   // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
@@ -150,13 +147,11 @@ const totalItems = filteredData.length;
       <button
         className="flex items-center gap-2 text-gray-700 hover:underline"
         onClick={() => {
-          // Ambil data terbaru dari localStorage
           const savedData = localStorage.getItem("maturityData");
           const freshData = savedData ? JSON.parse(savedData) : data;
-          const realIndex = (currentPage - 1) * 10 + index;
+          const realIndex = (currentPage - 1) * itemsPerPage + index;
           const currentRow = freshData[realIndex];
 
-          // ✅ Validasi deskripsiPerVariabel selalu array
           const deskripsi = Array.isArray(currentRow?.deskripsiPerVariabel)
             ? currentRow.deskripsiPerVariabel
             : Array(5).fill("");
@@ -190,45 +185,63 @@ const totalItems = filteredData.length;
   }));
 
   const columns = [
-    { header: "Level", key: "level", width: "60px" },
-    { header: "Nama Level", key: "namaLevel", width: "200px" },
-    { header: "Skor Minimum", key: "skorMin", width: "160px" },
-    { header: "Skor Maximum", key: "skorMax", width: "160px" },
-    { header: "Deskripsi Umum", key: "deskripsiUmum", width: "250px" },
-    { header: "Deskripsi Per Variabel", key: "deskripsiPerVariabel", width: "250px" },
+    { header: "Level", key: "level", width: "60px",
+     onClick: () => requestSort("level"),
+     isSorted: sortConfig?.key === "level" ? sortConfig.direction : undefined
+     },
+    { header: "Nama Level", key: "namaLevel", width: "200px",
+      onClick: () => requestSort("namalevel"),
+    isSorted: sortConfig?.key === "namalevel" ? sortConfig.direction : undefined
+     },
+    { header: "Skor Minimum", key: "skorMin", width: "160px",
+      onClick: () => requestSort("skorMin"),
+    isSorted: sortConfig?.key === "skorMin" ? sortConfig.direction : undefined
+     },
+    { header: "Skor Maximum", key: "skorMax", width: "160px",
+      onClick: () => requestSort("skorMax"),
+    isSorted: sortConfig?.key === "skorMax" ? sortConfig.direction : undefined
+     },
+    { header: "Deskripsi Umum", key: "deskripsiUmum", width: "250px",
+      onClick: () => requestSort("deskripsiUmum"),
+    isSorted: sortConfig?.key === "deskripsiUmum" ? sortConfig.direction : undefined
+     },
+    { header: "Deskripsi Per Variabel", key: "deskripsiPerVariabel", width: "250px",
+      onClick: () => requestSort("deskripsiPerVariabel"),
+    isSorted: sortConfig?.key === "deskripsiPerVariabel" ? sortConfig.direction : undefined
+     },
     {
-     header: 'Aksi',
-     key: 'aksi',
-     width: '200px',
-     className: 'text-center sticky right-0 border border-gray-200 z-10 bg-gray-100',
-    },  ];
+      header: "Aksi",
+      key: "aksi",
+      width: "200px",
+      className: "text-center sticky right-0 border border-gray-200 z-10 bg-gray-100",
+    },
+  ];
 
-    const dataForExport = paginatedData.map((item, index) => ({
-      Nomor: (currentPage - 1) * 10 + index + 1,
-      Level: item.level,
-      NamaLevel: item.namaLevel,
-      SkorMinimum: item.skorMin,
-      SkorMaximum: item.skorMax, 
-      DeskripsiUmum: item.deskripsiUmum,
-      DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
-        ? item.deskripsiPerVariabel.join(" | ")
-        : "",
-      Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
-    }));
-
+  const dataForExport = paginatedData.map((item, index) => ({
+    Nomor: (currentPage - 1) * itemsPerPage + index + 1,
+    Level: item.level,
+    NamaLevel: item.namaLevel,
+    SkorMinimum: item.skorMin,
+    SkorMaximum: item.skorMax,
+    DeskripsiUmum: item.deskripsiUmum,
+    DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
+      ? item.deskripsiPerVariabel.join(" | ")
+      : "",
+    Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
+  }));
 
   return (
     <div className="">
       <div className="bg-white rounded-xl w-full">
         {/* Search & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <SearchTable
-              value={search}
-              onChange={setSearch}
-              placeholder="Cari level maturity..."
-            />
+          <SearchTable
+            value={search}
+            onChange={setSearch}
+            placeholder="Cari level maturity..."
+          />
           <div className="flex items-center gap-2">
-            <TableButton data={dataForExport}/>
+            <TableButton data={dataForExport} />
             <Button className="px-8" onClick={handleTambah}>
               Tambah Maturity Level
             </Button>
@@ -236,19 +249,34 @@ const totalItems = filteredData.length;
         </div>
 
         {/* Notifikasi */}
-        {showNotif && (
-          <div className="absolute bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-md flex items-center justify-between min-w-[280px]">
-            <span className="font-medium">Data Berhasil Disimpan</span>
-          </div>
-        )}
+        <SuccessNotification
+          isOpen={ShowSuccess}
+          onClose={() => setShowSuccess(false)}
+          message="Maturitiy berhasil ditambahkan"
+        />
 
         {/* Table */}
         <div className="overflow-x-auto w-full">
-          <MaturityLevelTable></MaturityLevelTable>
+          <TableUpdate
+            columns={columns}
+            data={dataDenganAksi}
+            currentPage={currentPage}
+            rowsPerPage={itemsPerPage}
+            onEdit={(item) => {
+              const realIndex = data.findIndex((d) => d.level === item.level);
+              if (realIndex !== -1) {
+                localStorage.setItem("editMaturityData", JSON.stringify(data[realIndex]));
+                router.push(`/maturity-level/edit-maturity/${realIndex}`);
+              }
+            }}
+            onDeactivate={(index) => {
+              setDeleteIndex(index);
+              setShowDelete(true);
+            }}
+          />
         </div>
 
-
-       {/* Pagination */}
+        {/* Pagination */}
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -281,7 +309,7 @@ const totalItems = filteredData.length;
         </div>
       </ModalConfirm>
 
-     {/* Modal Deskripsi per Variabel */}
+      {/* Modal Deskripsi per Variabel */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -290,7 +318,11 @@ const totalItems = filteredData.length;
         header="Deskripsi per Variabel"
         footer={
           <div className="flex justify-center pt-4">
-            <Button variant="simpan" className="px-30 py-2 text-lg rounded-md" onClick={() => setShowModal(false)}>
+            <Button
+              variant="simpan"
+              className="px-30 py-2 text-lg rounded-md"
+              onClick={() => setShowModal(false)}
+            >
               Tutup
             </Button>
           </div>
@@ -309,7 +341,6 @@ const totalItems = filteredData.length;
           <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
         )}
       </ModalConfirm>
-
     </div>
   );
 };
