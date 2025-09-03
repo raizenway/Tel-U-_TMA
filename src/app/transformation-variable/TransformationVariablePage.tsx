@@ -23,14 +23,12 @@ export default function AssessmentPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // 🔹 Gunakan hook untuk ambil data
   const { data, loading, error, refetch } = useTransformationVariableList();
 
-  // Tampilkan error jika ada
   if (error) {
     return (
       <div className="p-4 text-red-500 bg-red-50 border border-red-200 rounded">
-        ❌ {error} — Coba refresh atau cek koneksi ke server.
+        {error} — Coba refresh atau cek koneksi ke server.
       </div>
     );
   }
@@ -39,7 +37,6 @@ export default function AssessmentPage() {
   const tableData = data.map((item) => ({
     id: item.id,
     nama: item.name || '-',
-    variable: '-',
     bobot: item.weight || '-',
     pertanyaan: '-',
     deskripsi: item.description || '-',
@@ -48,7 +45,7 @@ export default function AssessmentPage() {
     status: item.status === 'active' ? 'Active' : 'Inactive',
   }));
 
-  // 🔹 Fungsi Sorting (ini yang hilang!)
+  // 🔹 Fungsi Sorting
   const handleSort = (key: string) => {
     setSortConfig((prev) => {
       if (!prev || prev.key !== key) {
@@ -167,7 +164,6 @@ export default function AssessmentPage() {
   const dataForExport = currentData.map((item, index) => ({
     Nomor: startIndex + index + 1,
     'Nama Variable': item.nama,
-    Variable: item.variable,
     Bobot: item.bobot,
     Pertanyaan: item.pertanyaan,
     Deskripsi: item.deskripsi,
@@ -202,7 +198,7 @@ export default function AssessmentPage() {
               <div className="flex gap-2 flex-wrap">
                 <TableButton 
                   data={dataForExport}
-                  columns={['Nomor', 'Nama Variable', 'Variable', 'Bobot', 'Pertanyaan', 'Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
+                  columns={['Nomor', 'Nama Variable', 'Bobot', 'Pertanyaan', 'Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
                 />
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
                   Tambah Variable

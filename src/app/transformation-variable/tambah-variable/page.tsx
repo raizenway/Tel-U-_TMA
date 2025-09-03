@@ -1,301 +1,302 @@
-'use client';
+  // src/app/transformation-variable/tambah-variable/page.tsx
+  'use client';
 
-import React, { useState, useEffect } from 'react';
-import Button from '@/components/button';
-import { X, Save } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+  import React, { useState, useEffect } from 'react';
+  import Button from '@/components/button';
+  import { X, Save } from 'lucide-react';
+  import { useRouter } from 'next/navigation';
 
+  // 🔹 Impor hook dari file yang sudah kamu buat
+  import { useCreateTransformationVariable } from '@/hooks/useTransformationVariableList';
+  import { CreateTransformationVariableRequest as CreateRequest } from '@/interfaces/transformation-variable';
 
-export default function VariabelFormPage() {
-  const router = useRouter();
+  export default function VariabelFormPage() {
+    const router = useRouter();
 
-  // State form
-  const [namaVariabel, setNamaVariabel] = useState('');
-  const [bobot, setBobot] = useState('');
-  const [pertanyaan, setPertanyaan] = useState('');
-  const [deskripsi, setDeskripsi] = useState('');
-  const [referensi, setReferensi] = useState('');
-  const [status, setStatus] = useState('');
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    // State form
+    const [namaVariabel, setNamaVariabel] = useState('');
+    const [bobot, setBobot] = useState('');
+    const [pertanyaan, setPertanyaan] = useState('');
+    const [deskripsi, setDeskripsi] = useState('');
+    const [referensi, setReferensi] = useState('');
+    const [status, setStatus] = useState('');
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  // Mode edit
-  const [isEdit, setIsEdit] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
+    // Mode edit
+    const [isEdit, setIsEdit] = useState(false);
+    const [editId, setEditId] = useState<number | null>(null);
 
-  // Validasi form
-  const [isFormValid, setIsFormValid] = useState(false);
+    // Validasi form
+    const [isFormValid, setIsFormValid] = useState(false);
 
-  useEffect(() => {
-    setIsFormValid(
-      !!(
-        namaVariabel.trim() &&
-        bobot.trim() &&
-        pertanyaan.trim() &&
-        deskripsi.trim() &&
-        referensi.trim() &&
-        status
-      )
-    );
-  }, [namaVariabel, bobot, pertanyaan, deskripsi, referensi, status]);
+    // 🔹 Hook untuk create
+    const { mutate, loading } = useCreateTransformationVariable();
 
-  // Prefill jika mode edit
-  useEffect(() => {
-    if (typeof window === 'undefined') return; // cegah mismatch SSR
+    // Validasi otomatis
+    useEffect(() => {
+      setIsFormValid(
+        !!(
+          namaVariabel.trim() &&
+          bobot.trim() &&
+          pertanyaan.trim() &&
+          deskripsi.trim() &&
+          referensi.trim() &&
+          status
+        )
+      );
+    }, [namaVariabel, bobot, pertanyaan, deskripsi, referensi, status]);
 
-    const editData = localStorage.getItem('editData');
-    if (editData) {
-      try {
-        const parsed = JSON.parse(editData);
+    // Prefill jika mode edit
+    useEffect(() => {
+      if (typeof window === 'undefined') return;
 
-        setNamaVariabel(parsed.namaVariabel || parsed.variable || '');
-        setBobot(parsed.bobot?.toString() || '');
-        setPertanyaan(parsed.pertanyaan || '');
-        setDeskripsi(parsed.deskripsi || '');
-        setReferensi(parsed.referensi || '');
+      const editData = localStorage.getItem('editData');
+      if (editData) {
+        try {
+          const parsed = JSON.parse(editData);
 
-        // Pastikan status berupa string sebelum .toLowerCase
-        const parsedStatus =
-          typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
+          setNamaVariabel(parsed.namaVariabel || parsed.variable || '');
+          setBobot(parsed.bobot?.toString() || '');
+          setPertanyaan(parsed.pertanyaan || '');
+          setDeskripsi(parsed.deskripsi || '');
+          setReferensi(parsed.referensi || '');
 
-        if (parsedStatus === 'active' || parsedStatus === 'aktif') {
-          setStatus('Active');
-        } else if (parsedStatus === 'inactive' || parsedStatus === 'non-aktif') {
-          setStatus('Inactive');
-        } else {
-          setStatus('');
+          const parsedStatus = typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
+
+          if (parsedStatus === 'active' || parsedStatus === 'aktif') {
+            setStatus('Active');
+          } else if (parsedStatus === 'inactive' || parsedStatus === 'non-aktif') {
+            setStatus('Inactive');
+          } else {
+            setStatus('');
+          }
+
+          setLogoPreview(parsed.logoUrl || '/logo-telu.png');
+          setEditId(parsed.id ?? null);
+          setIsEdit(true);
+        } catch (err) {
+          console.error('Gagal parse editData:', err);
         }
-
-        setLogoPreview(parsed.logoUrl || '/logo-telu.png');
-        setEditId(parsed.id ?? null);
-        setIsEdit(true);
-      } catch (err) {
-        console.error('Gagal parse editData:', err);
       }
-    }
-  }, []);
+    }, []);
 
-  // Upload logo
-  const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    // Upload logo
+    const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    if (file.size > 1024 * 1024) {
-      alert('Ukuran file maksimal 1 MB');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      alert('Hanya file gambar yang diperbolehkan');
-      return;
-    }
+      if (file.size > 1024 * 1024) {
+        alert('Ukuran file maksimal 1 MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert('Hanya file gambar yang diperbolehkan');
+        return;
+      }
 
-    setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
-  };
-
-  // Simpan data
-  const handleSimpan = () => {
-    const newRow = {
-      id: editId || Date.now(),
-      namaVariabel,
-      variable: namaVariabel,
-      bobot: parseFloat(bobot),
-      pertanyaan,
-      deskripsi,
-      referensi,
-      status,
-      logoFileName: logoFile?.name || 'no-logo.png',
-      logoUrl: logoPreview || '/logo-telu.png',
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
     };
 
-    const saved = localStorage.getItem('transformationVariables');
-    const arr = saved ? JSON.parse(saved) : [];
+    // 🔁 Simpan data ke API (bukan localStorage)
+    const handleSimpan = async () => {
+      if (!isFormValid) {
+        alert('Mohon lengkapi semua field wajib.');
+        return;
+      }
 
-    if (isEdit && editId !== null) {
-      const updated = arr.map((item: any) => (item.id === editId ? newRow : item));
-      localStorage.setItem('transformationVariables', JSON.stringify(updated));
-      alert('Data berhasil diperbarui!');
-    } else {
-      arr.push(newRow);
-      localStorage.setItem('transformationVariables', JSON.stringify(arr));
-      alert('Data berhasil ditambahkan!');
-    }
+      const payload: CreateRequest = {
+        name: namaVariabel.trim(),
+        weight: parseFloat(bobot) || 0,
+        description: deskripsi.trim(),
+        reference: referensi.trim(),
+        sortOrder: 1,
+        status: status.toLowerCase() as 'active' | 'inactive',
+      };
 
-    localStorage.removeItem('editData');
-    router.push('/transformation-variable');
-  };
+      try {
+        await mutate(payload);
+        localStorage.removeItem('editData');
+        router.push('/transformation-variable');
+      } catch (err) {
+        console.error('Gagal menyimpan data:', err);
+        alert('Gagal menyimpan data. Periksa koneksi atau isi ulang form.');
+      }
+    };
 
-  // Batal
-  const handleBatal = () => {
-    setNamaVariabel('');
-    setBobot('');
-    setPertanyaan('');
-    setDeskripsi('');
-    setReferensi('');
-    setStatus('');
-    setLogoFile(null);
-    setLogoPreview(null);
-    localStorage.removeItem('editData');
-    router.push('/transformation-variable');
-  };
+    // Batal
+    const handleBatal = () => {
+      setNamaVariabel('');
+      setBobot('');
+      setPertanyaan('');
+      setDeskripsi('');
+      setReferensi('');
+      setStatus('');
+      setLogoFile(null);
+      setLogoPreview(null);
+      localStorage.removeItem('editData');
+      router.push('/transformation-variable');
+    };
 
-  return (
-    <div className="flex min-h-screen">
-      <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
-        <div
-          className="bg-white rounded-xl shadow-md mx-auto"
-          style={{ width: '1100px', minHeight: '650px', margin: '0 auto' }}
-        >
-          {/* Header */}
-          <div className="p-8 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-800">
-              {isEdit ? 'Edit' : 'Tambah'} Variabel
-            </h1>
-          </div>
-
-          {/* Form */}
-          <div className="p-8 space-y-6 overflow-y-auto max-h-[500px]">
-            {/* Nama Variabel & Bobot */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Variabel
-                </label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={namaVariabel}
-                  onChange={(e) => setNamaVariabel(e.target.value)}
-                  placeholder="Masukkan Nama Variabel"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bobot
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="1"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={bobot}
-                  onChange={(e) => setBobot(e.target.value)}
-                  placeholder="0.0 - 1.0"
-                />
-              </div>
+    return (
+      <div className="flex min-h-screen">
+        <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
+          <div
+            className="bg-white rounded-xl shadow-md mx-auto"
+            style={{ width: '1100px', minHeight: '650px', margin: '0 auto' }}
+          >
+            {/* Header */}
+            <div className="p-8 border-b border-gray-200">
+              <h1 className="text-2xl font-bold text-gray-800">
+                {isEdit ? 'Edit' : 'Tambah'} Variabel
+              </h1>
             </div>
 
-            {/* Pertanyaan & Deskripsi */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pertanyaan
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={pertanyaan}
-                  onChange={(e) => setPertanyaan(e.target.value)}
-                  placeholder="Masukkan Pertanyaan"
-                  rows={4}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deskripsi
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={deskripsi}
-                  onChange={(e) => setDeskripsi(e.target.value)}
-                  placeholder="Masukkan Deskripsi"
-                  rows={4}
-                />
-              </div>
-            </div>
-
-            {/* Referensi & Status */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Referensi
-                </label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={referensi}
-                  onChange={(e) => setReferensi(e.target.value)}
-                  placeholder="Masukkan Referensi"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="">Pilih Status</option>
-                  <option value="Active">Aktif</option>
-                  <option value="Inactive">Non-Aktif</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Upload Logo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Logo UPPS/KC
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleUploadLogo}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3"
-              />
-              <p className="text-xs text-gray-500 mt-1">Maksimal 1 MB, format: JPG/PNG</p>
-
-              {logoPreview && (
-                <div className="mt-3">
-                  <p className="text-sm font-medium text-gray-700">Preview Logo:</p>
-                  <img
-                    src={logoPreview}
-                    alt="Preview Logo"
-                    className="mt-1 w-16 h-16 object-contain border rounded"
+            {/* Form */}
+            <div className="p-8 space-y-6 overflow-y-auto max-h-[500px]">
+              {/* Nama Variabel & Bobot */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Variabel
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                    value={namaVariabel}
+                    onChange={(e) => setNamaVariabel(e.target.value)}
+                    placeholder="Masukkan Nama Variabel"
                   />
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bobot
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="1"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                    value={bobot}
+                    onChange={(e) => setBobot(e.target.value)}
+                    placeholder="0.0 - 1.0"
+                  />
+                </div>
+              </div>
+
+              {/* Pertanyaan & Deskripsi */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pertanyaan
+                  </label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                    value={pertanyaan}
+                    onChange={(e) => setPertanyaan(e.target.value)}
+                    placeholder="Masukkan Pertanyaan"
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Deskripsi
+                  </label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                    value={deskripsi}
+                    onChange={(e) => setDeskripsi(e.target.value)}
+                    placeholder="Masukkan Deskripsi"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* Referensi & Status */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Referensi
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                    value={referensi}
+                    onChange={(e) => setReferensi(e.target.value)}
+                    placeholder="Masukkan Referensi"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="">Pilih Status</option>
+                    <option value="Active">Aktif</option>
+                    <option value="Inactive">Non-Aktif</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Upload Logo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload Logo UPPS/KC
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadLogo}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                />
+                <p className="text-xs text-gray-500 mt-1">Maksimal 1 MB, format: JPG/PNG</p>
+
+                {logoPreview && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-700">Preview Logo:</p>
+                    <img
+                      src={logoPreview}
+                      alt="Preview Logo"
+                      className="mt-1 w-16 h-16 object-contain border rounded"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-8 flex justify-end gap-4">
+              <Button
+                variant="ghost"
+                icon={X}
+                iconPosition="left"
+                onClick={handleBatal}
+                disabled={loading}
+                className="rounded-[12px] px-15 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
+              <Button
+                disabled={!isFormValid || loading}
+                variant="simpan"
+                icon={Save}
+                iconPosition="left"
+                onClick={handleSimpan}
+                className={`rounded-[12px] px-10 py-2 text-sm font-semibold text-white ${
+                  isFormValid && !loading ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Simpan'}
+              </Button>
             </div>
           </div>
-
-          {/* Footer */}
-          <div className="p-8 flex justify-end gap-4">
-            <Button
-              variant="ghost"
-              icon={X}
-              iconPosition="left"
-              onClick={handleBatal}
-              className="rounded-[12px] px-15 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
-            >
-              Batal
-            </Button>
-            <Button
-              disabled={!isFormValid}
-              variant="simpan"
-              icon={Save}
-              iconPosition="left"
-              onClick={handleSimpan}
-              className={`rounded-[12px] px-10 py-2 text-sm font-semibold text-white ${
-                isFormValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {isEdit ? 'Simpan Perubahan' : 'Simpan'}
-            </Button>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
+        </main>
+      </div>
+    );
+  }
