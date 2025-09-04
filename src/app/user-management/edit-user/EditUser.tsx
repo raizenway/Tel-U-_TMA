@@ -247,16 +247,16 @@ export default function EditUserPage() {
           </form>
 
           <div className="flex justify-end mt-8 gap-6">
-<Button
-  variant="ghost"
-  icon={X}
-  iconColor="text-red-600"
-  iconPosition="left"
-  onClick={handleCancel}
-  className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
->
-  Batal
-</Button>
+              <Button
+                variant="ghost"
+                icon={X}
+                iconColor="text-red-600"
+                iconPosition="left"
+                onClick={handleCancel}
+                className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
 
               <Button
                 variant="simpan"
