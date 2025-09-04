@@ -11,3 +11,11 @@ export interface MaturityLevel {
   updated_at: string;           
 }
 
+export interface CreateMaturityLevelRequest {
+  name:string;
+  levelNumber:number;
+  minScore:number;
+  maxScore:number;
+  generalDescription:string;
+  scoreDescription:string[];
+}

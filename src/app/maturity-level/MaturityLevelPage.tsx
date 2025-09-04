@@ -9,14 +9,14 @@ import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import TableButton from "@/components/TableButton";
 import SearchTable from "@/components/SearchTable";
 import SuccessNotification from "@/components/SuccessNotification";
-import MaturityLevelTable from "./MaturityLevelTable";
 import Pagination from "@/components/Pagination";
 import { useSort } from "@/hooks/useSort";
+import { useListMaturityLevels } from "@/hooks/useMaturityLevel";
 
 const TablePage = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10); 
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [data, setData] = useState<any[]>([]);
   const router = useRouter();
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -24,69 +24,32 @@ const TablePage = () => {
   const searchParams = useSearchParams();
   const [showNotif, setShowNotif] = useState(false);
   const [ShowSuccess, setShowSuccess] = useState(false);
+  const { data: maturityRes, loading, error } = useListMaturityLevels();
 
   // Modal lihat deskripsi
   const [showModal, setShowModal] = useState(false);
   const [selectedDeskripsiList, setSelectedDeskripsiList] = useState<string[]>([]);
 
-  // Fungsi untuk muat dan validasi data dari localStorage
-  const loadData = () => {
-    try {
-      const savedData = localStorage.getItem("maturityData");
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-
-        if (Array.isArray(parsed)) {
-          const validatedData = parsed.map((item) => ({
-            ...item,
-            level: typeof item.level === "string" ? item.level : String(item.level || ""),
-            namaLevel: typeof item.namaLevel === "string" ? item.namaLevel : "",
-            skorMin: typeof item.skorMin === "string" ? item.skorMin : "",
-            skorMax: typeof item.skorMax === "string" ? item.skorMax : "",
-            deskripsiUmum: typeof item.deskripsiUmum === "string" ? item.deskripsiUmum : "",
-            deskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
-              ? item.deskripsiPerVariabel.map((d) => (typeof d === "string" ? d : ""))
-              : Array(5).fill(""),
-          }));
-          setData(validatedData);
-        } else {
-          throw new Error("Data tidak dalam format array");
-        }
-      } else {
-        setData([]);
-        localStorage.setItem("maturityData", JSON.stringify([]));
-      }
-    } catch (error) {
-      console.error("Error loading maturityData:", error);
-      setData([]);
+  // Mapping API -> struktur tabel
+  useEffect(() => {
+    if (maturityRes?.data) {
+      const mapped = maturityRes.data.map((item: any) => ({
+        level: item.levelNumber,
+        namaLevel: item.name,
+        skorMin: item.minScore,
+        skorMax: item.maxScore,
+        deskripsiUmum: item.generalDescription,
+        deskripsiPerVariabel: [
+          item.scoreDescription0,
+          item.scoreDescription1,
+          item.scoreDescription2,
+          item.scoreDescription3,
+          item.scoreDescription4,
+        ].filter(Boolean),
+      }));
+      setData(mapped);
     }
-  };
-
-  // Muat data pertama kali
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Dengarkan perubahan localStorage (misal dari tab lain)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      loadData();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  // Update localStorage saat data berubah
-  useEffect(() => {
-    if (data.length > 0) {
-      try {
-        localStorage.setItem("maturityData", JSON.stringify(data));
-      } catch (e) {
-        console.error("Gagal simpan ke localStorage", e);
-      }
-    }
-  }, [data]);
+  }, [maturityRes]);
 
   // Tampilkan notifikasi jika dari query success
   useEffect(() => {
@@ -96,17 +59,17 @@ const TablePage = () => {
     }
   }, [searchParams]);
 
-    const { sortedData, requestSort, sortConfig } = useSort(data, "level");
+  const { sortedData, requestSort, sortConfig } = useSort(data, "level");
 
- const filteredData = sortedData.filter((item) =>
-  Object.values(item).some((val) =>
-    String(val ?? "")
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  )
-);
+  const filteredData = sortedData.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val ?? "")
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    )
+  );
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage); 
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -133,30 +96,20 @@ const TablePage = () => {
     const realIndex = (currentPage - 1) * itemsPerPage + index;
     const newData = [...data];
     newData.splice(realIndex, 1);
-
     setData(newData);
-    localStorage.setItem("maturityData", JSON.stringify(newData));
     setShowDelete(false);
   };
 
   // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
     ...row,
-    level: row.level,
     deskripsiPerVariabel: (
       <button
         className="flex items-center gap-2 text-gray-700 hover:underline"
         onClick={() => {
-          const savedData = localStorage.getItem("maturityData");
-          const freshData = savedData ? JSON.parse(savedData) : data;
           const realIndex = (currentPage - 1) * itemsPerPage + index;
-          const currentRow = freshData[realIndex];
-
-          const deskripsi = Array.isArray(currentRow?.deskripsiPerVariabel)
-            ? currentRow.deskripsiPerVariabel
-            : Array(5).fill("");
-
-          setSelectedDeskripsiList(deskripsi);
+          const currentRow = data[realIndex];
+          setSelectedDeskripsiList(currentRow?.deskripsiPerVariabel || []);
           setShowModal(true);
         }}
       >
@@ -186,29 +139,26 @@ const TablePage = () => {
 
   const columns = [
     { header: "Level", key: "level", width: "60px",
-     onClick: () => requestSort("level"),
-     isSorted: sortConfig?.key === "level" ? sortConfig.direction : undefined
-     },
+      onClick: () => requestSort("level"),
+      isSorted: sortConfig?.key === "level" ? sortConfig.direction : undefined
+    },
     { header: "Nama Level", key: "namaLevel", width: "200px",
-      onClick: () => requestSort("namalevel"),
-    isSorted: sortConfig?.key === "namalevel" ? sortConfig.direction : undefined
-     },
+      onClick: () => requestSort("namaLevel"),
+      isSorted: sortConfig?.key === "namaLevel" ? sortConfig.direction : undefined
+    },
     { header: "Skor Minimum", key: "skorMin", width: "160px",
       onClick: () => requestSort("skorMin"),
-    isSorted: sortConfig?.key === "skorMin" ? sortConfig.direction : undefined
-     },
+      isSorted: sortConfig?.key === "skorMin" ? sortConfig.direction : undefined
+    },
     { header: "Skor Maximum", key: "skorMax", width: "160px",
       onClick: () => requestSort("skorMax"),
-    isSorted: sortConfig?.key === "skorMax" ? sortConfig.direction : undefined
-     },
+      isSorted: sortConfig?.key === "skorMax" ? sortConfig.direction : undefined
+    },
     { header: "Deskripsi Umum", key: "deskripsiUmum", width: "250px",
       onClick: () => requestSort("deskripsiUmum"),
-    isSorted: sortConfig?.key === "deskripsiUmum" ? sortConfig.direction : undefined
-     },
-    { header: "Deskripsi Per Variabel", key: "deskripsiPerVariabel", width: "250px",
-      onClick: () => requestSort("deskripsiPerVariabel"),
-    isSorted: sortConfig?.key === "deskripsiPerVariabel" ? sortConfig.direction : undefined
-     },
+      isSorted: sortConfig?.key === "deskripsiUmum" ? sortConfig.direction : undefined
+    },
+    { header: "Deskripsi Per Variabel", key: "deskripsiPerVariabel", width: "250px" },
     {
       header: "Aksi",
       key: "aksi",
@@ -227,69 +177,79 @@ const TablePage = () => {
     DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
       ? item.deskripsiPerVariabel.join(" | ")
       : "",
-    Aksi: item.status === "Active" ? "Edit, Nonaktifkan" : "Edit, Aktifkan",
   }));
 
   return (
     <div className="">
       <div className="bg-white rounded-xl w-full">
-        {/* Search & Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <SearchTable
-            value={search}
-            onChange={setSearch}
-            placeholder="Cari level maturity..."
-          />
-          <div className="flex items-center gap-2">
-            <TableButton data={dataForExport} />
-            <Button className="px-8" onClick={handleTambah}>
-              Tambah Maturity Level
-            </Button>
-          </div>
-        </div>
+        {loading && (
+          <p className="text-center text-gray-500 py-4">Loading...</p>
+        )}
+        {error && (
+          <p className="text-center text-red-600 py-4">
+            Gagal load data: {String(error)}
+          </p>
+        )}
 
-        {/* Notifikasi */}
-        <SuccessNotification
-          isOpen={ShowSuccess}
-          onClose={() => setShowSuccess(false)}
-          message="Maturitiy berhasil ditambahkan"
-        />
+        {!loading && !error && (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <SearchTable
+                value={search}
+                onChange={setSearch}
+                placeholder="Cari level maturity..."
+              />
+              <div className="flex items-center gap-2">
+                <TableButton data={dataForExport} />
+                <Button className="px-8" onClick={handleTambah}>
+                  Tambah Maturity Level
+                </Button>
+              </div>
+            </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto w-full">
-          <TableUpdate
-            columns={columns}
-            data={dataDenganAksi}
-            currentPage={currentPage}
-            rowsPerPage={itemsPerPage}
-            onEdit={(item) => {
-              const realIndex = data.findIndex((d) => d.level === item.level);
-              if (realIndex !== -1) {
-                localStorage.setItem("editMaturityData", JSON.stringify(data[realIndex]));
-                router.push(`/maturity-level/edit-maturity/${realIndex}`);
-              }
-            }}
-            onDeactivate={(index) => {
-              setDeleteIndex(index);
-              setShowDelete(true);
-            }}
-          />
-        </div>
+            <SuccessNotification
+              isOpen={ShowSuccess}
+              onClose={() => setShowSuccess(false)}
+              message="Maturity berhasil ditambahkan"
+            />
 
-        {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          itemsPerPage={itemsPerPage}
-          totalItems={totalItems}
-          onItemsPerPageChange={(value) => setItemsPerPage(value)}
-          showItemsPerPage={true}
-          showTotalItems={true}
-        />
+            <div className="overflow-x-auto w-full">
+              <TableUpdate
+                columns={columns}
+                data={dataDenganAksi}
+                currentPage={currentPage}
+                rowsPerPage={itemsPerPage}
+                onEdit={(item) => {
+                  const realIndex = data.findIndex((d) => d.level === item.level);
+                  if (realIndex !== -1) {
+                    localStorage.setItem(
+                      "editMaturityData",
+                      JSON.stringify(data[realIndex])
+                    );
+                    router.push(`/maturity-level/edit-maturity/${realIndex}`);
+                  }
+                }}
+                onDeactivate={(index) => {
+                  setDeleteIndex(index);
+                  setShowDelete(true);
+                }}
+              />
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              itemsPerPage={itemsPerPage}
+              totalItems={totalItems}
+              onItemsPerPageChange={(value) => setItemsPerPage(value)}
+              showItemsPerPage={true}
+              showTotalItems={true}
+            />
+          </>
+        )}
       </div>
 
-      {/* Modal konfirmasi hapus */}
       <ModalConfirm
         isOpen={showDelete}
         onConfirm={() => {
@@ -309,7 +269,6 @@ const TablePage = () => {
         </div>
       </ModalConfirm>
 
-      {/* Modal Deskripsi per Variabel */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -328,17 +287,22 @@ const TablePage = () => {
           </div>
         }
       >
-        {Array.isArray(selectedDeskripsiList) && selectedDeskripsiList.length > 0 ? (
+        {Array.isArray(selectedDeskripsiList) &&
+        selectedDeskripsiList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {selectedDeskripsiList.map((desc, i) => (
               <div key={i} className="bg-purple-50 border rounded p-3">
                 <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-                <p className="text-sm text-gray-700">{desc || "(Tidak ada deskripsi)"}</p>
+                <p className="text-sm text-gray-700">
+                  {desc || "(Tidak ada deskripsi)"}
+                </p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center">Tidak ada deskripsi tersedia</p>
+          <p className="text-gray-500 text-center">
+            Tidak ada deskripsi tersedia
+          </p>
         )}
       </ModalConfirm>
     </div>
