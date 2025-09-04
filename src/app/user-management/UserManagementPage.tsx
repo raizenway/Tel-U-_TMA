@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo} from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
@@ -8,27 +8,24 @@ import TableUpdate from '@/components/TableUpdate';
 import TableButton from '@/components/TableButton';
 import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
+import { useSort } from "@/hooks/useSort";
+import { useListUsers } from "@/hooks/useUserManagement"; // ← Tambahkan import
+import { User } from "@/interfaces/user-management";
 
 
-interface User {
-  userId: string;
-  username: string;
-  password: string;
-  namaUser: string;
-  role: string;
-  status: 'active' | 'inactive';
-  namaPIC?: string;
-  email?: string;
-  nomorHp?: string;
-  logoFile?: string;
-}
 
 export default function UserManagementPage() {
   const router = useRouter();
   
 
   
-  const [userList, setUserList] = useState<User[]>([]);
+  const [refreshFlag, setRefreshFlag] = useState(0);
+const { data, loading, error } = useListUsers(refreshFlag);
+
+//MAPING DARI API
+const users = data?.data || [];
+
+
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
@@ -40,15 +37,15 @@ export default function UserManagementPage() {
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+ 
 
   // Kolom Tabel
   const columns = [
-  { header: 'User ID', key: 'userId', width: '140px', sortable: true },
+  { header: 'User ID', key: 'id', width: '140px', sortable: true },
   { header: 'User Name', key: 'username', width: '160px', sortable: true },
   { header: 'Password', key: 'password', width: '120px', sortable: false },
-  { header: 'Nama User', key: 'namaUser', width: '200px', sortable: true },
-  { header: 'Role', key: 'role', width: '140px', sortable: true },
+  { header: 'Nama User', key: 'fullname', width: '200px', sortable: true },
+  { header: 'Role', key: 'roleId', width: '140px', sortable: true },
   { header: 'Status', key: 'status', width: '100px', sortable: true },
   { 
     header: 'Aksi', 
@@ -60,7 +57,7 @@ export default function UserManagementPage() {
 ];
 
 
-  // Ambil data dari localStorage saat mount
+  // Ambil data dari API saat mount
   useEffect(() => {
     const storedUsers = localStorage.getItem('users');
     if (storedUsers) {
@@ -68,7 +65,7 @@ export default function UserManagementPage() {
         ...user,
         status: user.status || 'active',
       }));
-      setUserList(parsedUsers);
+  
     }
 
     const isNewDataAdded = localStorage.getItem('newDataAdded');
@@ -85,50 +82,30 @@ export default function UserManagementPage() {
   }, []);
 
 
-  // ✅ Filter dan Sort data
-const processedUsers = React.useMemo(() => {
-  let result = [...userList];
+  
+  // 1. Filter data berdasarkan pencarian
+const filteredUsers = useMemo(() => {
+  if (!searchTerm) return users;
+  const search = searchTerm.toLowerCase();
+  return users.filter((user) =>
+    user.id.toString().includes(search) ||
+    user.username.toLowerCase().includes(search) ||
+    user.fullname.toLowerCase().includes(search) ||
+    user.role_id.toString().includes(search) ||
+    user.status.toLowerCase().includes(search)
+  );
+}, [users, searchTerm]);
 
-  // 1. Filter berdasarkan pencarian
-  if (searchTerm) {
-    const search = searchTerm.toLowerCase();
-    result = result.filter((user) =>
-      (user.userId && user.userId.toLowerCase().includes(search)) ||
-      user.username.toLowerCase().includes(search) ||
-      user.namaUser.toLowerCase().includes(search) ||
-      user.role.toLowerCase().includes(search) ||
-      user.status.toLowerCase().includes(search) ||
-      (user.namaPIC && user.namaPIC.toLowerCase().includes(search)) ||
-      (user.email && user.email.toLowerCase().includes(search)) ||
-      (user.nomorHp && user.nomorHp.toLowerCase().includes(search))
-    );
-  }
 
-  // 2. Sort berdasarkan sortConfig
-  if (sortConfig) {
-    result.sort((a, b) => {
-      let aVal = a[sortConfig.key];
-      let bVal = b[sortConfig.key];
 
-      // Case-insensitive untuk string
-      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-
-  return result;
-}, [userList, searchTerm, sortConfig]);
-
+  const { sortedData, requestSort, sortConfig } = useSort<User>(filteredUsers, "id");
+  
 // Pagination
-const totalItems = processedUsers.length;
+const totalItems = sortedData.length;
 const totalPages = Math.ceil(totalItems / itemsPerPage);
 const indexOfLastItem = currentPage * itemsPerPage;
 const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-const currentUsers = processedUsers.slice(indexOfFirstItem, indexOfLastItem);
+const currentUsers = sortedData.slice(indexOfFirstItem, indexOfLastItem);
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
@@ -148,50 +125,46 @@ const currentUsers = processedUsers.slice(indexOfFirstItem, indexOfLastItem);
 const toggleStatus = (index: number) => {
   const globalIndex = indexOfFirstItem + index; // Konversi ke index global
   setPendingToggleIndex(globalIndex);
-  const nextStatus = userList[globalIndex].status === 'active' ? 'inactive' : 'active';
+  const nextStatus = users[globalIndex].status === 'active' ? 'inactive' : 'active';
   setTargetStatus(nextStatus);
   setShowModal(true);
 };
 
-  const handleConfirm = () => {
-    if (pendingToggleIndex !== null) {
-      const updatedUsers = [...userList];
-      updatedUsers[pendingToggleIndex].status =
-        updatedUsers[pendingToggleIndex].status === 'active' ? 'inactive' : 'active';
-      setUserList(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-    }
-    setShowModal(false);
-    setPendingToggleIndex(null);
-    setTargetStatus(null);
-  };
+const handleConfirm = () => {
+  // Cukup refetch data dari API
+  setRefreshFlag(prev => prev + 1); // ← Trigger refetch
+  setShowModal(false);
+  setPendingToggleIndex(null);
+  setTargetStatus(null);
+};
 
-  const handleEditUser = (user: User) => {
-    localStorage.setItem('selectedUser', JSON.stringify(user));
-    router.push(`/user-management/edit-user?userId=${user.userId}`);
-  };
+ const handleEditUser = (user: User) => {
+  // Simpan data asli dari API
+  localStorage.setItem('selectedUser', JSON.stringify({
+    userId: user.id.toString(),
+    username: user.username,
+    fullname: user.fullname,
+    email: user.email,
+    phone_number: user.phone_number,
+    roleId: user.role_id,
+    status: user.status,
+  }));
+  router.push(`/user-management/edit-user?userId=${user.id}`);
+};
 
-  const handleSort = (key: string) => {
-    setSortConfig((prev) => {
-      if (!prev || prev.key !== key) {
-        return { key, direction: "asc" };
-      }
-      if (prev.direction === "asc") {
-        return { key, direction: "desc" };
-      }
-      return null;
-    });
-  };
 
   const dataForExport = currentUsers.map((item) => ({
-  'User ID': item.userId,
+  'User ID': item.id,
   'User Name': item.username,
   Password: item.password,
-  'Nama User': item.namaUser,
-  Role: item.role,
+  'Nama User': item.fullname,
+  Role: item.role_id,
   Status: item.status,
 }));
+
   
+if (loading) return <p className="p-6">Loading data dari server...</p>;
+if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
 
   return (
     <div className="flex">
@@ -251,17 +224,13 @@ const toggleStatus = (index: number) => {
         {/* Table */}
         <TableUpdate
           columns={columns}
-          data={currentUsers.map(user => ({
-            ...user,
-            password: '••••••••',
-            // ❌ JANGAN ubah status! Biarkan tetap 'active' atau 'inactive'
-          }))}
+          data={currentUsers}
           currentPage={currentPage}
           rowsPerPage={itemsPerPage}
           onEdit={handleEditUser}
           onDeactivate={(index) => toggleStatus(index)}
           onReactivate={(index) => toggleStatus(index)}
-          onSort={handleSort}
+          onSort={requestSort}
         sortConfig={sortConfig}
         />
 
@@ -271,7 +240,7 @@ const toggleStatus = (index: number) => {
           totalPages={totalPages}
           onPageChange={handlePageChange}
           itemsPerPage={itemsPerPage}
-          totalItems={processedUsers.length}
+          totalItems={sortedData.length}
           onItemsPerPageChange={(value) => setItemsPerPage(value)}
           showItemsPerPage={true}
           showTotalItems={true}

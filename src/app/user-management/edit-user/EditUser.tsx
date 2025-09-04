@@ -100,14 +100,15 @@ export default function EditUserPage() {
             }}
             className="grid grid-cols-2 gap-x-12 gap-y-6"
           >
+            
             <div>
-              <label className="block mb-1 text-sm font-medium">User ID</label>
+              <label className="block mb-1 text-sm font-medium">Password</label>
               <input
-                name="userId"
-                type="text"
-                value={form.userId}
-                readOnly
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-100"
+                name="password"
+                type="password"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
               />
             </div>
 
@@ -123,11 +124,11 @@ export default function EditUserPage() {
             </div>
 
             <div>
-              <label className="block mb-1 text-sm font-medium">Password</label>
+              <label className="block mb-1 text-sm font-medium">Email</label>
               <input
-                name="password"
-                type="password"
-                value={form.password}
+                name="email"
+                type="email"
+                value={form.email}
                 onChange={handleChange}
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
               />
@@ -209,14 +210,17 @@ export default function EditUserPage() {
             )}
 
             <div>
-              <label className="block mb-1 text-sm font-medium">Email</label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
+              <label className="block mb-1 text-sm font-medium">Status</label>
+              <select
+                name="status"
+                value={form.status}
                 onChange={handleChange}
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
-              />
+              >
+                <option value="">Pilih Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
 
             <div>
@@ -231,19 +235,7 @@ export default function EditUserPage() {
               />
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">Status</label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
-              >
-                <option value="">Pilih Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+            
           </form>
 
           <div className="flex justify-end mt-8 gap-6">
