@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   listTransformationVariables, 
   createTransformationVariable,
-  UpdateTransformationVariable, 
+  updateTransformationVariable, 
   getTransformationVariableById,
 } from '@/lib/api-transformation-variable';
 import { 
@@ -13,7 +13,7 @@ import {
 } from '@/interfaces/transformation-variable';
 import { ApiResponse } from '@/interfaces/api-response';
 
-// 🔹 Hook untuk list
+//Hook untuk list
 export const useTransformationVariableList = () => {
   const [data, setData] = useState<TransformationVariable[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -47,20 +47,26 @@ export const useTransformationVariableList = () => {
   return { data, loading, error, refetch };
 };
 
-// 🔹 Hook untuk create
+//Hook untuk create 
 export const useCreateTransformationVariable = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = async (body: CreateTransformationVariable): Promise<TransformationVariable> => {
+  const mutate = async (body: CreateTransformationVariable): Promise<TransformationVariable | null> => {
     setLoading(true);
     setError(null);
     try {
       const res = await createTransformationVariable(body);
-      return res.data;
+      if (res.status === 'success') {
+        return res.data;
+      } else {
+        setError(res.message || 'Gagal membuat variabel');
+        return null;
+      }
     } catch (err: any) {
-      setError(err.message);
-      throw err;
+      const message = err.message || 'Tidak dapat terhubung ke server';
+      setError(message);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -69,7 +75,7 @@ export const useCreateTransformationVariable = () => {
   return { mutate, loading, error };
 };
 
-// 🔹 Hook untuk update (PUT)
+//Hook untuk update 
 export const useUpdateTransformationVariable = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,15 +83,21 @@ export const useUpdateTransformationVariable = () => {
   const mutate = async (
     id: number,
     body: Partial<Omit<TransformationVariable, 'id'>>
-  ): Promise<TransformationVariable> => {
+  ): Promise<TransformationVariable | null> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await UpdateTransformationVariable(id, body); // ✅ Ganti: put → update
-      return res.data;
+      const res = await updateTransformationVariable(id, body);
+      if (res.status === 'success') {
+        return res.data;
+      } else {
+        setError(res.message || 'Gagal memperbarui variabel');
+        return null;
+      }
     } catch (err: any) {
-      setError(err.message);
-      throw err;
+      const message = err.message || 'Tidak dapat terhubung ke server';
+      setError(message);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -100,7 +112,10 @@ export const useGetTransformationVariableById = (id: number) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
+    // ✅ 1. Validasi ID
+    if (!id || isNaN(id)) {
+      setError('ID tidak valid');
+      setData(null);
       setLoading(false);
       return;
     }
@@ -109,19 +124,37 @@ export const useGetTransformationVariableById = (id: number) => {
       setLoading(true);
       setError(null);
       try {
+        console.log(`[API] Fetching variable with ID: ${id}`); 
+
         const response = await getTransformationVariableById(id);
+
         if (response.status === 'success') {
-          setData(response.data);
+          if (response.data) {
+            setData(response.data);
+          } else {
+            setError('Data tidak ditemukan di server.');
+            setData(null);
+          }
         } else {
-          setError(response.message || 'Gagal memuat data');
+         
+          setError(response.message || 'Gagal memuat data dari server');
+          setData(null);
         }
       } catch (err: any) {
-        setError(err.message);
+        
+        const errorMessage = err.message 
+          ? `Network error: ${err.message}` 
+          : 'Tidak dapat terhubung ke server';
+        
+        console.error('Error fetching variable:', err); 
+        setError(errorMessage);
+        setData(null);
       } finally {
         setLoading(false);
       }
     };
-fetchData();
+
+    fetchData();
   }, [id]);
 
   return { data, loading, error };

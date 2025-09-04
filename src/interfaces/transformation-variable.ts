@@ -19,7 +19,7 @@ export interface CreateTransformationVariableRequest {
   sortOrder: number;
 }
 
-export interface PutTransformationVariableRequest {
+export interface UpdateTransformationVariableRequest {
   name?: string;
   weight?: number;
   description?: string;
