@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
 import SuccessNotification from "@/components/SuccessNotification";
+import { useCreateMaturityLevel } from "@/hooks/useMaturityLevel";
 
 export default function AddMaturityLevelPage() {
   const [formData, setFormData] = useState({
@@ -16,66 +17,56 @@ export default function AddMaturityLevelPage() {
     deskripsiPerVariabel: [] as string[],
   });
 
-  const [showNotif, setShowNotif] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const { mutate, loading, error } = useCreateMaturityLevel();
   const router = useRouter();
-  const [ ShowSuccess, setShowSuccess ] = useState(false);
 
-
-  // ✅ Muat data sementara hanya jika dari halaman tambah
+  // Muat data sementara (kalau ada)
   useEffect(() => {
     const tempForm = localStorage.getItem("maturityTempForm");
-
-    if (tempForm) {
-      try {
-        const parsed = JSON.parse(tempForm);
-        if (parsed.fromAdd === true) {
-          setFormData((prev) => ({
-            ...prev,
-            level: parsed.level || "",
-            namaLevel: parsed.namaLevel || "",
-            skorMin: parsed.skorMin || "",
-            skorMax: parsed.skorMax || "",
-            deskripsiUmum: parsed.deskripsiUmum || "",
-            deskripsiPerVariabel: Array.isArray(parsed.deskripsiPerVariabel)
-              ? parsed.deskripsiPerVariabel
-              : [],
-          }));
-        }
-      } catch (e) {
-        console.warn("Gagal parse maturityTempForm", e);
+    if (!tempForm) return;
+    try {
+      const parsed = JSON.parse(tempForm);
+      if (parsed.fromAdd === true) {
+        setFormData((prev) => ({
+          ...prev,
+          ...parsed,
+          deskripsiPerVariabel: Array.isArray(parsed.deskripsiPerVariabel)
+            ? parsed.deskripsiPerVariabel
+            : [],
+        }));
       }
+    } catch (e) {
+      console.warn("Gagal parse maturityTempForm", e);
     }
   }, []);
 
-  // ✅ Dengarkan update dari halaman deskripsi-per-variabel
+  // Sync dari halaman deskripsi-per-variabel
   useEffect(() => {
     const handleFocus = () => {
       const tempForm = localStorage.getItem("maturityTempForm");
-      if (tempForm) {
-        try {
-          const tempData = JSON.parse(tempForm);
-          if (Array.isArray(tempData.deskripsiPerVariabel)) {
-            setFormData((prev) => ({
-              ...prev,
-              deskripsiPerVariabel: tempData.deskripsiPerVariabel,
-            }));
-          }
-        } catch (e) {
-          console.warn("Gagal muat deskripsiPerVariabel", e);
+      if (!tempForm) return;
+      try {
+        const tempData = JSON.parse(tempForm);
+        if (Array.isArray(tempData.deskripsiPerVariabel)) {
+          setFormData((prev) => ({
+            ...prev,
+            deskripsiPerVariabel: tempData.deskripsiPerVariabel,
+          }));
         }
+      } catch (e) {
+        console.warn("Gagal muat deskripsiPerVariabel", e);
       }
     };
-
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const isFormValid =
@@ -85,84 +76,50 @@ export default function AddMaturityLevelPage() {
     formData.skorMax.trim() !== "" &&
     formData.deskripsiUmum.trim() !== "";
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
     if (!isFormValid) return;
 
-    // ✅ Pastikan key lama tidak ganggu
-    localStorage.removeItem("maturityLevels");
-
-    // ✅ Ambil data lama dari localStorage
-    const existingDataStr = localStorage.getItem("maturityData");
-    let existingData: any[] = [];
-
     try {
-      if (existingDataStr) {
-        existingData = JSON.parse(existingDataStr);
-      }
-    } catch (e) {
-      console.error("Data maturityData rusak, reset ke array kosong");
-      existingData = [];
+      // Kirim sesuai interface API (EN)
+      await mutate({
+        name: formData.namaLevel.trim(),
+        levelNumber: Number(formData.level),
+        minScore: Number(formData.skorMin),
+        maxScore: Number(formData.skorMax),
+        generalDescription: formData.deskripsiUmum.trim(),
+        scoreDescription: formData.deskripsiPerVariabel,
+      });
+
+      // Beresin state & storage
+      localStorage.removeItem("maturityTempForm");
+      setFormData({
+        level: "",
+        namaLevel: "",
+        skorMin: "",
+        skorMax: "",
+        deskripsiUmum: "",
+        deskripsiPerVariabel: [],
+      });
+
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        router.push("/maturity-level");
+      }, 2000);
+    } catch (err: any) {
+      alert("Gagal menyimpan: " + (err?.message ?? "Unknown error"));
     }
-
-    // ✅ Cek duplikat level (anggap angka & string sama)
-    const newLevel = formData.level.trim();
-    const isDuplicate = existingData.some(
-      (item) => String(item.level).trim() === newLevel
-    );
-
-    if (isDuplicate) {
-      alert(`Level ${newLevel} sudah ada. Harap gunakan level yang berbeda.`);
-      return;
-    }
-
-    // ✅ Buat data baru
-    const newData = {
-      level: newLevel,
-      namaLevel: formData.namaLevel.trim(),
-      skorMin: formData.skorMin.trim(),
-      skorMax: formData.skorMax.trim(),
-      deskripsiUmum: formData.deskripsiUmum.trim(),
-      deskripsiPerVariabel: [...formData.deskripsiPerVariabel],
-    };
-
-    // ✅ Simpan ke localStorage
-    const updatedData = [...existingData, newData];
-    localStorage.setItem("maturityData", JSON.stringify(updatedData));
-
-    // ✅ Hapus data sementara
-    localStorage.removeItem("maturityTempForm");
-
-    // ✅ Reset form
-    setFormData({
-      level: "",
-      namaLevel: "",
-      skorMin: "",
-      skorMax: "",
-      deskripsiUmum: "",
-      deskripsiPerVariabel: [],
-    });
-
-    // ✅ Tampilkan notifikasi
-    setShowNotif(true);
-    setTimeout(() => {
-      setShowNotif(false);
-      router.push("/maturity-level");
-    }, 2000);
   };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center relative">
-     {/* Notifikasi */}
-        <SuccessNotification
-           isOpen={ShowSuccess}
-           onClose={() => setShowSuccess(false)}
-           message="Data berhasil disimpan"
-        />
+      <SuccessNotification
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Data berhasil disimpan"
+      />
 
-
-      {/* Form */}
       <form
         onSubmit={handleSubmit}
         className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl"
@@ -171,7 +128,7 @@ export default function AddMaturityLevelPage() {
           <div>
             <label className="block text-sm font-medium">Level</label>
             <input
-              type="text"
+              type="number"
               name="level"
               value={formData.level}
               onChange={handleChange}
@@ -193,7 +150,7 @@ export default function AddMaturityLevelPage() {
           <div>
             <label className="block text-sm font-medium">Skor Minimum</label>
             <input
-              type="text"
+              type="number"
               name="skorMin"
               value={formData.skorMin}
               onChange={handleChange}
@@ -204,7 +161,7 @@ export default function AddMaturityLevelPage() {
           <div>
             <label className="block text-sm font-medium">Skor Maximum</label>
             <input
-              type="text"
+              type="number"
               name="skorMax"
               value={formData.skorMax}
               onChange={handleChange}
@@ -231,12 +188,9 @@ export default function AddMaturityLevelPage() {
               onClick={() => {
                 localStorage.setItem(
                   "maturityTempForm",
-                  JSON.stringify({
-                    ...formData,
-                    fromAdd: true,
-                  })
+                  JSON.stringify({ ...formData, fromAdd: true })
                 );
-               router.push(`/maturity-level/deskripsi-per-variabel?mode=add`);
+                router.push(`/maturity-level/deskripsi-per-variabel?mode=add`);
               }}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
@@ -262,17 +216,19 @@ export default function AddMaturityLevelPage() {
             Batal
           </Button>
 
-          <Button
+        <Button
             variant="primary"
             type="submit"
             icon={Save}
             iconPosition="left"
             className="rounded-[12px] px-17 py-2 text-sm font-semibold"
-            disabled={!isFormValid}
+            disabled={!isFormValid || loading}
           >
-            Simpan
+            {loading ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
+
+        {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
       </form>
     </div>
   );
