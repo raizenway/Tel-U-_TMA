@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
@@ -10,70 +10,47 @@ import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info as LucideInfo } from 'lucide-react';
 import SuccessNotification from '@/components/SuccessNotification';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
+import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList'; // ✅ Impor hook update
 
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10); // 🔁 Sekarang bisa diubah
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const router = useRouter();
-  const [tableData, setTableData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // 🔹 Load data dari API
-  const loadTableData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('http://localhost:3000/api/assessment/variable', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-cache',
-      });
+  //Ambil data
+  const { data, loading, error, refetch } = useTransformationVariableList();
 
-      if (!res.ok) throw new Error(`Gagal ambil data: ${res.status}`);
+  // 🔹 Ambil mutate
+  const { mutate: updateVariable, loading: updating } = useUpdateTransformationVariable();
 
-      const data = await res.json();
+  if (error) {
+    return (
+      <div className="p-4 text-red-500 bg-red-50 border border-red-200 rounded">
+        {error} 
+      </div>
+    );
+  }
 
-      const formatted = data.map((item: any) => ({
-        id: item.id,
-        nama: item.name || '-',
-        variable: '-',
-        bobot: item.weight || '-',
-        pertanyaan: '-',
-        deskripsi: item.description || '-',
-        referensi: item.reference || '-',
-        logoUrl: null,
-        status: item.status === 'active' ? 'Active' : 'Inactive',
-      }));
+  // Format data tabel
+  const tableData = data.map((item) => ({
+    id: item.id,
+    nama: item.name || '-',
+    bobot: item.weight || '-',
+    pertanyaan: '-',
+    deskripsi: item.description || '-',
+    referensi: item.reference || '-',
+    logoUrl: null,
+    status: item.status === 'active' ? 'Active' : 'Inactive',
+  }));
 
-      setTableData(formatted);
-    } catch (error) {
-      console.error('Gagal ambil data dari API:', error);
-      setTableData([]);
-      alert('Tidak bisa terhubung ke server.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      await loadTableData();
-
-      if (localStorage.getItem('newDataAdded') === 'true') {
-        setShowSuccess(true);
-        localStorage.removeItem('newDataAdded');
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // 🔹 Sorting
+  //Sorting
   const handleSort = (key: string) => {
     setSortConfig((prev) => {
       if (!prev || prev.key !== key) {
@@ -86,8 +63,7 @@ export default function AssessmentPage() {
     });
   };
 
-  // 🔹 Urutkan data
-  const sortedData = React.useMemo(() => {
+  const sortedData = useMemo(() => {
     if (!sortConfig) return tableData;
 
     return [...tableData].sort((a, b) => {
@@ -103,48 +79,52 @@ export default function AssessmentPage() {
     });
   }, [tableData, sortConfig]);
 
-  // 🔹 Filter
+  //Filter
   const filteredData = sortedData.filter((item) =>
     Object.values(item).some((val) =>
       String(val).toLowerCase().includes(search.toLowerCase())
     )
   );
 
-  // 🔹 Pagination
+  //Pagination
   const totalData = filteredData.length;
   const totalPages = Math.ceil(totalData / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
   const currentData = filteredData.slice(startIndex, startIndex + rowsPerPage);
 
-  // 🔹 Buka modal
+  //modal
   const openConfirmModal = (id: number, action: 'activate' | 'deactivate') => {
     setItemId(id);
     setModalAction(action);
     setShowModal(true);
   };
 
-  // 🔹 Toggle status
+  //HOOK UPDATE
   const handleToggleStatus = async () => {
     if (itemId === null) return;
 
     try {
-      const currentItem = tableData.find(item => item.id === itemId);
-      const newStatus = currentItem?.status === 'Active' ? 'Inactive' : 'Active';
+      
+      const currentItem = data.find(item => item.id === itemId);
+      if (!currentItem) throw new Error('Data tidak ditemukan');
 
-      const res = await fetch(`http://localhost:3000/api/assessment/variable/${itemId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
+      
+      const newStatus = currentItem.status === 'active' ? 'inactive' : 'active';
+
+      //hook
+      await updateVariable(itemId, {
+        name: currentItem.name,
+        weight: currentItem.weight,
+        description: currentItem.description,
+        reference: currentItem.reference,
+        sortOrder: currentItem.sortOrder || 1,
+        status: newStatus,
       });
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Update gagal');
-      }
+      // Refresh daftar setelah update
+      refetch();
 
-      await loadTableData();
+      // Tutup modal
       setShowModal(false);
       setItemId(null);
       setModalAction(null);
@@ -154,12 +134,8 @@ export default function AssessmentPage() {
     }
   };
 
-  // 🔹 Konfirmasi
   const handleConfirm = () => {
     handleToggleStatus();
-    setShowModal(false);
-    setItemId(null);
-    setModalAction(null);
   };
 
   const handleCancel = () => {
@@ -168,7 +144,7 @@ export default function AssessmentPage() {
     setModalAction(null);
   };
 
-  // 🔹 Kolom tabel
+  // Kolom tabel
   const columns = [
     { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
@@ -195,7 +171,6 @@ export default function AssessmentPage() {
   const dataForExport = currentData.map((item, index) => ({
     Nomor: startIndex + index + 1,
     'Nama Variable': item.nama,
-    Variable: item.variable,
     Bobot: item.bobot,
     Pertanyaan: item.pertanyaan,
     Deskripsi: item.deskripsi,
@@ -206,7 +181,6 @@ export default function AssessmentPage() {
 
   return (
     <div className="flex">
-      {/* Container utama */}
       <div className="flex-1">
         <div className="rounded-lg overflow-hidden">
           
@@ -222,16 +196,16 @@ export default function AssessmentPage() {
             <div className="flex flex-wrap justify-between items-center gap-4">
               <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
                 <SearchTable
-              value={search}
-              onChange={setSearch}
-              placeholder="Cari Transformation variable .."
-              className="mb-4"
-            />
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Cari Transformation variable .."
+                  className="mb-4"
+                />
               </div>
               <div className="flex gap-2 flex-wrap">
                 <TableButton 
                   data={dataForExport}
-                  columns={['Nomor', 'Nama Variable', 'Variable', 'Bobot', 'Pertanyaan', 'Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
+                  columns={['Nomor', 'Nama Variable', 'Bobot', 'Pertanyaan', 'Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
                 />
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
                   Tambah Variable
@@ -242,7 +216,7 @@ export default function AssessmentPage() {
 
           {/* Tabel */}
           {loading ? (
-            <div className="p-10 text-center text-gray-500">Memuat data...</div>
+            <div className="p-10 text-center text-gray-500">Memuat data dari API...</div>
           ) : (
             <div className="overflow-x-auto">
               <TableUpdate
@@ -250,10 +224,8 @@ export default function AssessmentPage() {
                 data={currentData}
                 currentPage={currentPage}
                 rowsPerPage={rowsPerPage}
-                onEdit={(item) => {
-                  const { logo, ...safeItem } = item;
-                  localStorage.setItem('editData', JSON.stringify(safeItem));
-                  router.push('/transformation-variable/tambah-variable');
+                onEdit={(item) => { 
+                  router.push(`/transformation-variable/edit/${item.id}`);
                 }}
                 onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
                 onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
@@ -263,7 +235,7 @@ export default function AssessmentPage() {
             </div>
           )}
 
-          {/* 🔁 Pagination: SUDAH PAKAI DROPDOWN */}
+          {/* Pagination */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
