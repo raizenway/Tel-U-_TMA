@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect } from 'react'; // ✅ Tambah useEffect
+import { useRouter, useSearchParams } from 'next/navigation'; // ✅ Tambah useSearchParams
 import Button from '@/components/button';
 import TableUpdate from '@/components/TableUpdate';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
@@ -11,7 +11,7 @@ import Pagination from '@/components/Pagination';
 import { Info as LucideInfo } from 'lucide-react';
 import SuccessNotification from '@/components/SuccessNotification';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
-import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList'; // ✅ Impor hook update
+import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList';
 
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,7 +22,36 @@ export default function AssessmentPage() {
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null); // ✅ Tambah ini
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  // 🔹 Ambil searchParams
+  const searchParams = useSearchParams();
+
+  // 🔹 Tambah useEffect untuk baca query 'success'
+  useEffect(() => {
+    const successType = searchParams.get('success');
+    if (successType) {
+      let message = '';
+      if (successType === 'created') {
+        message = 'Variable baru berhasil ditambahkan!';
+      } else if (successType === 'updated') {
+        message = 'Perubahan variable berhasil disimpan!';
+      } else if (successType === 'true') {
+        message = 'Variable berhasil disimpan!';
+      }
+
+      if (message) {
+        setSuccessMessage(message);
+        setShowSuccess(true);
+
+        // Hapus query dari URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('success');
+        router.replace(url.pathname + url.search, { scroll: false });
+      }
+    }
+  }, [searchParams, router]);
 
   //Ambil data
   const { data, loading, error, refetch } = useTransformationVariableList();
@@ -43,7 +72,6 @@ export default function AssessmentPage() {
     id: item.id,
     nama: item.name || '-',
     bobot: item.weight || '-',
-    pertanyaan: '-',
     deskripsi: item.description || '-',
     referensi: item.reference || '-',
     logoUrl: null,
@@ -124,6 +152,14 @@ export default function AssessmentPage() {
       // Refresh daftar setelah update
       refetch();
 
+      // ✅ Tampilkan notifikasi sukses
+      setSuccessMessage(
+        newStatus === 'active'
+          ? 'Data berhasil diaktifkan!'
+          : 'Data berhasil dinonaktifkan!'
+      );
+      setShowSuccess(true);
+
       // Tutup modal
       setShowModal(false);
       setItemId(null);
@@ -149,7 +185,6 @@ export default function AssessmentPage() {
     { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
     { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: true },
-    { header: 'Pertanyaan', key: 'pertanyaan', width: '250px', sortable: true },
     { header: 'Deskripsi', key: 'deskripsi', width: '300px', sortable: true },
     { header: 'Referensi', key: 'referensi', width: '100px', sortable: true },
     {
@@ -172,7 +207,6 @@ export default function AssessmentPage() {
     Nomor: startIndex + index + 1,
     'Nama Variable': item.nama,
     Bobot: item.bobot,
-    Pertanyaan: item.pertanyaan,
     Deskripsi: item.deskripsi,
     Referensi: item.referensi,
     'Logo URL': item.logoUrl || '-',
@@ -184,11 +218,14 @@ export default function AssessmentPage() {
       <div className="flex-1">
         <div className="rounded-lg overflow-hidden">
           
-          {/* Notifikasi sukses */}
+          {/* Notifikasi sukses — ✅ DIPERBAIKI */}
           <SuccessNotification
             isOpen={showSuccess}
-            onClose={() => setShowSuccess(false)}
-            message="Variable baru berhasil ditambahkan!"
+            onClose={() => {
+              setShowSuccess(false);
+              setSuccessMessage(null);
+            }}
+            message={successMessage || "Variable baru berhasil ditambahkan!"}
           />
 
           {/* Toolbar */}
@@ -205,7 +242,7 @@ export default function AssessmentPage() {
               <div className="flex gap-2 flex-wrap">
                 <TableButton 
                   data={dataForExport}
-                  columns={['Nomor', 'Nama Variable', 'Bobot', 'Pertanyaan', 'Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
+                  columns={['Nomor', 'Nama Variable', 'Bobot','Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
                 />
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
                   Tambah Variable
