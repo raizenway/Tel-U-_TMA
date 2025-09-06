@@ -85,24 +85,34 @@ export default function EditMaturityPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+const handleSubmit = (e: FormEvent) => {
+  e.preventDefault();
 
-    const savedData = localStorage.getItem("maturityData");
-    if (savedData && !isNaN(Number(realId))) {
-      const parsed: MaturityType[] = JSON.parse(savedData);
-      parsed[Number(realId)] = formData;
-      localStorage.setItem("maturityData", JSON.stringify(parsed));
-      localStorage.removeItem(tempKey); // hapus data sementara
-    }
+  const savedData = localStorage.getItem("maturityData");
+  const parsed: MaturityType[] = savedData ? JSON.parse(savedData) : [];
 
-    router.push("/maturity-level?success=true");
-  };
+  // update record sesuai index realId
+  if (parsed[Number(realId)]) {
+    parsed[Number(realId)] = formData;
+  }
+
+  // simpan lagi ke localStorage
+  localStorage.setItem("maturityData", JSON.stringify(parsed));
+
+  // hapus tempKey biar ga bentrok
+  localStorage.removeItem(tempKey);
+
+  router.push("/maturity-level?success=true");
+};
+
+
 
   const handleEditDeskripsi = () => {
-    localStorage.setItem(tempKey, JSON.stringify(formData));
-    router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
-  };
+  // simpan sementara biar dibaca di DeskripsiVariabelTable
+  localStorage.setItem(tempKey, JSON.stringify(formData));
+  router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
+};
+
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
@@ -170,13 +180,13 @@ export default function EditMaturityPage() {
             <label className="block text-sm font-medium mb-1">
               Deskripsi per Variabel
             </label>
-            <button
+           <button
               type="button"
               onClick={handleEditDeskripsi}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
               {formData.deskripsiPerVariabel.some((d) => d.trim())
-                ? `Lihat & Edit Deskripsi (${formData.deskripsiPerVariabel.filter(Boolean).length}/5)`
+                ? `Lihat Deskripsi (${formData.deskripsiPerVariabel.filter(Boolean).length}/5)`
                 : "+ Tambah Deskripsi"}
             </button>
           </div>
