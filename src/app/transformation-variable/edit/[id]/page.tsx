@@ -24,7 +24,6 @@ export default function EditVariablePage() {
   // ✅ State form
   const [namaVariabel, setNamaVariabel] = useState('');
   const [bobot, setBobot] = useState('');
-  const [pertanyaan, setPertanyaan] = useState(''); // Tapi tidak dikirim
   const [deskripsi, setDeskripsi] = useState('');
   const [referensi, setReferensi] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
@@ -37,7 +36,6 @@ export default function EditVariablePage() {
     if (data) {
       setNamaVariabel(data.name || '');
       setBobot(data.weight?.toString() || '');
-      setPertanyaan(''); // ⚠️ simpan di form, tapi tidak dikirim
       setDeskripsi(data.description || '');
       setReferensi(data.reference || '');
       setStatus(data.status === 'active' ? 'Active' : 'Inactive');
@@ -146,15 +144,6 @@ export default function EditVariablePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pertanyaan</label>
-                <textarea
-                  value={pertanyaan}
-                  onChange={(e) => setPertanyaan(e.target.value)}
-                  rows={4}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
                 <textarea

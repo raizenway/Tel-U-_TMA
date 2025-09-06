@@ -41,12 +41,11 @@ export default function VariabelFormPage() {
     setIsFormValid(
       !!(namaVariabel.trim() &&
         bobot.trim() &&
-        pertanyaan.trim() &&
         deskripsi.trim() &&
         referensi.trim() &&
         status)
     );
-  }, [namaVariabel, bobot, pertanyaan, deskripsi, referensi, status]);
+  }, [namaVariabel, bobot,  deskripsi, referensi, status]);
 
   // Prefill jika mode edit
   useEffect(() => {
@@ -60,7 +59,6 @@ export default function VariabelFormPage() {
 
       setNamaVariabel(parsed.name || parsed.namaVariabel || '');
       setBobot(parsed.weight?.toString() || '');
-      setPertanyaan(parsed.question || parsed.pertanyaan || '');
       setDeskripsi(parsed.description || parsed.deskripsi || '');
       setReferensi(parsed.reference || parsed.referensi || '');
 
@@ -120,15 +118,13 @@ export default function VariabelFormPage() {
     try {
       if (isEdit && editId) {
         await update(editId, payload);
-        alert('Berhasil memperbarui data.');
       } else {
         await create(payload);
-        alert('Berhasil menambahkan data.');
       }
 
       // Bersihkan state dan localStorage
       localStorage.removeItem('editData');
-      router.push('/transformation-variable');
+      router.push('/transformation-variable?success=true');
     } catch (err) {
       console.error('Gagal menyimpan data:', err);
       alert('Gagal menyimpan data. Periksa koneksi atau isi ulang form.');
@@ -192,18 +188,6 @@ export default function VariabelFormPage() {
 
             {/* Pertanyaan & Deskripsi */}
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pertanyaan
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={pertanyaan}
-                  onChange={(e) => setPertanyaan(e.target.value)}
-                  placeholder="Masukkan Pertanyaan"
-                  rows={4}
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Deskripsi

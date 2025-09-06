@@ -89,16 +89,7 @@ export const getTransformationVariableById = async (
   id: number
 ): Promise<ApiResponse<TransformationVariable>> => {
   try {
-    const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
-    if (!BASE_API_URL) {
-      return {
-        status: 'error',
-        message: 'NEXT_PUBLIC_API_URL tidak diatur di .env.local',
-        data: null, // ✅ Benar
-      };
-    }
-
-    const url = `${BASE_API_URL}/assessment/variable/${id}`;
+    const url = `${API_URL}/${id}`;
     console.log('📡 GET Request ke:', url);
 
     const res = await fetch(url, {
@@ -110,8 +101,8 @@ export const getTransformationVariableById = async (
       const errorData = await res.json().catch(() => ({}));
       return {
         status: 'error',
-        message: errorData.message || `Gagal ambil  ${res.status}`,
-        data: null, // ✅ Benar
+        message: errorData.message || `Gagal ambil data: ${res.status}`,
+        data: null,
       };
     }
 
@@ -119,14 +110,14 @@ export const getTransformationVariableById = async (
     return {
       status: 'success',
       message: 'Berhasil',
-      data, // ✅ data ada
+      data,
     };
   } catch (err: any) {
     console.error('🚨 Error di getTransformationVariableById:', err);
     return {
       status: 'error',
       message: err.message || 'Network error atau CORS',
-      data: null, // ✅ Benar
+      data: null,
     };
   }
 };
