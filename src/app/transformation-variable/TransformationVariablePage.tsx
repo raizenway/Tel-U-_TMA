@@ -271,7 +271,7 @@ const currentData = filteredData
                   columns={['Nomor', 'Nama Variable', 'Bobot','Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
                 />
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
-                   VTambahariable
+                   Tambah Variable
                 </Button>
               </div>
             </div>

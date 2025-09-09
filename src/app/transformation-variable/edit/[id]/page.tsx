@@ -6,6 +6,7 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
+import ContainerForm from '@/components/ContainerForm';
 
 export default function EditVariablePage() {
   const { id } = useParams();
@@ -132,11 +133,7 @@ export default function EditVariablePage() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <main className="p-6 bg-gray-100 flex-1 pt-24">
-        <div
-          className="bg-white rounded-xl shadow-md mx-auto"
-        >
+    <ContainerForm>
           <div className="p-8 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-800">Edit Variabel</h1>
           </div>
@@ -261,8 +258,6 @@ export default function EditVariablePage() {
               {updating ? 'Menyimpan...' : 'Simpan Perubahan'}
             </Button>
           </div>
-        </div>
-      </main>
-    </div>
+       </ContainerForm>
   );
 }

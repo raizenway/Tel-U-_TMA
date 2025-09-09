@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import ContainerForm from '@/components/ContainerForm';
 
 // 🔹 Impor hook untuk create dan update
 import { useCreateTransformationVariable } from '@/hooks/useTransformationVariableList';
@@ -140,12 +141,7 @@ export default function VariabelFormPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
-        <div
-          className="bg-white rounded-xl shadow-md mx-auto"
-         
-        >
+    <ContainerForm>
           {/* Header */}
           <div className="p-8 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-800">
@@ -282,8 +278,6 @@ export default function VariabelFormPage() {
               {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Simpan'}
             </Button>
           </div>
-        </div>
-      </main>
-    </div>
+        </ContainerForm>
   );
 }
