@@ -9,42 +9,65 @@ import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 export default function DeskripsiVariabelTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = searchParams.get("mode") || "add"; // default add
+  const mode = searchParams.get("mode") || "add"; // "add" | "edit"
+  const id = searchParams.get("id"); // ambil id dari query
 
   const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill(""));
   const [showCancel, setShowCancel] = useState(false);
 
-  // ✅ Muat data dari localStorage sesuai mode
+  // key sementara untuk sync dengan EditMaturityPage
+  const tempKey = id ? `maturityTempForm_${id}` : "maturityTempForm";
+
+  // ✅ Load data sesuai mode
   useEffect(() => {
-    const savedForm = localStorage.getItem("maturityTempForm");
-    if (savedForm) {
-      const parsed = JSON.parse(savedForm);
-      if (parsed.deskripsiPerVariabel && Array.isArray(parsed.deskripsiPerVariabel)) {
-        const loaded = [...parsed.deskripsiPerVariabel];
+    if (id) {
+      // 1️⃣ Coba ambil dari tempKey (sementara)
+      const savedForm = localStorage.getItem(tempKey);
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          if (Array.isArray(parsed.deskripsiPerVariabel)) {
+            const filled = Array(5)
+              .fill("")
+              .map((_, i) => parsed.deskripsiPerVariabel[i] || "");
+            setDeskripsi(filled);
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing temp data:", e);
+        }
+      }
+
+      // 2️⃣ Fallback: ambil dari maturityData (data utama)
+      const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
+      const item = savedData[Number(id)];
+      if (item && Array.isArray(item.deskripsiPerVariabel)) {
         const filled = Array(5)
           .fill("")
-          .map((_, i) => loaded[i] || "");
+          .map((_, i) => item.deskripsiPerVariabel[i] || "");
         setDeskripsi(filled);
       }
     }
-  }, []);
+  }, [id, tempKey]);
 
   // cek apakah semua field sudah diisi
   const allFilled = deskripsi.every((desc) => desc.trim() !== "");
 
+  // ✅ Simpan perubahan
   const handleSave = () => {
-    // Simpan ke localStorage temp
-    localStorage.setItem("deskripsiPerVariabelTemp", JSON.stringify(deskripsi));
+    if (id) {
+      // update selalu ke tempKey
+      const savedForm = JSON.parse(localStorage.getItem(tempKey) || "{}");
+      savedForm.deskripsiPerVariabel = deskripsi;
+      localStorage.setItem(tempKey, JSON.stringify(savedForm));
 
-    // Update maturityTempForm
-    const savedForm = JSON.parse(localStorage.getItem("maturityTempForm") || "{}");
-    savedForm.deskripsiPerVariabel = deskripsi;
-    localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
-
-    // Kembali ke halaman asal sesuai mode
-    if (mode === "edit") {
-      router.push("/maturity-level/edit-maturity");
+      // balik ke edit
+      router.push(`/maturity-level/edit-maturity/${id}`);
     } else {
+      // add mode
+      const savedForm = JSON.parse(localStorage.getItem("maturityTempForm") || "{}");
+      savedForm.deskripsiPerVariabel = deskripsi;
+      localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
       router.push("/maturity-level/add-maturity");
     }
   };
@@ -104,8 +127,8 @@ export default function DeskripsiVariabelTable() {
       <ModalConfirm
         isOpen={showCancel}
         onConfirm={() => {
-          if (mode === "edit") {
-            router.push("/maturity-level/edit-maturity");
+          if (mode === "edit" && id) {
+            router.push(`/maturity-level/edit-maturity/${id}`);
           } else {
             router.push("/maturity-level/add-maturity");
           }
