@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 
 interface ContainerFormProps {
@@ -14,14 +13,9 @@ const ContainerForm: React.FC<ContainerFormProps> = ({
   return (
    <div className="flex min-h-screen">
       <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
-        <div
-          className="bg-white rounded-xl shadow-md mx-auto"
-         
-        >
-          <div className={`bg-white rounded-xl shadow-md ${className}`}>
+          <div className={`bg-white rounded-xl shadow-md mx-auto${className}`}>
             {children}
           </div>
-        </div>
       </main>
     </div>
   );
