@@ -30,8 +30,13 @@ export default function LoginPage() {
       const result = await res.json();
 
       if (result.status === 'success') {
-        localStorage.setItem('user', JSON.stringify(result.data));
-        router.push('/welcome');
+  // 💡 SEMENTARA — tambahkan roleId secara manual
+  const userWithRole = {
+    ...result.data,
+    roleId: 3, // ← ganti angka ini sesuai kebutuhan testing: 1,2,3,4
+  };
+  localStorage.setItem('user', JSON.stringify(userWithRole));
+  router.push('/welcome');
       } else {
         setError(result.message || 'Login gagal');
       }
