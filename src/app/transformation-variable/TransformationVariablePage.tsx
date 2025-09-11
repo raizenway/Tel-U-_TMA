@@ -13,6 +13,18 @@ import SuccessNotification from '@/components/SuccessNotification';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList';
 
+// ✅ Tambahkan ini
+type TableItem = {
+  id: number;
+  nama: string;
+  bobot: string | number;
+  deskripsi: string;
+  referensi: string;
+  logoUrl: any;
+  status: string;
+  nomor_urut: number; // <-- ini yang baru
+};
+
 export default function AssessmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -23,7 +35,10 @@ export default function AssessmentPage() {
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null); // ✅ Tambah ini
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+  key: 'id',
+  direction: 'asc',
+});
 
   // 🔹 Ambil searchParams
   const searchParams = useSearchParams();
@@ -115,10 +130,16 @@ export default function AssessmentPage() {
   );
 
   //Pagination
-  const totalData = filteredData.length;
-  const totalPages = Math.ceil(totalData / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const currentData = filteredData.slice(startIndex, startIndex + rowsPerPage);
+  //Pagination
+const totalData = filteredData.length;
+const totalPages = Math.ceil(totalData / rowsPerPage);
+const startIndex = (currentPage - 1) * rowsPerPage;
+const currentData = filteredData
+  .slice(startIndex, startIndex + rowsPerPage)
+  .map((item, index): TableItem => ({
+    ...item,
+    nomor_urut: startIndex + index + 1, // ✅ Nomor urut tampilan: 1, 2, 3...
+  }));
 
   //modal
   const openConfirmModal = (id: number, action: 'activate' | 'deactivate') => {
@@ -150,7 +171,12 @@ export default function AssessmentPage() {
       });
 
       // Refresh daftar setelah update
-      refetch();
+        await refetch();
+
+        // ✅ Force re-sort agar urutan tetap sesuai sort terakhir
+        if (sortConfig) {
+          setSortConfig({ ...sortConfig }); // <-- INI BARIS BARU YANG WAJIB DITAMBAHKAN
+        }
 
       // ✅ Tampilkan notifikasi sukses
       setSuccessMessage(
@@ -182,9 +208,9 @@ export default function AssessmentPage() {
 
   // Kolom tabel
   const columns = [
-    { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
+    { header: 'Nomor', key: 'nomor_urut', width: '100px', className: 'text-center', sortable: false},
     { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
-    { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: true },
+    { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: false},
     { header: 'Deskripsi', key: 'deskripsi', width: '300px', sortable: true },
     { header: 'Referensi', key: 'referensi', width: '100px', sortable: true },
     {
@@ -204,7 +230,7 @@ export default function AssessmentPage() {
 
   // Data untuk export
   const dataForExport = currentData.map((item, index) => ({
-    Nomor: startIndex + index + 1,
+    Nomor: item.nomor_urut,
     'Nama Variable': item.nama,
     Bobot: item.bobot,
     Deskripsi: item.deskripsi,
@@ -245,7 +271,7 @@ export default function AssessmentPage() {
                   columns={['Nomor', 'Nama Variable', 'Bobot','Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
                 />
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
-                  Tambah Variable
+                   Tambah Variable
                 </Button>
               </div>
             </div>
