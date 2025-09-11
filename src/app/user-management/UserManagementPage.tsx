@@ -78,17 +78,21 @@ const filteredUsers = useMemo(() => {
  // Sorting
   const { sortedData, requestSort, sortConfig } = useSort<User>(filteredUsers, "id");
 
-  useEffect(() => {
+ useEffect(() => {
   const newDataAdded = localStorage.getItem('newDataAdded');
   const editDataSuccess = localStorage.getItem('editDataSuccess');
 
-  if (newDataAdded === 'true' || editDataSuccess === 'true') {
-    setSuccessMessage("Data Berhasil Disimpan");
+  if (newDataAdded === 'true') {
+    setSuccessMessage("User berhasil ditambahkan!");
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 5000); // Auto hide after 5s
-
-    // Hapus semua flag
+    setTimeout(() => setShowSuccess(false), 5000);
     localStorage.removeItem('newDataAdded');
+  }
+
+  if (editDataSuccess === 'true') {
+    setSuccessMessage("Data berhasil diperbarui!");
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000);
     localStorage.removeItem('editDataSuccess');
   }
 }, []);
