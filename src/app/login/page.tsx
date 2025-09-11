@@ -33,7 +33,7 @@ export default function LoginPage() {
   // 💡 SEMENTARA — tambahkan roleId secara manual
   const userWithRole = {
     ...result.data,
-    roleId: 3, // ← ganti angka ini sesuai kebutuhan testing: 1,2,3,4
+    roleId: 1, // ← ganti angka ini sesuai kebutuhan testing: 1,2,3,4
   };
   localStorage.setItem('user', JSON.stringify(userWithRole));
   router.push('/welcome');

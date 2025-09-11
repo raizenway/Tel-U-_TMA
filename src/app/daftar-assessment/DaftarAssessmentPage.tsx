@@ -8,21 +8,36 @@ import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import TableUpdate from '@/components/TableUpdate';
 import TableButton from '@/components/TableButton';
 import SearchTable from '@/components/SearchTable';
-import Pagination from '@/components/Pagination'; // ← Pastikan sudah diimpor
-
+import Pagination from '@/components/Pagination';
 import { Info } from 'lucide-react';
 
 export default function AssessmentPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10); // 🔁 Bisa diubah lewat dropdown
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
   const [targetStatus, setTargetStatus] = useState<'deactivate' | 'reactivate' | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  // 🔹 Tambahkan state roleId
+  const [roleId, setRoleId] = useState<number | null>(null);
+
+  // 🔹 Ambil roleId dari localStorage
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const parsed = JSON.parse(user);
+        setRoleId(Number(parsed.roleId));
+      } catch (e) {
+        console.error("Gagal parse user:", e);
+      }
+    }
+  }, []);
 
   // Load data
   useEffect(() => {
@@ -119,43 +134,6 @@ export default function AssessmentPage() {
     setTargetStatus(null);
   };
 
-  // Export
-  const handleCopy = () => {
-    const text = currentData
-      .map((item) => `${item.nomor}, ${item.variable}, ${item.bobot}, ${item.indikator}, ${item.pertanyaan}, ${item.status}`)
-      .join('\n');
-    navigator.clipboard.writeText(text);
-    alert('Data berhasil disalin ke clipboard');
-  };
-
-  const handlePrint = () => window.print();
-
-  const handleDownload = () => {
-    const csvContent = [
-      ['Nomor', 'Nama Variable', 'Bobot', 'Indikator', 'Pertanyaan', 'Tipe Soal', 'Status'],
-      ...currentData.map((item) => [
-        item.nomor,
-        `"${item.variable}"`,
-        item.bobot,
-        `"${item.indikator}"`,
-        `"${item.pertanyaan}"`,
-        `"${item.tipeSoal || '-'}"`,
-        item.status,
-      ]),
-    ]
-      .map((row) => row.join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'daftar_assessment.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleTambah = () => {
     router.push('/daftar-assessment/tambah-assessment');
   };
@@ -191,7 +169,7 @@ export default function AssessmentPage() {
         />
 
         {/* Modal Konfirmasi */}
-        {showModal && (
+        {showModal && roleId === 1 && (
           <ModalConfirm
             isOpen={showModal}
             onCancel={handleCancel}
@@ -235,29 +213,50 @@ export default function AssessmentPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap bg-white">
                   <TableButton data={currentData} />
-                  <Button variant="primary" onClick={handleTambah}>
-                    Tambah Assessment
-                  </Button>
+                  {/* 🔹 Tombol Tambah hanya muncul untuk admin */}
+                  {roleId === 1 && (
+                    <Button variant="primary" onClick={handleTambah}>
+                      Tambah Assessment
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Tabel */}
             <div className="overflow-x-auto">
-              <TableUpdate
-                columns={columns}
-                data={currentData}
-                currentPage={page}
-                rowsPerPage={itemsPerPage}
-                onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.nomor}`)}
-                onDeactivate={(index) => toggleStatus(index)}
-                onReactivate={(index) => toggleStatus(index)}
-                onSort={handleSort}
-                sortConfig={sortConfig}
-              />
+             <TableUpdate
+  columns={columns}
+  data={currentData}
+  currentPage={page}
+  rowsPerPage={itemsPerPage}
+  onEdit={(item) => {
+    if (roleId === 1) {
+      router.push(`/daftar-assessment/edit-assessment/${item.nomor}`);
+    } else {
+      alert("❌ Hanya admin yang bisa edit data.");
+    }
+  }}
+  onDeactivate={(index) => {
+    if (roleId === 1) {
+      toggleStatus(index);
+    } else {
+      alert("❌ Hanya admin yang bisa nonaktifkan data.");
+    }
+  }}
+  onReactivate={(index) => {
+    if (roleId === 1) {
+      toggleStatus(index);
+    } else {
+      alert("❌ Hanya admin yang bisa aktifkan data.");
+    }
+  }}
+  onSort={handleSort}
+  sortConfig={sortConfig}
+/>
             </div>
 
-            {/* 🔁 Pagination: Sudah Pakai Komponen + Dropdown */}
+            {/* Pagination */}
             <Pagination
               currentPage={page}
               totalPages={totalPages}
