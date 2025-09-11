@@ -4,7 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import ContainerForm from '@/components/ContainerForm';
 
+// 🔹 Impor hook untuk create dan update
+import { useCreateTransformationVariable } from '@/hooks/useTransformationVariableList';
+import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList';
+import { CreateTransformationVariableRequest as CreateRequest } from '@/interfaces/transformation-variable';
 
 export default function VariabelFormPage() {
   const router = useRouter();
@@ -26,52 +31,53 @@ export default function VariabelFormPage() {
   // Validasi form
   const [isFormValid, setIsFormValid] = useState(false);
 
+  // Hook untuk create dan update
+  const { mutate: create, loading: creating } = useCreateTransformationVariable();
+  const { mutate: update, loading: updating } = useUpdateTransformationVariable();
+
+  const loading = creating || updating; // Loading global
+
+  // Validasi otomatis
   useEffect(() => {
     setIsFormValid(
-      !!(
-        namaVariabel.trim() &&
+      !!(namaVariabel.trim() &&
         bobot.trim() &&
-        pertanyaan.trim() &&
         deskripsi.trim() &&
         referensi.trim() &&
-        status
-      )
+        status)
     );
-  }, [namaVariabel, bobot, pertanyaan, deskripsi, referensi, status]);
+  }, [namaVariabel, bobot,  deskripsi, referensi, status]);
 
   // Prefill jika mode edit
   useEffect(() => {
-    if (typeof window === 'undefined') return; // cegah mismatch SSR
+    if (typeof window === 'undefined') return;
 
     const editData = localStorage.getItem('editData');
-    if (editData) {
-      try {
-        const parsed = JSON.parse(editData);
+    if (!editData) return;
 
-        setNamaVariabel(parsed.namaVariabel || parsed.variable || '');
-        setBobot(parsed.bobot?.toString() || '');
-        setPertanyaan(parsed.pertanyaan || '');
-        setDeskripsi(parsed.deskripsi || '');
-        setReferensi(parsed.referensi || '');
+    try {
+      const parsed = JSON.parse(editData);
 
-        // Pastikan status berupa string sebelum .toLowerCase
-        const parsedStatus =
-          typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
+      setNamaVariabel(parsed.name || parsed.namaVariabel || '');
+      setBobot(parsed.weight?.toString() || '');
+      setDeskripsi(parsed.description || parsed.deskripsi || '');
+      setReferensi(parsed.reference || parsed.referensi || '');
 
-        if (parsedStatus === 'active' || parsedStatus === 'aktif') {
-          setStatus('Active');
-        } else if (parsedStatus === 'inactive' || parsedStatus === 'non-aktif') {
-          setStatus('Inactive');
-        } else {
-          setStatus('');
-        }
+      const parsedStatus = typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
 
-        setLogoPreview(parsed.logoUrl || '/logo-telu.png');
-        setEditId(parsed.id ?? null);
-        setIsEdit(true);
-      } catch (err) {
-        console.error('Gagal parse editData:', err);
+      if (parsedStatus === 'active' || parsedStatus === 'aktif') {
+        setStatus('Active');
+      } else if (parsedStatus === 'inactive' || parsedStatus === 'non-aktif') {
+        setStatus('Inactive');
+      } else {
+        setStatus('');
       }
+
+      setLogoPreview(parsed.logoUrl || '/logo-telu.png');
+      setEditId(parsed.id ?? null);
+      setIsEdit(true);
+    } catch (err) {
+      console.error('Gagal parse editData:', err);
     }
   }, []);
 
@@ -93,63 +99,53 @@ export default function VariabelFormPage() {
     setLogoPreview(URL.createObjectURL(file));
   };
 
-  // Simpan data
-  const handleSimpan = () => {
-    const newRow = {
-      id: editId || Date.now(),
-      namaVariabel,
-      variable: namaVariabel,
-      bobot: parseFloat(bobot),
-      pertanyaan,
-      deskripsi,
-      referensi,
-      status,
-      logoFileName: logoFile?.name || 'no-logo.png',
-      logoUrl: logoPreview || '/logo-telu.png',
-    };
-
-    const saved = localStorage.getItem('transformationVariables');
-    const arr = saved ? JSON.parse(saved) : [];
-
-    if (isEdit && editId !== null) {
-      const updated = arr.map((item: any) => (item.id === editId ? newRow : item));
-      localStorage.setItem('transformationVariables', JSON.stringify(updated));
-      alert('Data berhasil diperbarui!');
-    } else {
-      arr.push(newRow);
-      localStorage.setItem('transformationVariables', JSON.stringify(arr));
-      alert('Data berhasil ditambahkan!');
+  // Simpan data ke API (create atau update)
+  const handleSimpan = async () => {
+    if (!isFormValid) {
+      alert('Mohon lengkapi semua field wajib.');
+      return;
     }
 
-    localStorage.removeItem('editData');
-    router.push('/transformation-variable');
+    const payload: CreateRequest = {
+      name: namaVariabel.trim(),
+      weight: parseFloat(bobot) || 0,
+      description: deskripsi.trim(),
+      reference: referensi.trim(),
+      sortOrder: 1,
+      status: status.toLowerCase() as 'active' | 'inactive',
+      // Tambahkan field lain jika diperlukan
+    };
+
+    try {
+      if (isEdit && editId) {
+        await update(editId, payload);
+      } else {
+        await create(payload);
+      }
+
+      // Bersihkan state dan localStorage
+      localStorage.removeItem('editData');
+      router.push('/transformation-variable?success=true');
+    } catch (err) {
+      console.error('Gagal menyimpan data:', err);
+      alert('Gagal menyimpan data. Periksa koneksi atau isi ulang form.');
+    }
   };
 
   // Batal
   const handleBatal = () => {
-    setNamaVariabel('');
-    setBobot('');
-    setPertanyaan('');
-    setDeskripsi('');
-    setReferensi('');
-    setStatus('');
-    setLogoFile(null);
-    setLogoPreview(null);
-    localStorage.removeItem('editData');
-    router.push('/transformation-variable');
+    
+      localStorage.removeItem('editData');
+      router.push('/transformation-variable');
+    
   };
 
   return (
-    <div className="flex min-h-screen">
-      <main className="p-6 bg-gray-100 flex-1 overflow-y-auto pt-24">
-        <div
-          className="bg-white rounded-xl shadow-md mx-auto"
-          style={{ width: '1100px', minHeight: '650px', margin: '0 auto' }}
-        >
+    <ContainerForm>
           {/* Header */}
           <div className="p-8 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-800">
-              {isEdit ? 'Edit' : 'Tambah'} Variabel
+              {isEdit ? 'Edit' : 'Tambah'} 
             </h1>
           </div>
 
@@ -186,33 +182,19 @@ export default function VariabelFormPage() {
               </div>
             </div>
 
-            {/* Pertanyaan & Deskripsi */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pertanyaan
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={pertanyaan}
-                  onChange={(e) => setPertanyaan(e.target.value)}
-                  placeholder="Masukkan Pertanyaan"
-                  rows={4}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deskripsi
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                  value={deskripsi}
-                  onChange={(e) => setDeskripsi(e.target.value)}
-                  placeholder="Masukkan Deskripsi"
-                  rows={4}
-                />
-              </div>
-            </div>
+            {/* Deskripsi */}
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={deskripsi}
+              onChange={(e) => setDeskripsi(e.target.value)}
+              placeholder="Masukkan Deskripsi"
+              rows={4}
+            />
+          </div>
 
             {/* Referensi & Status */}
             <div className="grid grid-cols-2 gap-6">
@@ -275,27 +257,27 @@ export default function VariabelFormPage() {
             <Button
               variant="ghost"
               icon={X}
+              iconColor="text-red-200"
               iconPosition="left"
               onClick={handleBatal}
+              disabled={loading}
               className="rounded-[12px] px-15 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
               Batal
             </Button>
             <Button
-              disabled={!isFormValid}
+              disabled={!isFormValid || loading}
               variant="simpan"
               icon={Save}
               iconPosition="left"
               onClick={handleSimpan}
               className={`rounded-[12px] px-10 py-2 text-sm font-semibold text-white ${
-                isFormValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'
+                isFormValid && !loading ? '' : 'bg-gray-400 cursor-not-allowed'
               }`}
             >
-              {isEdit ? 'Simpan Perubahan' : 'Simpan'}
+              {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Simpan'}
             </Button>
           </div>
-        </div>
-      </main>
-    </div>
+        </ContainerForm>
   );
 }

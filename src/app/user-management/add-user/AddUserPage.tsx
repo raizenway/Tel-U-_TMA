@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { X, Save} from "lucide-react";
 import Button  from "@/components/button";
+import { useCreateUser } from '@/hooks/useUserManagement';
+import { CreateUserRequest } from '@/interfaces/user-management';
 
 export default function AddUserPage() {
   const router = useRouter();
@@ -16,7 +18,6 @@ export default function AddUserPage() {
   const [, setTab] = useState("welcome");
 
   const [form, setForm] = useState({
-    userId: '',
     username: '',
     password: '',
     namaUser: '',
@@ -24,11 +25,15 @@ export default function AddUserPage() {
     email: '',
     nomorHp: '',
     status: '',
-  });
+  }); 
+  
+  // ✅ Gunakan hook untuk create user
+const { mutate: createUser, loading, error } = useCreateUser();
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'userId' || name === 'nomorHp') {
+    if (name === 'nomorHp') {
       const numericValue = value.replace(/\D/g, '');
       setForm({ ...form, [name]: numericValue });
     } else {
@@ -41,7 +46,6 @@ export default function AddUserPage() {
   };
 
   const isFormValid =
-    form.userId.trim() !== '' &&
     form.username.trim() !== '' &&
     form.password.trim() !== '' &&
     form.namaUser.trim() !== '' &&
@@ -49,31 +53,34 @@ export default function AddUserPage() {
     form.email.trim() !== '' &&
     form.nomorHp.trim() !== '';
 
-  const handleSave = () => {
-    if (!isFormValid) return;
+const handleSave = async () => {
+  if (!isFormValid) return;
 
-    const newUser = {
-      userId: form.userId,
-      username: form.username,
-      password: form.password,
-      namaUser: form.namaUser,
-      role: role,
-      status: form.status.toLowerCase(),
-      namaPIC: form.namaPIC,
-      email: form.email,
-      nomorHp: form.nomorHp,
-      logoFileName: role !== 'Non SSO' && logoPreview ? logoFileName : '',
-      logoPreview: role !== 'Non SSO' && logoPreview ? logoPreview : '',
-    };
+  // Siapkan data yang akan dikirim ke API
+const body: CreateUserRequest = {
+  username: form.username,
+  password: form.password,
+  fullname: form.namaUser,
+  roleId: role === 'UPPS/KC' ? 1 : 2, // ✅ Ubah string → number
+  email: form.email,
+  phoneNumber: form.nomorHp,
+  branchId: 1,
+};
 
-    const storedUsers = localStorage.getItem('users');
-    const users = storedUsers ? JSON.parse(storedUsers) : [];
-    users.push(newUser);
+  try {
+    // Kirim ke API
+    await createUser(body);
 
-    localStorage.setItem('users', JSON.stringify(users));
+    // Simpan flag untuk notifikasi "berhasil"
     localStorage.setItem('newDataAdded', 'true');
+
+    // Pindah ke halaman utama
     router.push('/user-management');
-  };
+  } catch (err) {
+    // Tangkap error (bisa ditampilkan nanti)
+    console.error('Gagal membuat user:', err);
+  }
+};
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,6 +99,7 @@ export default function AddUserPage() {
     setTab(path || "welcome");
   }, [pathname]);
 
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <div className="min-h-screen w-full p-8 mt-20">
@@ -103,17 +111,16 @@ export default function AddUserPage() {
             }}
             className="grid grid-cols-2 gap-4"
           >
-            {/* User ID */}
+            
+            {/* Password */}
             <div>
-              <label className="block mb-1 text-sm font-medium">User ID</label>
+              <label className="block mb-1 text-sm font-medium">Password</label>
               <input
-                name="userId"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={form.userId}
+                name="password"
+                type="password"
+                value={form.password}
                 onChange={handleChange}
-                placeholder="Masukkan User ID "
+                placeholder="Masukkan Password"
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
@@ -131,15 +138,15 @@ export default function AddUserPage() {
               />
             </div>
 
-            {/* Password */}
+            {/* Email */}
             <div>
-              <label className="block mb-1 text-sm font-medium">Password</label>
+              <label className="block mb-1 text-sm font-medium">Email</label>
               <input
-                name="password"
-                type="password"
-                value={form.password}
+                name="email"
+                type="email"
+                value={form.email}
                 onChange={handleChange}
-                placeholder="Masukkan Password"
+                placeholder="Masukkan Alamat Email"
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
             </div>
@@ -208,18 +215,20 @@ export default function AddUserPage() {
                 </div>
               </>
             )}
-
-            {/* Email */}
+               
+            {/* Status */}
             <div>
-              <label className="block mb-1 text-sm font-medium">Email</label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
+              <label className="block mb-1 text-sm font-medium">Status</label>
+              <select
+                name="status"
+                value={form.status}
                 onChange={handleChange}
-                placeholder="Masukkan Alamat Email"
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
-              />
+              >
+                <option value="">Pilih Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
 
             {/* Nomor HP */}
@@ -236,22 +245,7 @@ export default function AddUserPage() {
                 placeholder="Masukkan Nomor Handphone "
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block mb-1 text-sm font-medium">Status</label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
-              >
-                <option value="">Pilih Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+            </div>  
           </form>
 
           {/* Tombol */}
@@ -267,16 +261,19 @@ export default function AddUserPage() {
             Batal
           </Button>
 
-            <Button
-              variant="simpan"
-              icon={Save}
-              iconPosition="left"
-              onClick={isFormValid ? handleSave : undefined}
-              className={`px-4 py-2 rounded-md text-white 
-                ${isFormValid ? 'bg-[#263859] text-white px-12' : 'bg-gray-400 cursor-not-allowed px-12'}`}
-            >
-              Simpan
-            </Button>
+<Button
+  variant="simpan"
+  icon={Save}
+  iconPosition="left"
+  onClick={isFormValid && !loading ? handleSave : undefined}
+  disabled={!isFormValid || loading}
+  className={`px-4 py-2 rounded-md text-white 
+    ${isFormValid && !loading 
+      ? 'bg-[#263859] text-white px-12' 
+      : 'bg-gray-400 cursor-not-allowed px-12'}`}
+>
+  {loading ? 'Menyimpan...' : 'Simpan'}
+</Button>
           </div>
         </div>
       </div>
