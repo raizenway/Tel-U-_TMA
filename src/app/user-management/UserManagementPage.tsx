@@ -9,41 +9,42 @@ import TableButton from '@/components/TableButton';
 import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
-import { useListUsers } from "@/hooks/useUserManagement"; // ← Tambahkan import
+import { useListUsers,  useActivateUser, useDeactivateUser  } from "@/hooks/useUserManagement"; // ← Tambahkan import
 import { User } from "@/interfaces/user-management";
-
 
 
 export default function UserManagementPage() {
   const router = useRouter();
   
-
-  
-  const [refreshFlag, setRefreshFlag] = useState(0);
+// Refresh data dari API
+const [refreshFlag, setRefreshFlag] = useState(0);
 const { data, loading, error } = useListUsers(refreshFlag);
 
-//MAPING DARI API
+//DATA DARI API
 const users = data?.data || [];
-
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
   const [showSuccess, setShowSuccess] = useState(false);
-
   const [showModal, setShowModal] = useState(false);
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
   const [targetStatus, setTargetStatus] = useState<'active' | 'inactive' | null>(null);
-
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
- 
+
+  // Mapping roleId ke nama role
+ const roleNames: Record<number, string> = {
+  2: 'UPPS/KC',
+  4: 'Non-SSO',
+};
+
+const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!");
 
   // Kolom Tabel
   const columns = [
   { header: 'User ID', key: 'id', width: '140px', sortable: true },
   { header: 'User Name', key: 'username', width: '160px', sortable: true },
-  { header: 'Password', key: 'password', width: '120px', sortable: false },
   { header: 'Nama User', key: 'fullname', width: '200px', sortable: true },
   { header: 'Role', key: 'roleId', width: '140px', sortable: true },
   { header: 'Status', key: 'status', width: '100px', sortable: true },
@@ -56,33 +57,11 @@ const users = data?.data || [];
   },
 ];
 
-
-  // Ambil data dari API saat mount
-  useEffect(() => {
-    const storedUsers = localStorage.getItem('users');
-    if (storedUsers) {
-      const parsedUsers = JSON.parse(storedUsers).map((user: any) => ({
-        ...user,
-        status: user.status || 'active',
-      }));
-  
-    }
-
-    const isNewDataAdded = localStorage.getItem('newDataAdded');
-    if (isNewDataAdded === 'true') {
-      setShowSuccess(true);
-      localStorage.removeItem('newDataAdded');
-    }
-
-    const timer = setTimeout(() => {
-      setShowSuccess(false);
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, []);
+// Tambahkan ini di atas useEffect
+const { mutate: activateUser } = useActivateUser();
+const { mutate: deactivateUser } = useDeactivateUser();
 
 
-  
   // 1. Filter data berdasarkan pencarian
 const filteredUsers = useMemo(() => {
   if (!searchTerm) return users;
@@ -91,14 +70,28 @@ const filteredUsers = useMemo(() => {
     user.id.toString().includes(search) ||
     user.username.toLowerCase().includes(search) ||
     user.fullname.toLowerCase().includes(search) ||
-    user.role_id.toString().includes(search) ||
+    user.roleId.toString().includes(search) ||
     user.status.toLowerCase().includes(search)
   );
 }, [users, searchTerm]);
 
-
-
+ // Sorting
   const { sortedData, requestSort, sortConfig } = useSort<User>(filteredUsers, "id");
+
+  useEffect(() => {
+  const newDataAdded = localStorage.getItem('newDataAdded');
+  const editDataSuccess = localStorage.getItem('editDataSuccess');
+
+  if (newDataAdded === 'true' || editDataSuccess === 'true') {
+    setSuccessMessage("Data Berhasil Disimpan");
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000); // Auto hide after 5s
+
+    // Hapus semua flag
+    localStorage.removeItem('newDataAdded');
+    localStorage.removeItem('editDataSuccess');
+  }
+}, []);
   
 // Pagination
 const totalItems = sortedData.length;
@@ -123,19 +116,51 @@ const currentUsers = sortedData.slice(indexOfFirstItem, indexOfLastItem);
   };
 
 const toggleStatus = (index: number) => {
-  const globalIndex = indexOfFirstItem + index; // Konversi ke index global
+  const globalIndex = indexOfFirstItem + index;
+  const user = sortedData[globalIndex]; // ✅ Gunakan sortedData, bukan users
+
+  if (!user) return;
+
   setPendingToggleIndex(globalIndex);
-  const nextStatus = users[globalIndex].status === 'active' ? 'inactive' : 'active';
-  setTargetStatus(nextStatus);
+  setTargetStatus(user.status === 'active' ? 'inactive' : 'active');
   setShowModal(true);
 };
 
-const handleConfirm = () => {
-  // Cukup refetch data dari API
-  setRefreshFlag(prev => prev + 1); // ← Trigger refetch
-  setShowModal(false);
-  setPendingToggleIndex(null);
-  setTargetStatus(null);
+const handleConfirm = async () => {
+  if (pendingToggleIndex === null || targetStatus === null) {
+    setShowModal(false);
+    return;
+  }
+
+  try {
+    const user = sortedData[pendingToggleIndex]; // Ambil user dari data yang sedang ditampilkan
+    if (!user) throw new Error("User tidak ditemukan");
+
+    // Panggil API sesuai status tujuan
+    if (targetStatus === 'active') {
+      await activateUser(user.id); // Aktifkan user
+    } else {
+      await deactivateUser(user.id); // Nonaktifkan user
+    }
+
+    // Trigger refresh data dari API
+    setRefreshFlag(prev => prev + 1);
+
+    // Tampilkan notifikasi sukses
+    setSuccessMessage(
+      targetStatus === 'active' 
+        ? "User berhasil diaktifkan!" 
+        : "User berhasil dinonaktifkan!"
+    );
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000);
+  } catch (err: any) {
+    alert(`Gagal mengubah status: ${err.message}`);
+  } finally {
+    setShowModal(false);
+    setPendingToggleIndex(null);
+    setTargetStatus(null);
+  }
 };
 
  const handleEditUser = (user: User) => {
@@ -146,25 +171,34 @@ const handleConfirm = () => {
     fullname: user.fullname,
     email: user.email,
     phone_number: user.phone_number,
-    roleId: user.role_id,
+    roleId: user.roleId,
     status: user.status,
   }));
   router.push(`/user-management/edit-user?userId=${user.id}`);
 };
 
-
-  const dataForExport = currentUsers.map((item) => ({
-  'User ID': item.id,
-  'User Name': item.username,
-  Password: item.password,
-  'Nama User': item.fullname,
-  Role: item.role_id,
-  Status: item.status,
+// Siapkan data yang sudah dimodifikasi untuk tabel
+const processedUsers = currentUsers.map(user => ({
+  ...user,
+  roleId: user.roleId === 2 ? 'UPPS/KC' : user.roleId === 4 ? 'Non-SSO' : `Role ${user.roleId}`,
+  password: '••••••',
 }));
 
-  
+const dataForExport = processedUsers.map((user) => ({
+  'User ID': user.id,
+  'User Name': user.username,
+  'Nama User': user.fullname,
+  Role: user.roleId, // ✅ Sekarang sudah string (UPPS/KC, Non-SSO)
+  Status: user.status,
+}));
+
+
+
+// Loading & Error
 if (loading) return <p className="p-6">Loading data dari server...</p>;
 if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
+
+console.log("Data users:", users);
 
   return (
     <div className="flex">
@@ -173,7 +207,7 @@ if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
         {showSuccess && (
           <SuccessNotification
             isOpen={showSuccess}
-            message="User berhasil ditambahkan!"
+            message={successMessage}
             onClose={() => setShowSuccess(false)}
           />
         )}
@@ -224,7 +258,7 @@ if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
         {/* Table */}
         <TableUpdate
           columns={columns}
-          data={currentUsers}
+          data={processedUsers}
           currentPage={currentPage}
           rowsPerPage={itemsPerPage}
           onEdit={handleEditUser}
