@@ -6,6 +6,7 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
+import ContainerForm from '@/components/ContainerForm';
 
 export default function EditVariablePage() {
   const { id } = useParams();
@@ -28,10 +29,14 @@ export default function EditVariablePage() {
   const [referensi, setReferensi] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
+  // 🖼️ State logo — hanya untuk preview, tidak dikirim ke API
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
   // ✅ Hook update
   const { mutate: update, loading: updating } = useUpdateTransformationVariable();
 
-  // ✅ Isi form
+  // ✅ Isi form + logo preview dari data
   useEffect(() => {
     if (data) {
       setNamaVariabel(data.name || '');
@@ -72,53 +77,69 @@ export default function EditVariablePage() {
     );
   }
 
+  // 📤 Handle Simpan — logo TIDAK dikirim
   const handleSimpan = async () => {
-  if (!namaVariabel.trim()) {
-    alert('Nama variabel wajib diisi');
-    return;
-  }
-  if (!status) {
-    alert('Status harus dipilih');
-    return;
-  }
+    if (!namaVariabel.trim()) {
+      alert('Nama variabel wajib diisi');
+      return;
+    }
+    if (!status) {
+      alert('Status harus dipilih');
+      return;
+    }
 
-  const payload = {
-    name: namaVariabel.trim(),
-    weight: parseFloat(bobot) || 0,
-    description: deskripsi.trim(),
-    reference: referensi.trim(),
-    sortOrder: 1,
-    status: status.toLowerCase() as 'active' | 'inactive',
+    const payload = {
+      name: namaVariabel.trim(),
+      weight: parseFloat(bobot) || 0,
+      description: deskripsi.trim(),
+      reference: referensi.trim(),
+      sortOrder: 1,
+      status: status.toLowerCase() as 'active' | 'inactive',
+      // ❗ logo sengaja tidak dikirim — hanya untuk tampilan frontend
+    };
+
+    console.log('📤 Payload:', payload);
+
+    try {
+      await update(variableId, payload);
+      console.log('✅ Update berhasil — redirect');
+      router.push('/transformation-variable');
+    } catch (err) {
+      console.error('❌ Update gagal:', err);
+      alert('Gagal menyimpan perubahan. Coba lagi.');
+    }
   };
 
-  console.log('📤 Payload:', payload);
+  // 🖼️ Handle Upload Logo (hanya preview)
+  const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  try {
-    await update(variableId, payload);
-    console.log('✅ Update berhasil — redirect');
-    router.push('/transformation-variable');
-  } catch (err) {
-    console.error('❌ Update gagal:', err);
-    alert('Gagal menyimpan perubahan. Coba lagi.');
-  }
-};
+    if (file.size > 1024 * 1024) {
+      alert('Ukuran file maksimal 1 MB');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      alert('Hanya file gambar yang diperbolehkan');
+      return;
+    }
+
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
 
   const handleBatal = () => {
     router.back();
   };
 
   return (
-    <div className="flex min-h-screen">
-      <main className="p-6 bg-gray-100 flex-1 pt-24">
-        <div
-          className="bg-white rounded-xl shadow-md mx-auto"
-          style={{ width: '1100px', minHeight: '650px' }}
-        >
+    <ContainerForm>
           <div className="p-8 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-800">Edit Variabel</h1>
           </div>
 
-          <div className="p-8 space-y-6">
+          <div className="p-8 space-y-6 overflow-y-auto max-h-[500px]">
+            {/* Nama & Bobot */}
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
@@ -143,18 +164,22 @@ export default function EditVariablePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            {/* Deskripsi */}
+                    
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
-                <textarea
-                  value={deskripsi}
-                  onChange={(e) => setDeskripsi(e.target.value)}
-                  rows={4}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
-                />
-              </div>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={deskripsi}
+              onChange={(e) => setDeskripsi(e.target.value)}
+              placeholder="Masukkan Deskripsi"
+              rows={4}
+            />
+          </div>
 
+            {/* Referensi & Status */}
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Referensi</label>
@@ -183,16 +208,42 @@ export default function EditVariablePage() {
                 </select>
               </div>
             </div>
+
+            {/* 🖼️ Upload Logo — Preview Only */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Logo UPPS/KC
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleUploadLogo}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              />
+              <p className="text-xs text-gray-500 mt-1">Maksimal 1 MB, format: JPG/PNG</p>
+
+              {logoPreview && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700">Preview Logo:</p>
+                  <img
+                    src={logoPreview}
+                    alt="Preview Logo"
+                    className="mt-1 w-16 h-16 object-contain border rounded"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="p-8 flex justify-end gap-4 border-t border-gray-200">
             <Button
               variant="ghost"
               icon={X}
+              iconColor="text-red-700"
               iconPosition="left"
               onClick={handleBatal}
               disabled={updating}
-              className="rounded-[12px] px-4 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              className="rounded-[12px] px-11 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
             >
               Batal
             </Button>
@@ -202,13 +253,11 @@ export default function EditVariablePage() {
               iconPosition="left"
               onClick={handleSimpan}
               disabled={updating}
-              className="rounded-[12px] px-4 py-2 text-sm font-semibold text-white"
+              className="rounded-[12px] px-4 py-2 text-sm font-semibold text-white "
             >
               {updating ? 'Menyimpan...' : 'Simpan Perubahan'}
             </Button>
           </div>
-        </div>
-      </main>
-    </div>
+       </ContainerForm>
   );
 }
