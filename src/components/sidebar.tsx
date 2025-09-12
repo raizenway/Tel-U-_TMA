@@ -3,7 +3,6 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-//import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronLeft,
@@ -19,9 +18,7 @@ import {
 
 type NavItem = {
   name: string;
-  value?: string;
   path?: string;
-  action?: () => void;
   icon?: React.ReactNode;
   submenu?: NavItem[];
 };
@@ -31,28 +28,41 @@ type SidebarProps = {
 };
 
 export default function Sidebar({ onItemClick }: SidebarProps) {
-  //const router = useRouter();
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
+  const [roleId, setRoleId] = useState<number | null>(null);
 
-  // Toggle submenu: buka/tutup saat diklik
+  // Ambil roleId dari localStorage
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const parsed = JSON.parse(user);
+        setRoleId(Number(parsed.roleId));
+      } catch (e) {
+        console.error("Gagal baca user:", e);
+      }
+    }
+  }, []);
+
+  // Toggle submenu
   const toggleSubmenu = (name: string) => {
     const newOpenSubmenus = new Set(openSubmenus);
     if (newOpenSubmenus.has(name)) {
-      newOpenSubmenus.delete(name); // klik lagi → tutup
+      newOpenSubmenus.delete(name);
     } else {
-      newOpenSubmenus.add(name);   // buka
+      newOpenSubmenus.add(name);
     }
     setOpenSubmenus(newOpenSubmenus);
   };
 
   const toggleCollapse = () => {
     setCollapsed((prev) => !prev);
-    setOpenSubmenus(new Set()); // Tutup semua submenu saat collapse/expand
+    setOpenSubmenus(new Set());
   };
 
-  // Tutup semua submenu saat klik di luar sidebar
+  // Tutup submenu saat klik luar
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const sidebar = document.querySelector("aside");
@@ -72,10 +82,10 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
       setActiveItem(item);
       onItemClick(item);
     }
-
   };
 
-  const navItems: NavItem[] = [
+  // 💡 SEMUA NAV ITEMS — akan difilter berdasarkan role
+  const allNavItems: NavItem[] = [
     {
       name: "Home",
       path: "welcome",
@@ -130,6 +140,49 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     },
   ];
 
+  // 💡 FILTER NAV ITEMS BERDASARKAN ROLE
+const filteredNavItems = allNavItems
+  .map((item) => {
+    // Jika item adalah "Assessment Result" dan punya submenu → filter "Approval Assessment"
+    if (item.name === "Assessment Result" && item.submenu) {
+      const filteredSubmenu = item.submenu.filter((subItem) => {
+        if (subItem.name === "Approval Assessment") {
+          return roleId === 1; // Hanya Super User yang boleh lihat
+        }
+        return true;
+      });
+      item = { ...item, submenu: filteredSubmenu };
+    }
+
+    // Untuk UPPS/KC (roleId 2) — hanya tampilkan 4 menu ini
+    if (roleId === 2) {
+      return (
+        item.name === "Home" ||
+        item.name === "Start Assessment" ||
+        item.name === "Assessment Result" ||
+        item.name === "About TMA"
+      ) ? item : null;
+    }
+
+    // Untuk Non-SSO (roleId 4) — hanya tampilkan Home, Assessment Result, About TMA
+    if (roleId === 4) {
+      return (
+        item.name === "Home" ||
+        item.name === "Assessment Result" ||
+        item.name === "About TMA"
+      ) ? item : null;
+    }
+
+    // Untuk SSO (roleId 3) — hanya tampilkan Home + About TMA
+    if (roleId === 3) {
+      return (item.name === "Home" || item.name === "About TMA") ? item : null;
+    }
+
+    // Untuk role lain (termasuk Super User) — tampilkan semua
+    return item;
+  })
+  .filter((item) => item !== null) as NavItem[];
+
   return (
     <aside
       className={`relative ${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}
@@ -182,10 +235,10 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Navigation — MASIH PAKAI SUBMENU */}
       <nav className="flex-1 px-4 mt-4 text-sm font-medium">
         <div className="flex flex-col gap-1">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = item.path && activeItem?.path === item.path;
             const isOpen = openSubmenus.has(item.name);
 
