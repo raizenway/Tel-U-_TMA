@@ -11,7 +11,7 @@ import SearchTable from "@/components/SearchTable";
 import SuccessNotification from "@/components/SuccessNotification";
 import Pagination from "@/components/Pagination";
 import { useSort } from "@/hooks/useSort";
-import { useListMaturityLevels } from "@/hooks/useMaturityLevel";
+import { useListMaturityLevels, useDeleteMaturityLevel } from "@/hooks/useMaturityLevel";
 
 const TablePage = () => {
   const [search, setSearch] = useState("");
@@ -23,8 +23,10 @@ const TablePage = () => {
   const [showDelete, setShowDelete] = useState(false);
   const searchParams = useSearchParams();
   const [showNotif, setShowNotif] = useState(false);
-  const [ShowSuccess, setShowSuccess] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // 🆕 Tambahkan ini
   const { data: maturityRes, loading, error } = useListMaturityLevels();
+  const { mutate: deleteMaturity, loading: deleteLoading } = useDeleteMaturityLevel();
+
 
   // Modal lihat deskripsi
   const [showModal, setShowModal] = useState(false);
@@ -34,6 +36,7 @@ const TablePage = () => {
   useEffect(() => {
     if (maturityRes?.data) {
       const mapped = maturityRes.data.map((item: any) => ({
+        id: item.id, 
         level: item.levelNumber,
         namaLevel: item.name,
         skorMin: item.minScore,
@@ -51,13 +54,13 @@ const TablePage = () => {
     }
   }, [maturityRes]);
 
-  // Tampilkan notifikasi jika dari query success
   useEffect(() => {
-    if (searchParams.get("success") === "true") {
-      setShowNotif(true);
-      setTimeout(() => setShowNotif(false), 3000);
-    }
-  }, [searchParams]);
+  if (searchParams.get("success") === "true") {
+    setShowNotif(true);
+    setTimeout(() => setShowNotif(false), 3000);
+    setRefreshKey(prev => prev + 1);
+  }
+}, [searchParams, setRefreshKey]); // <-- tambahkan setRefreshKey sebagai dependency
 
   const { sortedData, requestSort, sortConfig } = useSort(data, "level");
 
@@ -86,19 +89,23 @@ const TablePage = () => {
   };
 
   const handleEdit = (index: number) => {
-    const realIndex = (currentPage - 1) * itemsPerPage + index;
-    const selectedData = data[realIndex];
-    localStorage.setItem("editMaturityData", JSON.stringify(selectedData));
-    router.push(`/maturity-level/edit-maturity/${realIndex}`);
+    const selectedData = paginatedData[index];
+    if (!selectedData) return;
+    router.push(`/maturity-level/edit-maturity/${selectedData.id}`); 
   };
 
-  const handleDelete = (index: number) => {
-    const realIndex = (currentPage - 1) * itemsPerPage + index;
-    const newData = [...data];
-    newData.splice(realIndex, 1);
-    setData(newData);
+  const handleDelete = async (index: number) => {
+  const selectedData = paginatedData[index];
+  if (!selectedData) return;
+
+  try {
+    await deleteMaturity(selectedData.id);
+    setData((prev) => prev.filter((item) => item.id !== selectedData.id));
     setShowDelete(false);
-  };
+  } catch (err) {
+    console.error("Failed to delete:", err);
+  }
+};
 
   // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
@@ -107,9 +114,7 @@ const TablePage = () => {
       <button
         className="flex items-center gap-2 text-gray-700 hover:underline"
         onClick={() => {
-          const realIndex = (currentPage - 1) * itemsPerPage + index;
-          const currentRow = data[realIndex];
-          setSelectedDeskripsiList(currentRow?.deskripsiPerVariabel || []);
+          setSelectedDeskripsiList(row?.deskripsiPerVariabel || []);
           setShowModal(true);
         }}
       >
@@ -208,9 +213,9 @@ const TablePage = () => {
             </div>
 
             <SuccessNotification
-              isOpen={ShowSuccess}
-              onClose={() => setShowSuccess(false)}
-              message="Maturity berhasil ditambahkan"
+              isOpen={showNotif}
+              onClose={() => setShowNotif(false)}
+              message="Maturity berhasil disimpan"
             />
 
             <div className="overflow-x-auto w-full">
@@ -219,20 +224,6 @@ const TablePage = () => {
                 data={dataDenganAksi}
                 currentPage={currentPage}
                 rowsPerPage={itemsPerPage}
-                onEdit={(item) => {
-                  const realIndex = data.findIndex((d) => d.level === item.level);
-                  if (realIndex !== -1) {
-                    localStorage.setItem(
-                      "editMaturityData",
-                      JSON.stringify(data[realIndex])
-                    );
-                    router.push(`/maturity-level/edit-maturity/${realIndex}`);
-                  }
-                }}
-                onDeactivate={(index) => {
-                  setDeleteIndex(index);
-                  setShowDelete(true);
-                }}
               />
             </div>
 
@@ -269,6 +260,7 @@ const TablePage = () => {
         </div>
       </ModalConfirm>
 
+      {/* Modal Deskripsi */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}

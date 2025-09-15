@@ -4,127 +4,148 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
-
-type MaturityType = {
-  level: string;
-  namaLevel: string;
-  skorMin: string;
-  skorMax: string;
-  deskripsiUmum: string;
-  deskripsiPerVariabel: string[];
-};
+import {
+  useGetMaturityLevelById,
+  useUpdateMaturityLevel,
+} from "@/hooks/useMaturityLevel";
+import { UpdateMaturityLevelRequest } from "@/interfaces/maturity-level";
 
 export default function EditMaturityPage() {
-  const { id } = useParams(); // id bisa array di App Router
+  const { id } = useParams();
   const router = useRouter();
+  const realId = Array.isArray(id) ? Number(id[0]) : Number(id);
 
-  // Ambil id sebagai string
-  const realId = Array.isArray(id) ? id[0] : id;
-  if (!realId) {
-    router.push("/maturity-level");
-    return null; // Hindari render jika id tidak valid
-  }
+  useEffect(() => {
+    if (!realId) router.push("/maturity-level");
+  }, [realId, router]);
 
-  const [formData, setFormData] = useState<MaturityType>({
-    level: "",
-    namaLevel: "",
-    skorMin: "",
-    skorMax: "",
-    deskripsiUmum: "",
-    deskripsiPerVariabel: Array(5).fill(""), // default 5 elemen
+  if (!realId) return null;
+
+  const { data: maturityDetail } = useGetMaturityLevelById(realId);
+  const { mutate: updateMaturity, loading } = useUpdateMaturityLevel();
+
+  const [formData, setFormData] = useState<UpdateMaturityLevelRequest>({
+    id: realId,
+    name: "",
+    levelNumber: 0,
+    minScore: 0,
+    maxScore: 0,
+    generalDescription: "",
+    scoreDescription: Array(5).fill(""),
   });
 
-  // Key unik untuk localStorage
-  const tempKey = `maturityTempForm_${realId}`;
-
-  // Muat data dari localStorage
+  // ✅ Ambil data API atau localStorage (jika ada temp)
   useEffect(() => {
-    const savedData = localStorage.getItem("maturityData");
-    if (savedData) {
-      const parsed: MaturityType[] = JSON.parse(savedData);
-      const record = parsed[Number(realId)]; // pakai Number(realId) sebagai index
-      if (record) {
-        setFormData({
-          ...record,
-          deskripsiPerVariabel: Array.isArray(record.deskripsiPerVariabel)
-            ? record.deskripsiPerVariabel
-            : Array(5).fill(""),
-        });
+    if (!maturityDetail) return;
+
+    const temp = localStorage.getItem(`maturityTempForm_${realId}`);
+    if (temp) {
+      try {
+        const parsed = JSON.parse(temp);
+        if (Array.isArray(parsed.scoreDescription)) {
+          setFormData({ ...parsed, id: realId });
+          return;
+        }
+      } catch (err) {
+        console.error("Error parsing temp form:", err);
       }
     }
-  }, [realId]);
 
-  // Muat data sementara saat kembali
-  useEffect(() => {
-    const handleFocus = () => {
-      const tempForm = localStorage.getItem(tempKey);
-      if (tempForm) {
-        try {
-          const tempData: MaturityType = JSON.parse(tempForm);
-          setFormData((prev) => ({
-            ...prev,
-            ...tempData,
-            deskripsiPerVariabel: Array.isArray(tempData.deskripsiPerVariabel)
-              ? tempData.deskripsiPerVariabel
-              : prev.deskripsiPerVariabel,
-          }));
-        } catch (e) {
-          console.error("Error parsing temp data:", e);
-        }
-      }
-    };
+    // fallback → pakai data dari API
+    const apiData = maturityDetail as any;
+    setFormData({
+      id: maturityDetail.id,
+      name: maturityDetail.name,
+      levelNumber: maturityDetail.levelNumber,
+      minScore: Number(maturityDetail.minScore),
+      maxScore: Number(maturityDetail.maxScore),
+      generalDescription: maturityDetail.generalDescription,
+      scoreDescription: [
+        apiData.scoreDescription0 ?? "",
+        apiData.scoreDescription1 ?? "",
+        apiData.scoreDescription2 ?? "",
+        apiData.scoreDescription3 ?? "",
+        apiData.scoreDescription4 ?? "",
+      ],
+    });
+  }, [maturityDetail, realId]);
 
-    window.addEventListener("focus", handleFocus);
-    handleFocus(); // cek saat mount
-
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [tempKey]);
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "levelNumber" || name === "minScore" || name === "maxScore"
+          ? Number(value)
+          : value,
+    }));
   };
 
-const handleSubmit = (e: FormEvent) => {
-  e.preventDefault();
+  // ✅ Submit → flatten array ke bentuk API
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      let finalForm = formData;
 
-  const savedData = localStorage.getItem("maturityData");
-  const parsed: MaturityType[] = savedData ? JSON.parse(savedData) : [];
+      // 🔎 ambil data terbaru dari localStorage jika ada
+      const temp = localStorage.getItem(`maturityTempForm_${realId}`);
+      if (temp) {
+        try {
+          const parsed = JSON.parse(temp);
+          if (Array.isArray(parsed.scoreDescription)) {
+            finalForm = { ...formData, scoreDescription: parsed.scoreDescription };
+          }
+        } catch (err) {
+          console.error("Error parsing temp form:", err);
+        }
+      }
 
-  // update record sesuai index realId
-  if (parsed[Number(realId)]) {
-    parsed[Number(realId)] = formData;
-  }
+      const { scoreDescription, ...rest } = finalForm;
 
-  // simpan lagi ke localStorage
-  localStorage.setItem("maturityData", JSON.stringify(parsed));
+      // 🔑 Flatten array scoreDescription → scoreDescription0..4
+      const payload: any = {
+        ...rest,
+        scoreDescription0: scoreDescription[0] ?? "",
+        scoreDescription1: scoreDescription[1] ?? "",
+        scoreDescription2: scoreDescription[2] ?? "",
+        scoreDescription3: scoreDescription[3] ?? "",
+        scoreDescription4: scoreDescription[4] ?? "",
+      };
 
-  // hapus tempKey biar ga bentrok
-  localStorage.removeItem(tempKey);
+      await updateMaturity(payload); // kirim payload ke API
 
-  router.push("/maturity-level?success=true");
-};
-
-
+      localStorage.removeItem(`maturityTempForm_${realId}`);
+      router.push(`/maturity-level?success=true&refresh=${Date.now()}`);
+      router.refresh();
+    } catch (error) {
+      console.error("Update failed:", error);
+    }
+  };
 
   const handleEditDeskripsi = () => {
-  // simpan sementara biar dibaca di DeskripsiVariabelTable
-  localStorage.setItem(tempKey, JSON.stringify(formData));
-  router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
-};
-
+    localStorage.setItem(
+      `maturityTempForm_${realId}`,
+      JSON.stringify(formData)
+    );
+    router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
+  };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl"
+      >
         {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Level</label>
             <input
-              type="text"
-              name="level"
-              value={formData.level}
+              type="number"
+              name="levelNumber"
+              value={formData.levelNumber}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
@@ -133,8 +154,8 @@ const handleSubmit = (e: FormEvent) => {
             <label className="block text-sm font-medium mb-1">Nama Level</label>
             <input
               type="text"
-              name="namaLevel"
-              value={formData.namaLevel}
+              name="name"
+              value={formData.name}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
@@ -146,9 +167,9 @@ const handleSubmit = (e: FormEvent) => {
           <div>
             <label className="block text-sm font-medium mb-1">Skor Minimum</label>
             <input
-              type="text"
-              name="skorMin"
-              value={formData.skorMin}
+              type="number"
+              name="minScore"
+              value={formData.minScore}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
@@ -156,9 +177,9 @@ const handleSubmit = (e: FormEvent) => {
           <div>
             <label className="block text-sm font-medium mb-1">Skor Maximum</label>
             <input
-              type="text"
-              name="skorMax"
-              value={formData.skorMax}
+              type="number"
+              name="maxScore"
+              value={formData.maxScore}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
@@ -168,10 +189,12 @@ const handleSubmit = (e: FormEvent) => {
         {/* Row 3 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
+            <label className="block text-sm font-medium mb-1">
+              Deskripsi Umum
+            </label>
             <textarea
-              name="deskripsiUmum"
-              value={formData.deskripsiUmum}
+              name="generalDescription"
+              value={formData.generalDescription}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2 h-[100px]"
             />
@@ -180,13 +203,13 @@ const handleSubmit = (e: FormEvent) => {
             <label className="block text-sm font-medium mb-1">
               Deskripsi per Variabel
             </label>
-           <button
+            <button
               type="button"
               onClick={handleEditDeskripsi}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
-              {formData.deskripsiPerVariabel.some((d) => d.trim())
-                ? `Lihat Deskripsi (${formData.deskripsiPerVariabel.filter(Boolean).length}/5)`
+              {formData.scoreDescription?.some((d) => d.trim())
+                ? `Lihat Deskripsi (${formData.scoreDescription.filter(Boolean).length}/5)`
                 : "+ Tambah Deskripsi"}
             </button>
           </div>
@@ -208,11 +231,12 @@ const handleSubmit = (e: FormEvent) => {
           <Button
             variant="primary"
             type="submit"
+            disabled={loading}
             icon={Save}
             iconPosition="left"
             className="rounded-[12px] px-4 py-2 text-sm font-semibold"
           >
-            Simpan
+            {loading ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       </form>

@@ -26,13 +26,11 @@ export default function DeskripsiVariabelTable() {
       if (savedForm) {
         try {
           const parsed = JSON.parse(savedForm);
-          if (Array.isArray(parsed.deskripsiPerVariabel)) {
-            const filled = Array(5)
-              .fill("")
-              .map((_, i) => parsed.deskripsiPerVariabel[i] || "");
-            setDeskripsi(filled);
-            return;
-          }
+          if (Array.isArray(parsed.scoreDescription)) {
+  const filled = Array(5).fill("").map((_, i) => parsed.scoreDescription[i] || "");
+  setDeskripsi(filled);
+  return;
+}
         } catch (e) {
           console.error("Error parsing temp data:", e);
         }
@@ -40,13 +38,11 @@ export default function DeskripsiVariabelTable() {
 
       // 2️⃣ Fallback: ambil dari maturityData (data utama)
       const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
-      const item = savedData[Number(id)];
-      if (item && Array.isArray(item.deskripsiPerVariabel)) {
-        const filled = Array(5)
-          .fill("")
-          .map((_, i) => item.deskripsiPerVariabel[i] || "");
-        setDeskripsi(filled);
-      }
+      const item = savedData.find((d: any) => String(d.id) === String(id));
+if (item && Array.isArray(item.scoreDescription)) {
+  const filled = Array(5).fill("").map((_, i) => item.scoreDescription[i] || "");
+  setDeskripsi(filled);
+}
     }
   }, [id, tempKey]);
 
@@ -58,7 +54,7 @@ export default function DeskripsiVariabelTable() {
     if (id) {
       // update selalu ke tempKey
       const savedForm = JSON.parse(localStorage.getItem(tempKey) || "{}");
-      savedForm.deskripsiPerVariabel = deskripsi;
+      savedForm.scoreDescription = deskripsi;
       localStorage.setItem(tempKey, JSON.stringify(savedForm));
 
       // balik ke edit
