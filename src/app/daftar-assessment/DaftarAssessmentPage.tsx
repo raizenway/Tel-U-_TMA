@@ -16,7 +16,7 @@ export default function AssessmentPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10); // 🔁 Bisa diubah lewat dropdown
+  const [itemsPerPage, setItemsPerPage] = useState(10); 
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
