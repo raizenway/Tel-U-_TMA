@@ -29,12 +29,15 @@
 
         const result = await res.json();
 
-        if (result.status === 'success') {
-          localStorage.setItem('user', JSON.stringify(result.data));
-          router.push('/welcome');
-        } else {
-          setError(result.message || 'Login gagal');
-        }
+       if (result.status === 'success') {
+  // 💡 SEMENTARA — tambahkan roleId secara manual
+  const userWithRole = {
+    ...result.data,
+    roleId: 1, // ← ganti angka ini sesuai role yang ingin kamu test: 1,2,3,4
+  };
+  localStorage.setItem('user', JSON.stringify(userWithRole));
+  router.push('/welcome');
+}
       } catch {
         setError('Terjadi kesalahan, coba lagi');
       } finally {

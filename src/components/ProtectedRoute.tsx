@@ -9,19 +9,29 @@ const roleAccess: Record<number, string[]> = {
     "/login",
     "/dashboard",
     "/welcome",
-    "/assessment",        
+    "/assessment",
+    "/assessment/jakarta",
+    "/assessment/surabaya",
+    "/assessment/assessment-form",
     "/assessment-result",
     "/approval",
     "/transformation-variable", 
     "/daftar-assessment",
     "/user-management",
+    "/user-management/add-user", 
+    "/user-management/edit-user",
     "/maturity-level",
+    "/maturity-level/add-maturity",
+    "/maturity-level/edit-maturity",
   ],
   2: [ // UPPS/KC
     "/login",
     "/dashboard",
     "/welcome",
-    "/assessment",        
+    "/assessment",
+    "/assessment/jakarta",
+    "/assessment/surabaya",
+    "/assessment/assessment-form",        
     "/assessment-result",
     "/transformation-variable", 
     "/daftar-assessment",
@@ -78,8 +88,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     // Pastikan roleId ada dan convert ke number
     const roleId = Number(parsedUser.roleId);
     if (isNaN(roleId) || !roleAccess[roleId]) {
-      console.warn("⛔ Invalid roleId:", parsedUser.roleId, ". Redirecting to /dashboard");
-      router.replace("/dashboard");
+      console.warn("⛔ Invalid roleId:", parsedUser.roleId, ". Redirecting to /welcome");
+      router.replace("/welcome");
       return;
     }
 
@@ -90,12 +100,25 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       ? pathname.slice(0, -1)
       : pathname;
 
-    // ✅ Cek akses — cocokkan path
-    const hasAccess = allowedPaths.includes(normalizedPathname);
+    const hasAccess = allowedPaths.some(allowedPath => {
+  if (normalizedPathname === allowedPath) return true;
+
+  // Jika allowedPath adalah prefix dari path saat ini → contoh: "/edit-maturity/" dan path = "/edit-maturity/123"
+  if (allowedPath.endsWith('/')) {
+    return normalizedPathname.startsWith(allowedPath);
+  }
+
+  // Jika path saat ini adalah subpath dari allowedPath (tanpa trailing slash)
+  if (normalizedPathname.startsWith(allowedPath + '/')) {
+    return true;
+  }
+
+  return false;
+});
 
     if (!hasAccess) {
       console.warn(`⛔ Access denied: "${normalizedPathname}" for role ${roleId}. Allowed:`, allowedPaths);
-      router.replace("/dashboard");
+      router.replace("/welcome");
       return;
     }
 
