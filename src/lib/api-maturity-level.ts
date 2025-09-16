@@ -42,9 +42,8 @@ export async function createMaturityLevel(
 export async function updateMaturityLevel(
   id: number,
   body: UpdateMaturityLevelRequest
-): Promise<ApiResponse<MaturityLevel> | MaturityLevel> {
-  // Jangan bersihkan body secara manual — biarkan field tetap
-  const res = await fetch(`${API_URL}/${id}`, { // <-- PERBAIKAN: gunakan `id`, bukan `body.id`
+): Promise<ApiResponse<MaturityLevel>> {
+  const res = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -57,6 +56,7 @@ export async function updateMaturityLevel(
 
   return res.json();
 }
+
 
 // Delete maturity level
 export async function deleteMaturityLevel(id: number): Promise<ApiResponse<null>> {

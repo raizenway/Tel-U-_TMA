@@ -20,48 +20,59 @@ export default function DeskripsiVariabelTable() {
     scoreDescription4: "",
   });
 
+  const [loading, setLoading] = useState(true); // ✅ Tambahkan loading state
   const [showCancel, setShowCancel] = useState(false);
 
   // ✅ Key localStorage dinamis berdasarkan mode
   const tempKey = id ? `maturityTempForm_${id}` : "maturityTempForm";
 
-  // ✅ Load data saat mount
+  // ✅ Load data saat mount — tunggu sampai data tersedia
   useEffect(() => {
-    const savedForm = localStorage.getItem(tempKey);
-    if (savedForm) {
-      try {
-        const parsed = JSON.parse(savedForm);
-        setDeskripsi({
-          scoreDescription0: parsed.scoreDescription0 || "",
-          scoreDescription1: parsed.scoreDescription1 || "",
-          scoreDescription2: parsed.scoreDescription2 || "",
-          scoreDescription3: parsed.scoreDescription3 || "",
-          scoreDescription4: parsed.scoreDescription4 || "",
-        });
-        return; // Jangan lanjut ke fallback jika berhasil load
-      } catch (e) {
-        console.error("Error parsing temp data:", e);
-      }
-    }
-
-    // ✅ Fallback hanya untuk mode edit (karena add tidak punya data sebelumnya)
-    if (mode === "edit" && id) {
-      try {
-        const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
-        const item = savedData.find((d: any) => String(d.id) === String(id));
-        if (item) {
+    const loadData = () => {
+      const savedForm = localStorage.getItem(tempKey);
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
           setDeskripsi({
-            scoreDescription0: item.scoreDescription0 || "",
-            scoreDescription1: item.scoreDescription1 || "",
-            scoreDescription2: item.scoreDescription2 || "",
-            scoreDescription3: item.scoreDescription3 || "",
-            scoreDescription4: item.scoreDescription4 || "",
+            scoreDescription0: parsed.scoreDescription0 || "",
+            scoreDescription1: parsed.scoreDescription1 || "",
+            scoreDescription2: parsed.scoreDescription2 || "",
+            scoreDescription3: parsed.scoreDescription3 || "",
+            scoreDescription4: parsed.scoreDescription4 || "",
           });
+          setLoading(false); // ✅ Data tersedia
+          return;
+        } catch (e) {
+          console.error("Error parsing temp data:", e);
         }
-      } catch (e) {
-        console.error("Error loading fallback data:", e);
       }
-    }
+
+      // ✅ Fallback hanya untuk mode edit (karena add tidak punya data sebelumnya)
+      if (mode === "edit" && id) {
+        try {
+          const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
+          const item = savedData.find((d: any) => String(d.id) === String(id));
+          if (item) {
+            setDeskripsi({
+              scoreDescription0: item.scoreDescription0 || "",
+              scoreDescription1: item.scoreDescription1 || "",
+              scoreDescription2: item.scoreDescription2 || "",
+              scoreDescription3: item.scoreDescription3 || "",
+              scoreDescription4: item.scoreDescription4 || "",
+            });
+          }
+        } catch (e) {
+          console.error("Error loading fallback data:", e);
+        }
+      }
+
+      setLoading(false); // ✅ Selesai load, tampilkan form
+    };
+
+    // ✅ Tunda sedikit untuk memastikan localStorage sudah di-set
+    const timer = setTimeout(loadData, 100);
+
+    return () => clearTimeout(timer);
   }, [id, mode, tempKey]);
 
   // ✅ Cek apakah SEMUA field sudah diisi
@@ -96,6 +107,17 @@ export default function DeskripsiVariabelTable() {
       alert("Gagal menyimpan deskripsi. Coba lagi.");
     }
   };
+
+  // ✅ Tampilkan loading jika data belum siap
+  if (loading) {
+    return (
+      <div className="bg-[#F5F7FA] min-h-screen flex justify-center items-center p-6">
+        <div className="bg-white rounded-xl shadow-sm p-8 w-full max-w-5xl text-center">
+          <p>Loading data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#F5F7FA] min-h-screen flex justify-center items-center p-6">

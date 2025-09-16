@@ -4,11 +4,9 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
-import {
-  useGetMaturityLevelById,
-  useUpdateMaturityLevel,
-} from "@/hooks/useMaturityLevel";
-import { UpdateMaturityLevelRequest } from "@/interfaces/maturity-level";
+import { useGetMaturityLevelById, useUpdateMaturityLevel } from "@/hooks/useMaturityLevel";
+import { MaturityLevel } from "@/interfaces/maturity-level";
+import Container from "@/components/Container";
 
 export default function EditMaturityPage() {
   const { id } = useParams();
@@ -25,12 +23,14 @@ export default function EditMaturityPage() {
 
   if (!realId || isNaN(realId)) return null;
 
-  // ✅ Hooks — gunakan nama unik untuk loading
-  const { data: maturityDetail, loading: isLoadingDetail } = useGetMaturityLevelById(realId);
-  const { mutate: updateMaturity, loading: isUpdating } = useUpdateMaturityLevel();
+  // Hooks API
+  const { data: maturityDetail, loading: isLoadingDetail } =
+    useGetMaturityLevelById(realId);
+  const { mutate: updateMaturity, loading: isUpdating } =
+    useUpdateMaturityLevel();
 
-  // State
-  const [formData, setFormData] = useState<UpdateMaturityLevelRequest>({
+  // State form
+  const [formData, setFormData] = useState<MaturityLevel>({
     id: realId,
     name: "",
     levelNumber: 0,
@@ -42,92 +42,40 @@ export default function EditMaturityPage() {
     scoreDescription2: "",
     scoreDescription3: "",
     scoreDescription4: "",
+    created_at: "",
+    updated_at: "",
   });
 
-  // Debug: Log API response lengkap
+  // Load data dari localStorage → fallback ke API
   useEffect(() => {
-    if (maturityDetail) {
-      console.log("🚀 [API Response Lengkap]:", maturityDetail);
-    }
-  }, [maturityDetail]);
+    const tempKey = `maturityTempForm_${realId}`;
+    const temp = localStorage.getItem(tempKey);
 
-  // Load data dari API atau localStorage
-  // ... bagian atas tetap sama ...
-
-// Load data dari API atau localStorage
-useEffect(() => {
-  if (!maturityDetail || !realId) return;
-
-  const tempKey = `maturityTempForm_${realId}`;
-  const temp = localStorage.getItem(tempKey);
-
-  if (temp) {
-    try {
-      const parsed = JSON.parse(temp);
-
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        "id" in parsed &&
-        parsed.id === realId
-      ) {
-        console.log(`[LocalStorage] Restoring form for ID: ${realId}`);
-        setFormData({
-          ...parsed,
-          id: realId,
-        });
-        return;
-      } else {
-        console.warn(
-          `[LocalStorage] Ignored — ID mismatch or invalid structure. Expected: ${realId}, Got:`,
-          parsed?.id
-        );
-        localStorage.removeItem(tempKey);
+    if (temp) {
+      try {
+        const parsed = JSON.parse(temp);
+        if (parsed.id === realId) {
+          console.log("Restoring from localStorage:", parsed);
+          setFormData(parsed);
+          return;
+        }
+      } catch (err) {
+        console.error("Error parsing localStorage:", err);
       }
-    } catch (err) {
-      console.error("[LocalStorage] Error parsing:", err);
-      localStorage.removeItem(tempKey);
     }
-  }
 
-  // ✅ Casting ke `any` untuk akses snake_case tanpa error TypeScript
-  const md = maturityDetail as any;
-
-  // Helper: ambil nilai dengan fallback
-  const getDesc = (key: string, fallbackKey?: string) => {
-    const val = md[key] ?? md[fallbackKey || ''];
-    return typeof val === 'string' ? val : '';
-  };
-
-  setFormData({
-    id: md.id,
-    name: md.name || "",
-    levelNumber: md.levelNumber || md.level_number || 0,
-    minScore: Number(md.minScore || md.min_score) || 0,
-    maxScore: Number(md.maxScore || md.max_score) || 0,
-    generalDescription: md.generalDescription || md.general_description || "",
-    scoreDescription0: getDesc('scoreDescription0', 'score_description_0'),
-    scoreDescription1: getDesc('scoreDescription1', 'score_description_1'),
-    scoreDescription2: getDesc('scoreDescription2', 'score_description_2'),
-    scoreDescription3: getDesc('scoreDescription3', 'score_description_3'),
-    scoreDescription4: getDesc('scoreDescription4', 'score_description_4'),
-  });
-}, [maturityDetail, realId]);
-
-  // Sync ke localStorage (auto-save)
-  useEffect(() => {
-    if (realId && formData.name) {
-      const safeData = { ...formData, id: realId };
-      localStorage.setItem(`maturityTempForm_${realId}`, JSON.stringify(safeData));
+    if (maturityDetail) {
+      setFormData({
+        ...maturityDetail,
+        scoreDescription0: maturityDetail.scoreDescription0 || "",
+        scoreDescription1: maturityDetail.scoreDescription1 || "",
+        scoreDescription2: maturityDetail.scoreDescription2 || "",
+        scoreDescription3: maturityDetail.scoreDescription3 || "",
+        scoreDescription4: maturityDetail.scoreDescription4 || "",
+        generalDescription: maturityDetail.generalDescription || "",
+      });
     }
-  }, [formData, realId]);
-
-  // Bersihkan localStorage saat unmount
-  useEffect(() => {
-    return () => {
-      localStorage.removeItem(`maturityTempForm_${realId}`);
-    };
-  }, [realId]);
+  }, [maturityDetail, realId]);
 
   // Handle perubahan input
   const handleChange = (
@@ -146,25 +94,38 @@ useEffect(() => {
   // Submit form
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
     try {
-      await updateMaturity(realId, { ...formData, id: realId });
+      const { id, created_at, updated_at, ...payload } = formData;
+
+      // Sanitize payload supaya aman
+      const safePayload = {
+        ...payload,
+        name: payload.name?.trim() || "",
+        levelNumber: Number(payload.levelNumber) || 0,
+        minScore: Number(payload.minScore) || 0,
+        maxScore: Number(payload.maxScore) || 0,
+        generalDescription: payload.generalDescription?.trim() || "",
+        scoreDescription0: payload.scoreDescription0?.trim() || "",
+        scoreDescription1: payload.scoreDescription1?.trim() || "",
+        scoreDescription2: payload.scoreDescription2?.trim() || "",
+        scoreDescription3: payload.scoreDescription3?.trim() || "",
+        scoreDescription4: payload.scoreDescription4?.trim() || "",
+      };
+
+      console.log("Payload update:", safePayload);
+      await updateMaturity(realId, safePayload);
 
       localStorage.removeItem(`maturityTempForm_${realId}`);
+
       router.push(`/maturity-level?success=true&refresh=${Date.now()}`);
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update failed:", error);
+      const message = encodeURIComponent(
+        error.message || "Gagal menyimpan data"
+      );
+      router.push(`/maturity-level?error=true&message=${message}`);
     }
-  };
-
-  // Navigasi ke halaman deskripsi per variabel
-  const handleEditDeskripsi = () => {
-    localStorage.setItem(
-      `maturityTempForm_${realId}`,
-      JSON.stringify({ ...formData, id: realId })
-    );
-    router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
   };
 
   // Hitung deskripsi yang sudah diisi
@@ -175,6 +136,15 @@ useEffect(() => {
     formData.scoreDescription3,
     formData.scoreDescription4,
   ].filter((desc) => typeof desc === "string" && desc.trim() !== "").length;
+
+  // Navigasi ke halaman deskripsi per variabel
+  const handleEditDeskripsi = () => {
+    localStorage.setItem(
+      `maturityTempForm_${realId}`,
+      JSON.stringify({ ...formData, id: realId })
+    );
+    router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
+  };
 
   // Loading state
   if (isLoadingDetail || !maturityDetail) {
@@ -189,10 +159,9 @@ useEffect(() => {
 
   // Render UI
   return (
-    <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
-      <form
+    <div >
+        <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl"
       >
         {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
@@ -245,9 +214,7 @@ useEffect(() => {
         {/* Row 3 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Deskripsi Umum
-            </label>
+            <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
               name="generalDescription"
               value={formData.generalDescription}

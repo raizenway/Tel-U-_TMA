@@ -46,6 +46,7 @@ export function useCreateMaturityLevel() {
 export function useUpdateMaturityLevel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const mutate = async (
     id: number,
     body: UpdateMaturityLevelRequest
@@ -54,23 +55,18 @@ export function useUpdateMaturityLevel() {
     setError(null);
     try {
       const res = await updateMaturityLevel(id, body);
-      // Perbaikan: Tangani kedua kemungkinan tipe respons
-      let maturityLevel: MaturityLevel;
-      if (res && typeof res === "object" && "data" in res) {
-        maturityLevel = (res as ApiResponse<MaturityLevel>).data;
-      } else {
-        maturityLevel = res as MaturityLevel;
-      }
-      return maturityLevel; // <-- Kembalikan objek MaturityLevel yang konsisten
-    } catch (error: any) {
-      setError(error.message);
-      throw error;
+      return res.data; 
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }
   };
+
   return { mutate, loading, error };
 }
+
 
 export function useDeleteMaturityLevel() {
   const [loading, setLoading] = useState(false);
