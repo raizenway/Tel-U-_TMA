@@ -122,7 +122,7 @@ const handleSave = async () => {
   if (loading) {
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 mt-20">
+      <main className="min-h-screen w-full p-8 ">
         <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
           <p>Loading data user...</p>
         </div>
@@ -134,7 +134,7 @@ const handleSave = async () => {
 if (error) {
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 mt-20">
+      <main className="min-h-screen w-full p-8 ">
         <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
           <p className="text-red-500">Error: {error}</p>
         </div>
@@ -144,9 +144,9 @@ if (error) {
 }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 mt-20">
-        <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto">
+    <div>
+      <main>
+        <div className="bg-white rounded-lg p-8 max-w-7xl w-full mx-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
