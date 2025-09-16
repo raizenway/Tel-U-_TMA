@@ -29,11 +29,11 @@
 
         const result = await res.json();
 
-       if (result.status === 'success') {
-  // 💡 SEMENTARA — tambahkan roleId secara manual
+      if (result.status === 'success') {
+  // ✅ Ambil roleId dari backend — jangan hardcode
   const userWithRole = {
     ...result.data,
-    roleId: 1, // ← ganti angka ini sesuai role yang ingin kamu test: 1,2,3,4
+    roleId: result.data.roleId, // ← ambil dari backend
   };
   localStorage.setItem('user', JSON.stringify(userWithRole));
   router.push('/welcome');
