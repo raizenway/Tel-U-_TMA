@@ -12,8 +12,6 @@ export interface MaturityLevel {
   scoreDescription4?: string;
   created_at: string;
   updated_at: string;
-
-  [key: string]: any;
 }
 
 export interface CreateMaturityLevelRequest {
