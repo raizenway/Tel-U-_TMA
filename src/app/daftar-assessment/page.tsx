@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+
 import Container from "@/components/Container";
 import DaftarAssessmentPage from "./DaftarAssessmentPage";
 

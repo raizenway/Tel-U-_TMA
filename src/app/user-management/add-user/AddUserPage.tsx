@@ -24,22 +24,28 @@ export default function AddUserPage() {
     namaPIC: '',
     email: '',
     nomorHp: '',
-    status: '',
+    status: '' as 'active' | 'inactive' | '',
   }); 
   
   // ✅ Gunakan hook untuk create user
 const { mutate: createUser, loading, error } = useCreateUser();
 
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (name === 'nomorHp') {
-      const numericValue = value.replace(/\D/g, '');
-      setForm({ ...form, [name]: numericValue });
-    } else {
+const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const { name, value } = e.target;
+
+  if (name === 'nomorHp') {
+    const numericValue = value.replace(/\D/g, '');
+    setForm({ ...form, [name]: numericValue });
+  } else if (name === 'status') {
+    // Hanya terima 'active' atau 'inactive'
+    if (value === 'active' || value === 'inactive' || value === '') {
       setForm({ ...form, [name]: value });
     }
-  };
+  } else {
+    setForm({ ...form, [name]: value });
+  }
+};
 
   const handleCancel = () => {
     router.push('/user-management');
@@ -49,22 +55,29 @@ const { mutate: createUser, loading, error } = useCreateUser();
     form.username.trim() !== '' &&
     form.password.trim() !== '' &&
     form.namaUser.trim() !== '' &&
-    form.status.trim() !== '' &&
     form.email.trim() !== '' &&
-    form.nomorHp.trim() !== '';
+    form.nomorHp.trim() !== ''&&
+    form.status.trim() !== '';
 
 const handleSave = async () => {
   if (!isFormValid) return;
+
+  // Validasi: pastikan status valid
+  if (form.status !== 'active' && form.status !== 'inactive') {
+    alert('Status harus dipilih: Active atau Inactive');
+    return;
+  }
 
   // Siapkan data yang akan dikirim ke API
 const body: CreateUserRequest = {
   username: form.username,
   password: form.password,
   fullname: form.namaUser,
-  roleId: role === 'UPPS/KC' ? 1 : 2, // ✅ Ubah string → number
+  roleId: role === 'UPPS/KC' ? 2 : 4, // ✅ Ubah string → number
   email: form.email,
   phoneNumber: form.nomorHp,
   branchId: 1,
+  status: form.status,
 };
 
   try {

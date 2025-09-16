@@ -11,7 +11,7 @@ import WelcomeTab from "@/components/WelcomTab";
 import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/components/PurwokertoTab";
-import SurabayaTab from "@/components/SurabayaTab";
+
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -78,7 +78,7 @@ export default function WelcomePage() {
           {tab === "purwokerto" && (
             <PurwokertoTab setIsFormDirty={setIsFormDirty} />
           )}
-          {tab === "surabaya" && <SurabayaTab />}
+         
           {tab === "assessment-form" && (
             <AssessmentForm
               onSelectCampus={(campus) => {

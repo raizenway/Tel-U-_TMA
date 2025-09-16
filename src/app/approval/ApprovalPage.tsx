@@ -30,12 +30,12 @@ const TablePage = () => {
 
   const columns = [
     { header: "Nomor", key: "nomor", width: "100px", sortable: true },
-    { header: "Nama Variable", key: "variable", width: "300px", sortable: true },
+    { header: "Nama Variable", key: "variable", width: "160px", sortable: true },
     { header: "Indikator", key: "indikator", width: "319px" },
     { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
-    { header: "Jawaban", key: "jawaban", width: "120px" },
-    { header: "Skor", key: "skor", width: "319px" },
-    { header: "Tipe Soal", key: "tipeSoal", width: "160px" },
+    { header: "Jawaban", key: "jawaban", width: "120px", sortable: true},
+    { header: "Skor", key: "skor", width: "319px", sortable: true },
+    { header: "Tipe Soal", key: "tipeSoal", width: "160px", sortable: true },
   ];
 
   // Data dummy

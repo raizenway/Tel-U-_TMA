@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { X, Save} from "lucide-react";
 import Button  from "@/components/button";
+import { useGetUserById, useUpdateUser } from '@/hooks/useUserManagement';
+
 
 export default function EditUserPage() {
   const router = useRouter();
@@ -28,58 +30,86 @@ export default function EditUserPage() {
     logoPreview: '', // base64 image
   });
 
-  useEffect(() => {
-    if (!userIdFromQuery) return;
+const { data, loading, error } = useGetUserById(Number(userIdFromQuery));
 
-    const storedUser = localStorage.getItem('selectedUser');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        if (user.userId === userIdFromQuery) {
-          setForm({
-            userId: user.userId || '',
-            username: user.username || '',
-            password: user.password || '',
-            namaUser: user.namaUser || '',
-            namaPIC: user.namaPIC || '',
-            email: user.email || '',
-            nomorHp: user.nomorHp || '',
-            status: user.status || '',
-            role: user.role || '',
-            logoPreview: user.logoPreview || '', // foto lama
-          });
-          setLogoFileName(user.logoFileName || 'Cari Lampiran...');
-        }
-      } catch (err) {
-        console.error('Gagal parsing selectedUser:', err);
-      }
-    }
-  }, [userIdFromQuery]);
+const { mutate: updateUser, loading: updating } = useUpdateUser();
+
+
+useEffect(() => {
+  if (loading || !data?.data) return;
+
+  const user = data.data;
+
+  // Mapping roleId ke role string
+  const role = user.roleId === 2 ? 'UPPS/KC' : 'Non SSO';
+
+  setForm({
+    userId: user.id.toString(),
+    username: user.username,
+    password: '', // biarkan kosong, artinya "jangan ubah password"
+    namaUser: user.fullname,
+    namaPIC: user.pic || '',
+    email: user.email,
+    nomorHp: String(user.phoneNumber) || '',
+    status: user.status,
+    role,
+    logoPreview: user.logo_file_id ? `/api/logo/${user.logo_file_id}` : '',
+  });
+
+  if (user.logo_file_id) {
+    setLogoFileName(`Logo_${user.id}.png`);
+  }
+}, [data, loading]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (name === 'nomorHp' && /[^0-9]/.test(value)) return; // hanya angka
-    setForm({ ...form, [name]: value });
-  };
+  const { name, value } = e.target;
+  if (name === 'nomorHp') {
+    // Hanya izinkan angka atau kosong
+    if (value === '' || /^[0-9]*$/.test(value)) {
+      setForm({ ...form, [name]: value });
+    }
+    return;
+  }
+  // Untuk semua input lain
+  setForm({ ...form, [name]: value });
+};
 
   const handleCancel = () => {
     router.push('/user-management');
   };
 
-  const handleSave = () => {
-    const storedUsers = localStorage.getItem('users');
-    let users = storedUsers ? JSON.parse(storedUsers) : [];
+const handleSave = async () => {
+  if (!form.userId || !form.username || !form.namaUser || !form.status) {
+    alert('Mohon lengkapi field wajib: User ID, Username, Nama User, Status');
+    return;
+  }
 
-    users = users.map((user: any) =>
-      user.userId === form.userId
-        ? { ...user, ...form, logoFileName, logoPreview: form.logoPreview }
-        : user
-    );
-
-    localStorage.setItem('users', JSON.stringify(users));
-    localStorage.removeItem('selectedUser');
-    router.push('/user-management');
+  const requestBody = {
+    fullname: form.namaUser,
+    username: form.username,
+    email: form.email,
+    phoneNumber: form.nomorHp,
+    roleId: form.role === 'UPPS/KC' ? 2 : 4,
+    branchId: 1, // Ganti sesuai kebutuhan
+    status: form.status as 'active' | 'inactive',
   };
+
+   if (form.password) {
+    (requestBody as any).password = form.password; // hanya tambahkan jika ada
+  }
+
+  try {
+  await updateUser(Number(form.userId), requestBody);
+
+  // ✅ SIMPAN FLAG UNTUK NOTIFIKASI
+  localStorage.setItem('editDataSuccess', 'true');
+
+  // ✅ REDIRECT
+  router.push('/user-management');
+} catch (err) {
+  alert('Gagal memperbarui user. Coba lagi.');
+}
+};
 
   const isFormValid =
     form.userId && form.username && form.password && form.namaUser && form.status;
@@ -88,6 +118,30 @@ export default function EditUserPage() {
     const path = pathname?.split("/")[1];
     setTab(path || "welcome");
   }, [pathname]);
+
+  if (loading) {
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      <main className="min-h-screen w-full p-8 mt-20">
+        <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
+          <p>Loading data user...</p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+if (error) {
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      <main className="min-h-screen w-full p-8 mt-20">
+        <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
+          <p className="text-red-500">Error: {error}</p>
+        </div>
+      </main>
+    </div>
+  );
+}
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -108,6 +162,7 @@ export default function EditUserPage() {
                 type="password"
                 value={form.password}
                 onChange={handleChange}
+                placeholder="Kosongkan jika tidak ingin mengubah password"
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
               />
             </div>
@@ -255,9 +310,10 @@ export default function EditUserPage() {
                 icon={Save}
                 iconPosition="left"
                 onClick={handleSave}
+                disabled={updating} // ⬅️ tambah ini
                 className="rounded-[12px] px-17 py-2 text-sm font-semibold"
               >
-                Simpan
+                {updating ? 'Menyimpan...' : 'Simpan'}
               </Button>
           </div>
         </div>

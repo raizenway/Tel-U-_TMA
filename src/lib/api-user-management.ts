@@ -1,7 +1,7 @@
 import { User, CreateUserRequest } from "@/interfaces/user-management"; // Interface User Management
 import { ApiResponse } from "@/interfaces/api-response"; // Interface API Response
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL + "/user"; // Menyetel prefix
+export const API_URL = process.env.NEXT_PUBLIC_API_URL + "/user";
 
 // Fungsi listUsers yang berguna untuk fetch API List User
 export async function listUsers(): Promise<ApiResponse<User[]>> {
@@ -27,5 +27,19 @@ export async function createUser(body: CreateUserRequest): Promise<ApiResponse<U
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Failed to create user");
+  return res.json();
+}
+
+// Fungsi deactivateUser untuk fetch API Deactivate User
+export async function deactivateUser(id: number): Promise<ApiResponse<User>> {
+  const res = await fetch(`${API_URL}/deactivate/${id}`, { method: "PUT" });
+  if (!res.ok) throw new Error("Failed to deactivate user");
+  return res.json();
+}
+
+// Fungsi activateUser untuk fetch API Activate User
+export async function activateUser(id: number): Promise<ApiResponse<User>> {
+  const res = await fetch(`${API_URL}/activate/${id}`, { method: "PUT" });
+  if (!res.ok) throw new Error("Failed to activate user");
   return res.json();
 }
