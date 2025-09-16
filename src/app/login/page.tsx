@@ -29,12 +29,15 @@
 
         const result = await res.json();
 
-        if (result.status === 'success') {
-          localStorage.setItem('user', JSON.stringify(result.data));
-          router.push('/welcome');
-        } else {
-          setError(result.message || 'Login gagal');
-        }
+      if (result.status === 'success') {
+  // ✅ Ambil roleId dari backend — jangan hardcode
+  const userWithRole = {
+    ...result.data,
+    roleId: result.data.roleId, // ← ambil dari backend
+  };
+  localStorage.setItem('user', JSON.stringify(userWithRole));
+  router.push('/welcome');
+}
       } catch {
         setError('Terjadi kesalahan, coba lagi');
       } finally {

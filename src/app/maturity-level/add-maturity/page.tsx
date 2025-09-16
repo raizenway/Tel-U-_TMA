@@ -7,6 +7,14 @@ import { X, Save } from "lucide-react";
 import SuccessNotification from "@/components/SuccessNotification";
 import { useCreateMaturityLevel } from "@/hooks/useMaturityLevel";
 
+function arrayToScoreDescriptionObj(arr: string[]) {
+  const obj: Record<string, string> = {};
+  arr.forEach((desc, idx) => {
+    obj[`scoreDescription${idx}`] = desc;
+  });
+  return obj;
+}
+
 export default function AddMaturityLevelPage() {
   const [formData, setFormData] = useState({
     level: "",
@@ -18,10 +26,11 @@ export default function AddMaturityLevelPage() {
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
-  const { mutate, loading, error } = useCreateMaturityLevel();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { mutate, loading } = useCreateMaturityLevel();
   const router = useRouter();
 
-  // Muat data sementara (kalau ada)
   useEffect(() => {
     const tempForm = localStorage.getItem("maturityTempForm");
     if (!tempForm) return;
@@ -41,7 +50,6 @@ export default function AddMaturityLevelPage() {
     }
   }, []);
 
-  // Sync dari halaman deskripsi-per-variabel
   useEffect(() => {
     const handleFocus = () => {
       const tempForm = localStorage.getItem("maturityTempForm");
@@ -81,17 +89,17 @@ export default function AddMaturityLevelPage() {
     if (!isFormValid) return;
 
     try {
-      // Kirim sesuai interface API (EN)
-      await mutate({
+      const payload = {
         name: formData.namaLevel.trim(),
         levelNumber: Number(formData.level),
         minScore: Number(formData.skorMin),
         maxScore: Number(formData.skorMax),
         generalDescription: formData.deskripsiUmum.trim(),
-        scoreDescription: formData.deskripsiPerVariabel,
-      });
+        ...arrayToScoreDescriptionObj(formData.deskripsiPerVariabel),
+      };
 
-      // Beresin state & storage
+      await mutate(payload);
+
       localStorage.removeItem("maturityTempForm");
       setFormData({
         level: "",
@@ -102,13 +110,14 @@ export default function AddMaturityLevelPage() {
         deskripsiPerVariabel: [],
       });
 
+      setErrorMessage(null);
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         router.push("/maturity-level");
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
-      alert("Gagal menyimpan: " + (err?.message ?? "Unknown error"));
+      setErrorMessage(err?.message ?? "Terjadi kesalahan saat menyimpan data");
     }
   };
 
@@ -216,7 +225,7 @@ export default function AddMaturityLevelPage() {
             Batal
           </Button>
 
-        <Button
+          <Button
             variant="primary"
             type="submit"
             icon={Save}
@@ -228,7 +237,9 @@ export default function AddMaturityLevelPage() {
           </Button>
         </div>
 
-        {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+        {errorMessage && (
+          <p className="text-red-600 text-sm mt-3">{errorMessage}</p>
+        )}
       </form>
     </div>
   );
