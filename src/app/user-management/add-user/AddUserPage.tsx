@@ -28,7 +28,7 @@ export default function AddUserPage() {
   }); 
   
   // ✅ Gunakan hook untuk create user
-const { mutate: createUser, loading, error } = useCreateUser();
+const { mutate: createUser, loading} = useCreateUser();
 
 
 const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -114,9 +114,9 @@ const body: CreateUserRequest = {
 
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="min-h-screen w-full p-8 mt-20">
-        <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl">
+    <div>
+      <div>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <form
             onSubmit={(e) => {
               e.preventDefault();

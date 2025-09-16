@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect, useMemo} from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
 import Button  from "@/components/button";
