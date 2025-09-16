@@ -43,6 +43,23 @@ export default function AssessmentPage() {
   // 🔹 Ambil searchParams
   const searchParams = useSearchParams();
 
+   // 🔹 Tambahkan state roleId
+    const [roleId, setRoleId] = useState<number | null>(null);
+  
+    // 🔹 Ambil roleId dari localStorage
+    useEffect(() => {
+      const user = localStorage.getItem('user');
+      if (user) {
+        try {
+          const parsed = JSON.parse(user);
+          setRoleId(Number(parsed.roleId));
+        } catch (e) {
+          console.error("Gagal parse user:", e);
+        }
+      }
+    }, []);
+  
+
   // 🔹 Tambah useEffect untuk baca query 'success'
   useEffect(() => {
     const successType = searchParams.get('success');
@@ -270,9 +287,11 @@ const currentData = filteredData
                   data={dataForExport}
                   columns={['Nomor', 'Nama Variable', 'Bobot','Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
                 />
+                {roleId === 1 && (
                 <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
                    Tambah Variable
                 </Button>
+                )}
               </div>
             </div>
           </div>
