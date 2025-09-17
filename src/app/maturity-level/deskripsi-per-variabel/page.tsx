@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { X, Save } from "lucide-react";
 import Button from "@/components/button";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
+import { useUpdateMaturityLevel, useCreateMaturityLevel } from "@/hooks/useMaturityLevel";
+import { UpdateMaturityLevelRequest, CreateMaturityLevelRequest } from "@/interfaces/maturity-level";
 
 export default function DeskripsiVariabelTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = searchParams.get("mode") || "add"; // "add" | "edit"
-  const id = searchParams.get("id"); // bisa null jika mode=add
+  const mode = searchParams.get("mode") || "add"; 
+  const id = searchParams.get("id");
 
   const [deskripsi, setDeskripsi] = useState<Record<string, string>>({
     scoreDescription0: "",
@@ -20,36 +22,32 @@ export default function DeskripsiVariabelTable() {
     scoreDescription4: "",
   });
 
-  const [loading, setLoading] = useState(true); // ✅ Tambahkan loading state
+  const [loading, setLoading] = useState(true);
   const [showCancel, setShowCancel] = useState(false);
 
-  // ✅ Key localStorage dinamis berdasarkan mode
-  const tempKey = id ? `maturityTempForm_${id}` : "maturityTempForm";
+  const { mutate: updateMaturity, loading: isUpdating } = useUpdateMaturityLevel();
+  const { mutate: createMaturity, loading: isCreating } = useCreateMaturityLevel();
 
-  // ✅ Load data saat mount — tunggu sampai data tersedia
+  const isLoading = isUpdating || isCreating;
+
   useEffect(() => {
     const loadData = () => {
-      const savedForm = localStorage.getItem(tempKey);
-      if (savedForm) {
-        try {
-          const parsed = JSON.parse(savedForm);
-          setDeskripsi({
-            scoreDescription0: parsed.scoreDescription0 || "",
-            scoreDescription1: parsed.scoreDescription1 || "",
-            scoreDescription2: parsed.scoreDescription2 || "",
-            scoreDescription3: parsed.scoreDescription3 || "",
-            scoreDescription4: parsed.scoreDescription4 || "",
-          });
-          setLoading(false); // ✅ Data tersedia
-          return;
-        } catch (e) {
-          console.error("Error parsing temp data:", e);
-        }
-      }
-
-      // ✅ Fallback hanya untuk mode edit (karena add tidak punya data sebelumnya)
       if (mode === "edit" && id) {
         try {
+          const tempForm = localStorage.getItem(`maturityTempForm_${id}`);
+          if (tempForm) {
+            const parsed = JSON.parse(tempForm);
+            setDeskripsi({
+              scoreDescription0: parsed.scoreDescription0 || "",
+              scoreDescription1: parsed.scoreDescription1 || "",
+              scoreDescription2: parsed.scoreDescription2 || "",
+              scoreDescription3: parsed.scoreDescription3 || "",
+              scoreDescription4: parsed.scoreDescription4 || "",
+            });
+            setLoading(false);
+            return;
+          }
+
           const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
           const item = savedData.find((d: any) => String(d.id) === String(id));
           if (item) {
@@ -62,53 +60,74 @@ export default function DeskripsiVariabelTable() {
             });
           }
         } catch (e) {
-          console.error("Error loading fallback data:", e);
+          console.error("Error loading data:", e);
         }
       }
-
-      setLoading(false); // ✅ Selesai load, tampilkan form
+      setLoading(false);
     };
 
-    // ✅ Tunda sedikit untuk memastikan localStorage sudah di-set
-    const timer = setTimeout(loadData, 100);
+    setTimeout(loadData, 100);
+  }, [id, mode]);
 
-    return () => clearTimeout(timer);
-  }, [id, mode, tempKey]);
-
-  // ✅ Cek apakah SEMUA field sudah diisi
   const allFilled = Object.values(deskripsi).every((desc) => desc.trim() !== "");
 
-  // ✅ Simpan perubahan — handle add & edit
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
-      // Ambil form utama (bisa dari add/edit)
-      const savedForm = JSON.parse(localStorage.getItem(tempKey) || "{}");
-
-      // Gabungkan dengan deskripsi baru
-      const updatedForm = {
-        ...savedForm,
-        ...deskripsi,
-      };
-
-      // Simpan kembali ke localStorage
-      localStorage.setItem(tempKey, JSON.stringify(updatedForm));
-
-      // Trigger event agar halaman edit/add bisa deteksi perubahan
-      window.dispatchEvent(new Event("storage"));
-
-      // Redirect sesuai mode
+      let tempFormKey = "";
       if (mode === "edit" && id) {
+        tempFormKey = `maturityTempForm_${id}`;
+      } else if (mode === "add") {
+        tempFormKey = "maturityTempForm";
+      }
+
+      const tempForm = localStorage.getItem(tempFormKey);
+      if (!tempForm) {
+        alert("Data form utama tidak ditemukan. Harap kembali ke halaman utama.");
+        return;
+      }
+
+      const fullFormData = JSON.parse(tempForm);
+
+      if (mode === "edit" && id) {
+        const body: UpdateMaturityLevelRequest = {
+          name: (fullFormData.name || "").trim(),
+          levelNumber: isNaN(Number(fullFormData.levelNumber)) ? 0 : Number(fullFormData.levelNumber),
+          minScore: String(fullFormData.minScore || "").trim(),
+          maxScore: String(fullFormData.maxScore || "").trim(),
+          generalDescription: (fullFormData.generalDescription || "").trim(),
+          scoreDescription0: deskripsi.scoreDescription0.trim(),
+          scoreDescription1: deskripsi.scoreDescription1.trim(),
+          scoreDescription2: deskripsi.scoreDescription2.trim(),
+          scoreDescription3: deskripsi.scoreDescription3.trim(),
+          scoreDescription4: deskripsi.scoreDescription4.trim(),
+        };
+
+        await updateMaturity(Number(id), body);
+        localStorage.removeItem(tempFormKey);
         router.push(`/maturity-level/edit-maturity/${id}`);
-      } else {
+
+      } else if (mode === "add") {
+        const updatedForm = {
+          ...fullFormData,
+          scoreDescription0: deskripsi.scoreDescription0.trim(),
+          scoreDescription1: deskripsi.scoreDescription1.trim(),
+          scoreDescription2: deskripsi.scoreDescription2.trim(),
+          scoreDescription3: deskripsi.scoreDescription3.trim(),
+          scoreDescription4: deskripsi.scoreDescription4.trim(),
+        };
+
+        localStorage.setItem(tempFormKey, JSON.stringify(updatedForm));
+
+        window.dispatchEvent(new Event("storage"));
+
         router.push("/maturity-level/add-maturity");
       }
-    } catch (error) {
-      console.error("Error saving deskripsi:", error);
-      alert("Gagal menyimpan deskripsi. Coba lagi.");
+    } catch (err) {
+      console.error("Failed to process descriptions:", err);
+      alert("Gagal memproses deskripsi. Coba lagi.");
     }
   };
 
-  // ✅ Tampilkan loading jika data belum siap
   if (loading) {
     return (
       <div className="bg-[#F5F7FA] min-h-screen flex justify-center items-center p-6">
@@ -123,9 +142,7 @@ export default function DeskripsiVariabelTable() {
     <div className="bg-[#F5F7FA] min-h-screen flex justify-center items-center p-6">
       <div className="bg-white rounded-xl shadow-sm p-8 w-full max-w-5xl">
 
-        {/* Grid layout: 2 kolom, semua textarea ukuran sama */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Skor 0 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Deskripsi Skor 0
@@ -233,17 +250,16 @@ export default function DeskripsiVariabelTable() {
             variant="simpan"
             icon={Save}
             iconPosition="left"
-            disabled={!allFilled}
+            disabled={!allFilled || isLoading}
             className={`rounded-lg px-4 py-2 text-sm font-semibold ${
               allFilled ? "" : "opacity-50 cursor-not-allowed"
             }`}
             onClick={handleSave}
           >
-            Simpan
+            {isLoading ? "Memproses..." : "Simpan"}
           </Button>
         </div>
 
-        {/* Modal konfirmasi Batal */}
         <ModalConfirm
           isOpen={showCancel}
           onConfirm={() => {

@@ -6,14 +6,12 @@ import Button from "@/components/button";
 import { X, Save } from "lucide-react";
 import { useGetMaturityLevelById, useUpdateMaturityLevel } from "@/hooks/useMaturityLevel";
 import { MaturityLevel } from "@/interfaces/maturity-level";
-import Container from "@/components/Container";
 
 export default function EditMaturityPage() {
   const { id } = useParams();
   const router = useRouter();
   const realId = Array.isArray(id) ? Number(id[0]) : Number(id);
 
-  // Redirect jika ID tidak valid
   useEffect(() => {
     if (!realId || isNaN(realId)) {
       console.warn("Invalid ID, redirecting...");
@@ -23,19 +21,17 @@ export default function EditMaturityPage() {
 
   if (!realId || isNaN(realId)) return null;
 
-  // Hooks API
   const { data: maturityDetail, loading: isLoadingDetail } =
     useGetMaturityLevelById(realId);
   const { mutate: updateMaturity, loading: isUpdating } =
     useUpdateMaturityLevel();
 
-  // State form
   const [formData, setFormData] = useState<MaturityLevel>({
     id: realId,
     name: "",
     levelNumber: 0,
-    minScore: 0,
-    maxScore: 0,
+    minScore: "",
+    maxScore: "",
     generalDescription: "",
     scoreDescription0: "",
     scoreDescription1: "",
@@ -46,7 +42,6 @@ export default function EditMaturityPage() {
     updated_at: "",
   });
 
-  // Load data dari localStorage → fallback ke API
   useEffect(() => {
     const tempKey = `maturityTempForm_${realId}`;
     const temp = localStorage.getItem(tempKey);
@@ -73,37 +68,33 @@ export default function EditMaturityPage() {
         scoreDescription3: maturityDetail.scoreDescription3 || "",
         scoreDescription4: maturityDetail.scoreDescription4 || "",
         generalDescription: maturityDetail.generalDescription || "",
+        minScore: String(maturityDetail.minScore || ""),
+        maxScore: String(maturityDetail.maxScore || ""),
       });
     }
   }, [maturityDetail, realId]);
 
-  // Handle perubahan input
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "levelNumber" || name === "minScore" || name === "maxScore"
-          ? Number(value)
-          : value,
+      [name]: name === "levelNumber" ? Number(value) : value, 
     }));
   };
 
-  // Submit form
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       const { id, created_at, updated_at, ...payload } = formData;
 
-      // Sanitize payload supaya aman
       const safePayload = {
         ...payload,
         name: payload.name?.trim() || "",
         levelNumber: Number(payload.levelNumber) || 0,
-        minScore: Number(payload.minScore) || 0,
-        maxScore: Number(payload.maxScore) || 0,
+        minScore: payload.minScore?.trim() || "", 
+        maxScore: payload.maxScore?.trim() || "", 
         generalDescription: payload.generalDescription?.trim() || "",
         scoreDescription0: payload.scoreDescription0?.trim() || "",
         scoreDescription1: payload.scoreDescription1?.trim() || "",
@@ -128,7 +119,6 @@ export default function EditMaturityPage() {
     }
   };
 
-  // Hitung deskripsi yang sudah diisi
   const filledDescriptions = [
     formData.scoreDescription0,
     formData.scoreDescription1,
@@ -137,7 +127,6 @@ export default function EditMaturityPage() {
     formData.scoreDescription4,
   ].filter((desc) => typeof desc === "string" && desc.trim() !== "").length;
 
-  // Navigasi ke halaman deskripsi per variabel
   const handleEditDeskripsi = () => {
     localStorage.setItem(
       `maturityTempForm_${realId}`,
@@ -146,7 +135,6 @@ export default function EditMaturityPage() {
     router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
   };
 
-  // Loading state
   if (isLoadingDetail || !maturityDetail) {
     return (
       <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
@@ -157,12 +145,9 @@ export default function EditMaturityPage() {
     );
   }
 
-  // Render UI
   return (
-    <div >
-        <form
-        onSubmit={handleSubmit}
-      >
+    <div>
+      <form onSubmit={handleSubmit}>
         {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
@@ -192,9 +177,9 @@ export default function EditMaturityPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Skor Minimum</label>
             <input
-              type="number"
+              type="text"
               name="minScore"
-              value={formData.minScore || ""}
+              value={formData.minScore}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
@@ -202,9 +187,9 @@ export default function EditMaturityPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Skor Maximum</label>
             <input
-              type="number"
+              type="text"
               name="maxScore"
-              value={formData.maxScore || ""}
+              value={formData.maxScore}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
