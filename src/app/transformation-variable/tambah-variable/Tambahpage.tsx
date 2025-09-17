@@ -229,7 +229,7 @@ export default function VariabelFormPage() {
             {/* Upload Logo */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Logo UPPS/KC
+                Logo Variable
               </label>
               <input
                 type="file"
