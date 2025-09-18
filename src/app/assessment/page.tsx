@@ -21,7 +21,7 @@ export default function AssessmentPage() {
 
   const handleSelectCampus = (campus: string) => {
     if (campus === "Tel-U Purwokerto") {
-      router.push("/assessment/assessment-form/Purwokerto");
+      router.push("/assessment/assessment-form");
     } else if (campus === "Tel-U Jakarta") {
       router.push("/assessment/Jakarta");
     } else if (campus === "Tel-U Surabaya") {

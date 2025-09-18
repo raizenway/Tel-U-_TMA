@@ -5,90 +5,232 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { X, Save } from "lucide-react";
 import Button from "@/components/button";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
+import { useUpdateMaturityLevel, useCreateMaturityLevel } from "@/hooks/useMaturityLevel";
+import { UpdateMaturityLevelRequest, CreateMaturityLevelRequest } from "@/interfaces/maturity-level";
 
 export default function DeskripsiVariabelTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = searchParams.get("mode") || "add"; // "add" | "edit"
-  const id = searchParams.get("id"); // ambil id dari query
+  const mode = searchParams.get("mode") || "add"; 
+  const id = searchParams.get("id");
 
-  const [deskripsi, setDeskripsi] = useState<string[]>(Array(5).fill(""));
+  const [deskripsi, setDeskripsi] = useState<Record<string, string>>({
+    scoreDescription0: "",
+    scoreDescription1: "",
+    scoreDescription2: "",
+    scoreDescription3: "",
+    scoreDescription4: "",
+  });
+
+  const [loading, setLoading] = useState(true);
   const [showCancel, setShowCancel] = useState(false);
 
-  // key sementara untuk sync dengan EditMaturityPage
-  const tempKey = id ? `maturityTempForm_${id}` : "maturityTempForm";
+  const { mutate: updateMaturity, loading: isUpdating } = useUpdateMaturityLevel();
+  const { mutate: createMaturity, loading: isCreating } = useCreateMaturityLevel();
 
-  // ✅ Load data sesuai mode
+  const isLoading = isUpdating || isCreating;
+
   useEffect(() => {
-    if (id) {
-      // 1️⃣ Coba ambil dari tempKey (sementara)
-      const savedForm = localStorage.getItem(tempKey);
-      if (savedForm) {
+    const loadData = () => {
+      if (mode === "edit" && id) {
         try {
-          const parsed = JSON.parse(savedForm);
-          if (Array.isArray(parsed.scoreDescription)) {
-  const filled = Array(5).fill("").map((_, i) => parsed.scoreDescription[i] || "");
-  setDeskripsi(filled);
-  return;
-}
+          const tempForm = localStorage.getItem(`maturityTempForm_${id}`);
+          if (tempForm) {
+            const parsed = JSON.parse(tempForm);
+            setDeskripsi({
+              scoreDescription0: parsed.scoreDescription0 || "",
+              scoreDescription1: parsed.scoreDescription1 || "",
+              scoreDescription2: parsed.scoreDescription2 || "",
+              scoreDescription3: parsed.scoreDescription3 || "",
+              scoreDescription4: parsed.scoreDescription4 || "",
+            });
+            setLoading(false);
+            return;
+          }
+
+          const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
+          const item = savedData.find((d: any) => String(d.id) === String(id));
+          if (item) {
+            setDeskripsi({
+              scoreDescription0: item.scoreDescription0 || "",
+              scoreDescription1: item.scoreDescription1 || "",
+              scoreDescription2: item.scoreDescription2 || "",
+              scoreDescription3: item.scoreDescription3 || "",
+              scoreDescription4: item.scoreDescription4 || "",
+            });
+          }
         } catch (e) {
-          console.error("Error parsing temp data:", e);
+          console.error("Error loading data:", e);
         }
       }
+      setLoading(false);
+    };
 
-      // 2️⃣ Fallback: ambil dari maturityData (data utama)
-      const savedData = JSON.parse(localStorage.getItem("maturityData") || "[]");
-      const item = savedData.find((d: any) => String(d.id) === String(id));
-if (item && Array.isArray(item.scoreDescription)) {
-  const filled = Array(5).fill("").map((_, i) => item.scoreDescription[i] || "");
-  setDeskripsi(filled);
-}
-    }
-  }, [id, tempKey]);
+    setTimeout(loadData, 100);
+  }, [id, mode]);
 
-  // cek apakah semua field sudah diisi
-  const allFilled = deskripsi.every((desc) => desc.trim() !== "");
+  const allFilled = Object.values(deskripsi).every((desc) => desc.trim() !== "");
 
-  // ✅ Simpan perubahan
-  const handleSave = () => {
-    if (id) {
-      // update selalu ke tempKey
-      const savedForm = JSON.parse(localStorage.getItem(tempKey) || "{}");
-      savedForm.scoreDescription = deskripsi;
-      localStorage.setItem(tempKey, JSON.stringify(savedForm));
+  const handleSave = async () => {
+    try {
+      let tempFormKey = "";
+      if (mode === "edit" && id) {
+        tempFormKey = `maturityTempForm_${id}`;
+      } else if (mode === "add") {
+        tempFormKey = "maturityTempForm";
+      }
 
-      // balik ke edit
-      router.push(`/maturity-level/edit-maturity/${id}`);
-    } else {
-      // add mode
-      const savedForm = JSON.parse(localStorage.getItem("maturityTempForm") || "{}");
-      savedForm.deskripsiPerVariabel = deskripsi;
-      localStorage.setItem("maturityTempForm", JSON.stringify(savedForm));
-      router.push("/maturity-level/add-maturity");
+      const tempForm = localStorage.getItem(tempFormKey);
+      if (!tempForm) {
+        alert("Data form utama tidak ditemukan. Harap kembali ke halaman utama.");
+        return;
+      }
+
+      const fullFormData = JSON.parse(tempForm);
+
+      if (mode === "edit" && id) {
+        const body: UpdateMaturityLevelRequest = {
+          name: (fullFormData.name || "").trim(),
+          levelNumber: isNaN(Number(fullFormData.levelNumber)) ? 0 : Number(fullFormData.levelNumber),
+          minScore: String(fullFormData.minScore || "").trim(),
+          maxScore: String(fullFormData.maxScore || "").trim(),
+          generalDescription: (fullFormData.generalDescription || "").trim(),
+          scoreDescription0: deskripsi.scoreDescription0.trim(),
+          scoreDescription1: deskripsi.scoreDescription1.trim(),
+          scoreDescription2: deskripsi.scoreDescription2.trim(),
+          scoreDescription3: deskripsi.scoreDescription3.trim(),
+          scoreDescription4: deskripsi.scoreDescription4.trim(),
+        };
+
+        await updateMaturity(Number(id), body);
+        localStorage.removeItem(tempFormKey);
+        router.push(`/maturity-level/edit-maturity/${id}`);
+
+      } else if (mode === "add") {
+        const updatedForm = {
+          ...fullFormData,
+          scoreDescription0: deskripsi.scoreDescription0.trim(),
+          scoreDescription1: deskripsi.scoreDescription1.trim(),
+          scoreDescription2: deskripsi.scoreDescription2.trim(),
+          scoreDescription3: deskripsi.scoreDescription3.trim(),
+          scoreDescription4: deskripsi.scoreDescription4.trim(),
+        };
+
+        localStorage.setItem(tempFormKey, JSON.stringify(updatedForm));
+
+        window.dispatchEvent(new Event("storage"));
+
+        router.push("/maturity-level/add-maturity");
+      }
+    } catch (err) {
+      console.error("Failed to process descriptions:", err);
+      alert("Gagal memproses deskripsi. Coba lagi.");
     }
   };
 
+  if (loading) {
+    return (
+      <div className="bg-[#F5F7FA] min-h-screen flex justify-center items-center p-6">
+        <div className="bg-white rounded-xl shadow-sm p-8 w-full max-w-5xl text-center">
+          <p>Loading data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#F5F7FA] min-h-screen flex justify-center items-center p-6">
-      <div className="bg-white rounded-2xl shadow-sm p-6 w-full max-w-5xl">
-        <div className="grid grid-cols-2 gap-6">
-          {deskripsi.map((value, index) => (
-            <div key={index} className={`${index === 4 ? "col-span-2 w-1/2" : ""}`}>
-              <label className="block mb-2 text-sm font-semibold text-gray-700">
-                Deskripsi Skor {index}
-              </label>
-              <textarea
-                value={value}
-                onChange={(e) => {
-                  const newDesc = [...deskripsi];
-                  newDesc[index] = e.target.value;
-                  setDeskripsi(newDesc);
-                }}
-                placeholder="Masukkan Deskripsi"
-                className="w-full h-28 border rounded-md p-3 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-              />
-            </div>
-          ))}
+      <div className="bg-white rounded-xl shadow-sm p-8 w-full max-w-5xl">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi Skor 0
+            </label>
+            <textarea
+              value={deskripsi.scoreDescription0}
+              onChange={(e) =>
+                setDeskripsi((prev) => ({
+                  ...prev,
+                  scoreDescription0: e.target.value,
+                }))
+              }
+              placeholder="Masukkan deskripsi..."
+              className="w-full h-24 border border-gray-300 rounded-lg px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            />
+          </div>
+
+          {/* Skor 1 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi Skor 1
+            </label>
+            <textarea
+              value={deskripsi.scoreDescription1}
+              onChange={(e) =>
+                setDeskripsi((prev) => ({
+                  ...prev,
+                  scoreDescription1: e.target.value,
+                }))
+              }
+              placeholder="Masukkan deskripsi..."
+              className="w-full h-24 border border-gray-300 rounded-lg px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            />
+          </div>
+
+          {/* Skor 2 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi Skor 2
+            </label>
+            <textarea
+              value={deskripsi.scoreDescription2}
+              onChange={(e) =>
+                setDeskripsi((prev) => ({
+                  ...prev,
+                  scoreDescription2: e.target.value,
+                }))
+              }
+              placeholder="Masukkan deskripsi..."
+              className="w-full h-24 border border-gray-300 rounded-lg px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            />
+          </div>
+
+          {/* Skor 3 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi Skor 3
+            </label>
+            <textarea
+              value={deskripsi.scoreDescription3}
+              onChange={(e) =>
+                setDeskripsi((prev) => ({
+                  ...prev,
+                  scoreDescription3: e.target.value,
+                }))
+              }
+              placeholder="Masukkan deskripsi..."
+              className="w-full h-24 border border-gray-300 rounded-lg px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            />
+          </div>
+
+          {/* Skor 4 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi Skor 4
+            </label>
+            <textarea
+              value={deskripsi.scoreDescription4}
+              onChange={(e) =>
+                setDeskripsi((prev) => ({
+                  ...prev,
+                  scoreDescription4: e.target.value,
+                }))
+              }
+              placeholder="Masukkan deskripsi..."
+              className="w-full h-24 border border-gray-300 rounded-lg px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            />
+          </div>
         </div>
 
         {/* Tombol */}
@@ -98,7 +240,7 @@ if (item && Array.isArray(item.scoreDescription)) {
             icon={X}
             iconColor="text-red-600"
             iconPosition="left"
-            className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 border border-gray-300"
             onClick={() => setShowCancel(true)}
           >
             Batal
@@ -108,38 +250,37 @@ if (item && Array.isArray(item.scoreDescription)) {
             variant="simpan"
             icon={Save}
             iconPosition="left"
-            disabled={!allFilled}
-            className={`rounded-[12px] px-17 py-2 text-sm font-semibold ${
+            disabled={!allFilled || isLoading}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
               allFilled ? "" : "opacity-50 cursor-not-allowed"
             }`}
             onClick={handleSave}
           >
-            Simpan
+            {isLoading ? "Memproses..." : "Simpan"}
           </Button>
         </div>
-      </div>
 
-      {/* Modal konfirmasi Batal */}
-      <ModalConfirm
-        isOpen={showCancel}
-        onConfirm={() => {
-          if (mode === "edit" && id) {
-            router.push(`/maturity-level/edit-maturity/${id}`);
-          } else {
-            router.push("/maturity-level/add-maturity");
-          }
-        }}
-        onCancel={() => setShowCancel(false)}
-        title="Apakah kamu yakin ingin membatalkan perubahan?"
-        header="Konfirmasi"
-        confirmLabel="Ya, Batalkan"
-        cancelLabel="Kembali"
-      >
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md text-left text-sm">
-          <div className="font-bold mb-1">⚠ Peringatan</div>
-          <div>Perubahan yang belum disimpan akan hilang jika kamu keluar.</div>
-        </div>
-      </ModalConfirm>
+        <ModalConfirm
+          isOpen={showCancel}
+          onConfirm={() => {
+            if (mode === "edit" && id) {
+              router.push(`/maturity-level/edit-maturity/${id}`);
+            } else {
+              router.push("/maturity-level/add-maturity");
+            }
+          }}
+          onCancel={() => setShowCancel(false)}
+          title="Apakah kamu yakin ingin membatalkan perubahan?"
+          header="Konfirmasi"
+          confirmLabel="Ya, Batalkan"
+          cancelLabel="Kembali"
+        >
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md text-left text-sm">
+            <div className="font-bold mb-1">⚠ Peringatan</div>
+            <div>Perubahan yang belum disimpan akan hilang jika kamu keluar.</div>
+          </div>
+        </ModalConfirm>
+      </div>
     </div>
   );
 }

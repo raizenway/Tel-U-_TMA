@@ -39,25 +39,14 @@ export async function createMaturityLevel(
   return json;
 }
 
-// Update maturity level
 export async function updateMaturityLevel(
+  id: number,
   body: UpdateMaturityLevelRequest
-): Promise<ApiResponse<MaturityLevel> | MaturityLevel> {
-  const cleanBody = {
-    name: body.name,
-    levelNumber: Number(body.levelNumber),
-    minScore: Number(body.minScore),
-    maxScore: Number(body.maxScore),
-    generalDescription: body.generalDescription,
-    scoreDescription: body.scoreDescription, 
-  };
-
-  console.log("Final body before PUT:", cleanBody);
-
-  const res = await fetch(`${API_URL}/${body.id}`, {
+): Promise<ApiResponse<MaturityLevel>> {
+  const res = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cleanBody),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -67,6 +56,7 @@ export async function updateMaturityLevel(
 
   return res.json();
 }
+
 
 // Delete maturity level
 export async function deleteMaturityLevel(id: number): Promise<ApiResponse<null>> {

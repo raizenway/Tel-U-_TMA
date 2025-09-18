@@ -4,11 +4,8 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/button";
 import { X, Save } from "lucide-react";
-import {
-  useGetMaturityLevelById,
-  useUpdateMaturityLevel,
-} from "@/hooks/useMaturityLevel";
-import { UpdateMaturityLevelRequest } from "@/interfaces/maturity-level";
+import { useGetMaturityLevelById, useUpdateMaturityLevel } from "@/hooks/useMaturityLevel";
+import { MaturityLevel } from "@/interfaces/maturity-level";
 
 export default function EditMaturityPage() {
   const { id } = useParams();
@@ -16,58 +13,65 @@ export default function EditMaturityPage() {
   const realId = Array.isArray(id) ? Number(id[0]) : Number(id);
 
   useEffect(() => {
-    if (!realId) router.push("/maturity-level");
+    if (!realId || isNaN(realId)) {
+      console.warn("Invalid ID, redirecting...");
+      router.push("/maturity-level");
+    }
   }, [realId, router]);
 
-  if (!realId) return null;
+  if (!realId || isNaN(realId)) return null;
 
-  const { data: maturityDetail } = useGetMaturityLevelById(realId);
-  const { mutate: updateMaturity, loading } = useUpdateMaturityLevel();
+  const { data: maturityDetail, loading: isLoadingDetail } =
+    useGetMaturityLevelById(realId);
+  const { mutate: updateMaturity, loading: isUpdating } =
+    useUpdateMaturityLevel();
 
-  const [formData, setFormData] = useState<UpdateMaturityLevelRequest>({
+  const [formData, setFormData] = useState<MaturityLevel>({
     id: realId,
     name: "",
     levelNumber: 0,
-    minScore: 0,
-    maxScore: 0,
+    minScore: "",
+    maxScore: "",
     generalDescription: "",
-    scoreDescription: Array(5).fill(""),
+    scoreDescription0: "",
+    scoreDescription1: "",
+    scoreDescription2: "",
+    scoreDescription3: "",
+    scoreDescription4: "",
+    created_at: "",
+    updated_at: "",
   });
 
-  // ✅ Ambil data API atau localStorage (jika ada temp)
   useEffect(() => {
-    if (!maturityDetail) return;
+    const tempKey = `maturityTempForm_${realId}`;
+    const temp = localStorage.getItem(tempKey);
 
-    const temp = localStorage.getItem(`maturityTempForm_${realId}`);
     if (temp) {
       try {
         const parsed = JSON.parse(temp);
-        if (Array.isArray(parsed.scoreDescription)) {
-          setFormData({ ...parsed, id: realId });
+        if (parsed.id === realId) {
+          console.log("Restoring from localStorage:", parsed);
+          setFormData(parsed);
           return;
         }
       } catch (err) {
-        console.error("Error parsing temp form:", err);
+        console.error("Error parsing localStorage:", err);
       }
     }
 
-    // fallback → pakai data dari API
-    const apiData = maturityDetail as any;
-    setFormData({
-      id: maturityDetail.id,
-      name: maturityDetail.name,
-      levelNumber: maturityDetail.levelNumber,
-      minScore: Number(maturityDetail.minScore),
-      maxScore: Number(maturityDetail.maxScore),
-      generalDescription: maturityDetail.generalDescription,
-      scoreDescription: [
-        apiData.scoreDescription0 ?? "",
-        apiData.scoreDescription1 ?? "",
-        apiData.scoreDescription2 ?? "",
-        apiData.scoreDescription3 ?? "",
-        apiData.scoreDescription4 ?? "",
-      ],
-    });
+    if (maturityDetail) {
+      setFormData({
+        ...maturityDetail,
+        scoreDescription0: maturityDetail.scoreDescription0 || "",
+        scoreDescription1: maturityDetail.scoreDescription1 || "",
+        scoreDescription2: maturityDetail.scoreDescription2 || "",
+        scoreDescription3: maturityDetail.scoreDescription3 || "",
+        scoreDescription4: maturityDetail.scoreDescription4 || "",
+        generalDescription: maturityDetail.generalDescription || "",
+        minScore: String(maturityDetail.minScore || ""),
+        maxScore: String(maturityDetail.maxScore || ""),
+      });
+    }
   }, [maturityDetail, realId]);
 
   const handleChange = (
@@ -76,68 +80,74 @@ export default function EditMaturityPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "levelNumber" || name === "minScore" || name === "maxScore"
-          ? Number(value)
-          : value,
+      [name]: name === "levelNumber" ? Number(value) : value, 
     }));
   };
 
-  // ✅ Submit → flatten array ke bentuk API
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      let finalForm = formData;
+      const { id, created_at, updated_at, ...payload } = formData;
 
-      // 🔎 ambil data terbaru dari localStorage jika ada
-      const temp = localStorage.getItem(`maturityTempForm_${realId}`);
-      if (temp) {
-        try {
-          const parsed = JSON.parse(temp);
-          if (Array.isArray(parsed.scoreDescription)) {
-            finalForm = { ...formData, scoreDescription: parsed.scoreDescription };
-          }
-        } catch (err) {
-          console.error("Error parsing temp form:", err);
-        }
-      }
-
-      const { scoreDescription, ...rest } = finalForm;
-
-      // 🔑 Flatten array scoreDescription → scoreDescription0..4
-      const payload: any = {
-        ...rest,
-        scoreDescription0: scoreDescription[0] ?? "",
-        scoreDescription1: scoreDescription[1] ?? "",
-        scoreDescription2: scoreDescription[2] ?? "",
-        scoreDescription3: scoreDescription[3] ?? "",
-        scoreDescription4: scoreDescription[4] ?? "",
+      const safePayload = {
+        ...payload,
+        name: payload.name?.trim() || "",
+        levelNumber: Number(payload.levelNumber) || 0,
+        minScore: payload.minScore?.trim() || "", 
+        maxScore: payload.maxScore?.trim() || "", 
+        generalDescription: payload.generalDescription?.trim() || "",
+        scoreDescription0: payload.scoreDescription0?.trim() || "",
+        scoreDescription1: payload.scoreDescription1?.trim() || "",
+        scoreDescription2: payload.scoreDescription2?.trim() || "",
+        scoreDescription3: payload.scoreDescription3?.trim() || "",
+        scoreDescription4: payload.scoreDescription4?.trim() || "",
       };
 
-      await updateMaturity(payload); // kirim payload ke API
+      console.log("Payload update:", safePayload);
+      await updateMaturity(realId, safePayload);
 
       localStorage.removeItem(`maturityTempForm_${realId}`);
+
       router.push(`/maturity-level?success=true&refresh=${Date.now()}`);
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update failed:", error);
+      const message = encodeURIComponent(
+        error.message || "Gagal menyimpan data"
+      );
+      router.push(`/maturity-level?error=true&message=${message}`);
     }
   };
+
+  const filledDescriptions = [
+    formData.scoreDescription0,
+    formData.scoreDescription1,
+    formData.scoreDescription2,
+    formData.scoreDescription3,
+    formData.scoreDescription4,
+  ].filter((desc) => typeof desc === "string" && desc.trim() !== "").length;
 
   const handleEditDeskripsi = () => {
     localStorage.setItem(
       `maturityTempForm_${realId}`,
-      JSON.stringify(formData)
+      JSON.stringify({ ...formData, id: realId })
     );
     router.push(`/maturity-level/deskripsi-per-variabel?mode=edit&id=${realId}`);
   };
 
+  if (isLoadingDetail || !maturityDetail) {
+    return (
+      <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
+        <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl text-center">
+          <p>Loading data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow-md w-full max-w-5xl"
-      >
+    <div>
+      <form onSubmit={handleSubmit}>
         {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
@@ -145,7 +155,7 @@ export default function EditMaturityPage() {
             <input
               type="number"
               name="levelNumber"
-              value={formData.levelNumber}
+              value={formData.levelNumber || ""}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
             />
@@ -167,7 +177,7 @@ export default function EditMaturityPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Skor Minimum</label>
             <input
-              type="number"
+              type="text"
               name="minScore"
               value={formData.minScore}
               onChange={handleChange}
@@ -177,7 +187,7 @@ export default function EditMaturityPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Skor Maximum</label>
             <input
-              type="number"
+              type="text"
               name="maxScore"
               value={formData.maxScore}
               onChange={handleChange}
@@ -189,9 +199,7 @@ export default function EditMaturityPage() {
         {/* Row 3 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Deskripsi Umum
-            </label>
+            <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
               name="generalDescription"
               value={formData.generalDescription}
@@ -208,8 +216,8 @@ export default function EditMaturityPage() {
               onClick={handleEditDeskripsi}
               className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
             >
-              {formData.scoreDescription?.some((d) => d.trim())
-                ? `Lihat Deskripsi (${formData.scoreDescription.filter(Boolean).length}/5)`
+              {filledDescriptions > 0
+                ? `Lihat Deskripsi (${filledDescriptions}/5)`
                 : "+ Tambah Deskripsi"}
             </button>
           </div>
@@ -231,12 +239,12 @@ export default function EditMaturityPage() {
           <Button
             variant="primary"
             type="submit"
-            disabled={loading}
+            disabled={isUpdating}
             icon={Save}
             iconPosition="left"
             className="rounded-[12px] px-4 py-2 text-sm font-semibold"
           >
-            {loading ? "Menyimpan..." : "Simpan"}
+            {isUpdating ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       </form>

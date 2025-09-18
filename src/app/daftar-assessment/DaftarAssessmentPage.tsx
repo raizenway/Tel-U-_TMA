@@ -10,12 +10,17 @@ import TableButton from '@/components/TableButton';
 import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info } from 'lucide-react';
+import { useQuestionList } from '@/hooks/useDaftarAssessment';
+import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
+import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
 
 export default function AssessmentPage() {
   const router = useRouter();
-  const [data, setData] = useState<any[]>([]);
+  const { data, loading, error, refetch } = useQuestionList();
+  const questionData = (data as unknown as ApiResponse<Question[]> | null)?.data || [];// <-- ambil .data dari ApiResponse
+  const [localData, setData] = useState<any[]>([]);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10); // 🔁 Bisa diubah lewat dropdown
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
@@ -23,10 +28,7 @@ export default function AssessmentPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-  // 🔹 Tambahkan state roleId
   const [roleId, setRoleId] = useState<number | null>(null);
-
-  // 🔹 Ambil roleId dari localStorage
   useEffect(() => {
     const user = localStorage.getItem('user');
     if (user) {
@@ -39,34 +41,33 @@ export default function AssessmentPage() {
     }
   }, []);
 
-  // Load data
+  // Load data dari API
   useEffect(() => {
-    const saved = localStorage.getItem('assessmentList');
-    if (saved) {
-      setData(JSON.parse(saved));
-    } else {
-      const dummyData = Array.from({ length: 100 }, (_, i) => ({
-        nomor: i + 1,
-        variable: i % 2 === 0 ? 'V1 (Mutu)' : 'V4 (Sarana & Prasarana)',
-        bobot: i % 5 + 1,
-        indikator: 'Contoh indikator...',
-        pertanyaan: 'Contoh pertanyaan...',
-        deskripsiSkor0: 'Tidak ada dokumentasi.',
-        deskripsiSkor1: 'Ada dokumentasi dasar.',
-        deskripsiSkor2: 'Dokumentasi sebagian lengkap.',
-        deskripsiSkor3: 'Dokumentasi hampir lengkap.',
-        deskripsiSkor4: 'Dokumentasi lengkap dan terupdate.',
-        tipeSoal: ['Pilihan Jawaban', 'API dari iGracias', 'Submit Jawaban Excel'][i % 3],
-        status: i % 3 === 0 ? 'Inactive' : 'Active',
+  if (!loading && !error && questionData && Array.isArray(questionData)) {
+      const dataWithNomor = questionData.map((item, index) => ({
+        ...item,
+        nomor: index + 1,
+        variable: "V1 (Mutu)",
+        indikator: item.indicator || '-',
+        pertanyaan: item.questionText || '-',
+        deskripsiSkor0: item.scoreDescription0 || '-',
+        deskripsiSkor1: item.scoreDescription1 || '-',
+        deskripsiSkor2: item.scoreDescription2 || '-',
+        deskripsiSkor3: item.scoreDescription3 || '-',
+        deskripsiSkor4: item.scoreDescription4 || '-',
+        tipeSoal: item.type === 'multitext' ? 'Pilihan Jawaban' : 'Lainnya',
+        status: item.status,
       }));
-      setData(dummyData);
-    }
+      setData(dataWithNomor);
+      setSearch(''); // Reset pencarian agar semua data tampil
+      console.log("✅ localData berhasil di-set:", dataWithNomor);
 
-    if (localStorage.getItem('newDataAdded') === 'true') {
-      setShowSuccess(true);
-      localStorage.removeItem('newDataAdded');
+      if (localStorage.getItem('newDataAdded') === 'true') {
+        setShowSuccess(true);
+        localStorage.removeItem('newDataAdded');
+      }
     }
-  }, []);
+  }, [questionData, loading, error]);
 
   // Sorting
   const handleSort = (key: string) => {
@@ -76,7 +77,7 @@ export default function AssessmentPage() {
     }
     setSortConfig({ key, direction });
 
-    const sorted = [...data].sort((a, b) => {
+    const sorted = [...localData].sort((a, b) => {
       let aVal = a[key];
       let bVal = b[key];
 
@@ -92,7 +93,7 @@ export default function AssessmentPage() {
   };
 
   // Filter
-  const filteredData = data.filter((item) =>
+  const filteredData = localData.filter((item) =>
     Object.values(item).some((val) =>
       String(val).toLowerCase().includes(search.toLowerCase())
     )
@@ -104,30 +105,38 @@ export default function AssessmentPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
 
+  // Log untuk debug
+  console.log("========================================");
+  console.log("📌 data dari API:", data);
+  console.log("📌 array pertanyaan:", questionData);
+  console.log("📌 loading:", loading);
+  console.log("📌 error:", error);
+  console.log("📌 data lokal (setelah diproses):", localData);
+  console.log("🔍 filteredData:", filteredData);
+  console.log("📄 currentData:", currentData);
+  console.log("========================================");
+
   // Toggle status
   const toggleStatus = (index: number) => {
     const globalIndex = indexOfFirstItem + index;
     setPendingToggleIndex(globalIndex);
-    const nextStatus = data[globalIndex].status === 'Active' ? 'Inactive' : 'Active';
-    setTargetStatus(nextStatus === 'Active' ? 'reactivate' : 'deactivate');
+    const nextStatus = localData[globalIndex].status === 'active' ? 'inactive' : 'active';
+    setTargetStatus(nextStatus === 'active' ? 'reactivate' : 'deactivate');
     setShowModal(true);
   };
 
-  // Confirm
   const handleConfirm = () => {
     if (pendingToggleIndex !== null) {
-      const updated = [...data];
+      const updated = [...localData];
       updated[pendingToggleIndex].status =
-        updated[pendingToggleIndex].status === 'Active' ? 'Inactive' : 'Active';
+        updated[pendingToggleIndex].status === 'active' ? 'inactive' : 'active';
       setData(updated);
-      localStorage.setItem('assessmentList', JSON.stringify(updated));
     }
     setShowModal(false);
     setPendingToggleIndex(null);
     setTargetStatus(null);
   };
 
-  // Cancel
   const handleCancel = () => {
     setShowModal(false);
     setPendingToggleIndex(null);
@@ -138,7 +147,7 @@ export default function AssessmentPage() {
     router.push('/daftar-assessment/tambah-assessment');
   };
 
-  // Columns
+  // Kolom tabel — termasuk render aksi
   const columns = [
     { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'variable', width: '180px', sortable: true },
@@ -155,20 +164,83 @@ export default function AssessmentPage() {
       key: 'action',
       width: '200px',
       className: 'text-center sticky right-0 bg-gray-100 z-10',
+      render: (item: any, index: number) => (
+        <div className="flex gap-2 justify-center">
+          <button
+            onClick={() => {
+              if (roleId === 1) {
+                router.push(`/daftar-assessment/edit-assessment/${item.id}`);
+              } else {
+                alert("❌ Hanya admin yang bisa edit data.");
+              }
+            }}
+            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+          >
+            Edit
+          </button>
+          {item.status === 'active' ? (
+            <button
+              onClick={() => {
+                if (roleId === 1) {
+                  toggleStatus(index);
+                } else {
+                  alert("❌ Hanya admin yang bisa nonaktifkan data.");
+                }
+              }}
+              className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+            >
+              Nonaktifkan
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (roleId === 1) {
+                  toggleStatus(index);
+                } else {
+                  alert("❌ Hanya admin yang bisa aktifkan data.");
+                }
+              }}
+              className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+            >
+              Aktifkan
+            </button>
+          )}
+        </div>
+      ),
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg">Loading data assessment...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-red-600">
+        <div>❌ {error}</div>
+        <button
+          onClick={refetch}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Coba Lagi
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex">
       <div className="w-full flex-1">
-        {/* Notifikasi */}
         <SuccessNotification
           isOpen={showSuccess}
           onClose={() => setShowSuccess(false)}
           message="Assessment baru berhasil ditambahkan!"
         />
 
-        {/* Modal Konfirmasi */}
         {showModal && roleId === 1 && (
           <ModalConfirm
             isOpen={showModal}
@@ -197,10 +269,8 @@ export default function AssessmentPage() {
           </ModalConfirm>
         )}
 
-        {/* Container Utama */}
         <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto">
           <div className="p-0">
-            {/* Toolbar */}
             <div className="p-4 border-b border-gray-200 mb-6">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
@@ -213,7 +283,6 @@ export default function AssessmentPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap bg-white">
                   <TableButton data={currentData} />
-                  {/* 🔹 Tombol Tambah hanya muncul untuk admin */}
                   {roleId === 1 && (
                     <Button variant="primary" onClick={handleTambah}>
                       Tambah Assessment
@@ -223,40 +292,44 @@ export default function AssessmentPage() {
               </div>
             </div>
 
-            {/* Tabel */}
             <div className="overflow-x-auto">
-             <TableUpdate
-  columns={columns}
-  data={currentData}
-  currentPage={page}
-  rowsPerPage={itemsPerPage}
-  onEdit={(item) => {
-    if (roleId === 1) {
-      router.push(`/daftar-assessment/edit-assessment/${item.nomor}`);
-    } else {
-      alert("❌ Hanya admin yang bisa edit data.");
-    }
-  }}
-  onDeactivate={(index) => {
-    if (roleId === 1) {
-      toggleStatus(index);
-    } else {
-      alert("❌ Hanya admin yang bisa nonaktifkan data.");
-    }
-  }}
-  onReactivate={(index) => {
-    if (roleId === 1) {
-      toggleStatus(index);
-    } else {
-      alert("❌ Hanya admin yang bisa aktifkan data.");
-    }
-  }}
-  onSort={handleSort}
-  sortConfig={sortConfig}
-/>
+              {currentData.length > 0 ? (
+                <TableUpdate
+                  columns={columns}
+                  data={currentData}
+                  currentPage={page}
+                  rowsPerPage={itemsPerPage}
+                  onEdit={(item) => {
+                    if (roleId === 1) {
+                      router.push(`/daftar-assessment/edit-assessment/${item.id}`);
+                    } else {
+                      alert("❌ Hanya admin yang bisa edit data.");
+                    }
+                  }}
+                  onDeactivate={(index) => {
+                    if (roleId === 1) {
+                      toggleStatus(index);
+                    } else {
+                      alert("❌ Hanya admin yang bisa nonaktifkan data.");
+                    }
+                  }}
+                  onReactivate={(index) => {
+                    if (roleId === 1) {
+                      toggleStatus(index);
+                    } else {
+                      alert("❌ Hanya admin yang bisa aktifkan data.");
+                    }
+                  }}
+                  onSort={handleSort}
+                  sortConfig={sortConfig}
+                />
+              ) : (
+                <div className="p-6 text-center text-gray-500 border-t">
+                  {loading ? "Loading..." : "Tidak ada data assessment untuk ditampilkan."}
+                </div>
+              )}
             </div>
 
-            {/* Pagination */}
             <Pagination
               currentPage={page}
               totalPages={totalPages}

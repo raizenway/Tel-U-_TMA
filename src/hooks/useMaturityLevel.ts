@@ -20,17 +20,19 @@ export function useGetMaturityLevelById(id: number | null) {
 export function useCreateMaturityLevel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const mutate = async (body: CreateMaturityLevelRequest): Promise<MaturityLevel> => {
     setLoading(true);
     setError(null);
     try {
       const res = await createMaturityLevel(body);
-
+      // Perbaikan: Tangani kedua kemungkinan tipe respons
+      let maturityLevel: MaturityLevel;
       if (res && typeof res === "object" && "data" in res) {
-        return (res as ApiResponse<MaturityLevel>).data;
+        maturityLevel = (res as ApiResponse<MaturityLevel>).data;
+      } else {
+        maturityLevel = res as MaturityLevel;
       }
-      return res as MaturityLevel;
+      return maturityLevel; // <-- Kembalikan objek MaturityLevel yang konsisten
     } catch (error: any) {
       setError(error.message);
       throw error;
@@ -38,28 +40,25 @@ export function useCreateMaturityLevel() {
       setLoading(false);
     }
   };
-
   return { mutate, loading, error };
 }
-
 
 export function useUpdateMaturityLevel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = async (body: UpdateMaturityLevelRequest): Promise<MaturityLevel> => {
+  const mutate = async (
+    id: number,
+    body: UpdateMaturityLevelRequest
+  ): Promise<MaturityLevel> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await updateMaturityLevel(body);
-
-      if (res && typeof res === "object" && "data" in res) {
-        return (res as ApiResponse<MaturityLevel>).data;
-      }
-      return res as MaturityLevel;
-    } catch (error: any) {
-      setError(error.message);
-      throw error;
+      const res = await updateMaturityLevel(id, body);
+      return res.data; 
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }
