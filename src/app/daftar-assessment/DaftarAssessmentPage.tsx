@@ -105,17 +105,6 @@ export default function AssessmentPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Log untuk debug
-  console.log("========================================");
-  console.log("📌 data dari API:", data);
-  console.log("📌 array pertanyaan:", questionData);
-  console.log("📌 loading:", loading);
-  console.log("📌 error:", error);
-  console.log("📌 data lokal (setelah diproses):", localData);
-  console.log("🔍 filteredData:", filteredData);
-  console.log("📄 currentData:", currentData);
-  console.log("========================================");
-
   // Toggle status
   const toggleStatus = (index: number) => {
     const globalIndex = indexOfFirstItem + index;
