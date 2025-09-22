@@ -36,9 +36,11 @@ export const ListAssessment = async (): Promise<ApiResponse<Assessment[]>> => {
     };
   }
 };
+
+
 export async function createAssessment(body: CreateAssessment): Promise<ApiResponse<Assessment>> {
   const res = await fetch(API_URL, {
-    method: "POST", // Method yang digunakan
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
