@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect, useMemo} from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
 import Button  from "@/components/button";
@@ -184,7 +184,7 @@ const handleConfirm = async () => {
 // Siapkan data yang sudah dimodifikasi untuk tabel
 const processedUsers = currentUsers.map(user => ({
   ...user,
-  roleId: user.roleId === 2 ? 'UPPS/KC' : user.roleId === 4 ? 'Non-SSO' : `Role ${user.roleId}`,
+  roleId: user.roleId === 1 ? 'Super User' : user.roleId === 2 ? 'UPPS/KC' : user.roleId === 3 ? 'SSO' : user.roleId === 4 ? 'Non-SSO' : `Role ${user.roleId}`,
   password: '••••••',
 }));
 

@@ -23,9 +23,9 @@ export default function AssessmentPage() {
     if (campus === "Tel-U Purwokerto") {
       router.push("/assessment/assessment-form");
     } else if (campus === "Tel-U Jakarta") {
-      router.push("/assessment/jakarta");
+      router.push("/assessment/Jakarta");
     } else if (campus === "Tel-U Surabaya") {
-      router.push("/assessment/surabaya");
+      router.push("/assessment/Surabaya");
     }
     // Tidak perlu alert lagi
   };

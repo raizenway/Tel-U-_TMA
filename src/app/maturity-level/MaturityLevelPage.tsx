@@ -23,7 +23,7 @@ const TablePage = () => {
   const [showDelete, setShowDelete] = useState(false);
   const searchParams = useSearchParams();
   const [showNotif, setShowNotif] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // 🆕 Tambahkan ini
+  const [refreshKey, setRefreshKey] = useState(0); 
   const { data: maturityRes, loading, error } = useListMaturityLevels();
   const { mutate: deleteMaturity, loading: deleteLoading } = useDeleteMaturityLevel();
 
@@ -75,7 +75,7 @@ const TablePage = () => {
     setTimeout(() => setShowNotif(false), 3000);
     setRefreshKey(prev => prev + 1);
   }
-}, [searchParams, setRefreshKey]); // <-- tambahkan setRefreshKey sebagai dependency
+}, [searchParams, setRefreshKey]); 
 
   const { sortedData, requestSort, sortConfig } = useSort(data, "level");
 

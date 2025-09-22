@@ -28,20 +28,29 @@ export default function AddUserPage() {
   }); 
   
   // ✅ Gunakan hook untuk create user
-const { mutate: createUser, loading, error } = useCreateUser();
+const { mutate: createUser, loading} = useCreateUser();
 
 
 const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
 
   if (name === 'nomorHp') {
-    const numericValue = value.replace(/\D/g, '');
+  const numericValue = value.replace(/\D/g, '');
+  // ✅ Batasi maksimal 13 digit
+  if (numericValue.length <= 13) {
     setForm({ ...form, [name]: numericValue });
+  }
+
   } else if (name === 'status') {
     // Hanya terima 'active' atau 'inactive'
     if (value === 'active' || value === 'inactive' || value === '') {
       setForm({ ...form, [name]: value });
     }
+    
+  } else if (name === 'username') {
+    // ✅ Hapus semua spasi dari username saat diketik
+    const noSpaceValue = value.replace(/\s/g, '');
+    setForm({ ...form, [name]: noSpaceValue });
   } else {
     setForm({ ...form, [name]: value });
   }
@@ -50,14 +59,21 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   const handleCancel = () => {
     router.push('/user-management');
   };
+  
+// ✅ Fungsi validasi email
+const isValidEmail = (email: string) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
-  const isFormValid =
-    form.username.trim() !== '' &&
-    form.password.trim() !== '' &&
-    form.namaUser.trim() !== '' &&
-    form.email.trim() !== '' &&
-    form.nomorHp.trim() !== ''&&
-    form.status.trim() !== '';
+ const isFormValid =
+  form.username.trim() !== '' &&
+  form.password.trim() !== '' &&
+  form.namaUser.trim() !== '' &&
+  isValidEmail(form.email) && // ✅ Ganti cek kosong → cek format valid
+  form.nomorHp.length >= 10 &&
+  form.nomorHp.length <= 13 &&
+  form.status.trim() !== '';
 
 const handleSave = async () => {
   if (!isFormValid) return;
@@ -65,6 +81,24 @@ const handleSave = async () => {
   // Validasi: pastikan status valid
   if (form.status !== 'active' && form.status !== 'inactive') {
     alert('Status harus dipilih: Active atau Inactive');
+    return;
+  }
+
+    // ✅ Validasi: username tidak boleh mengandung spasi
+  if (form.username.includes(' ')) {
+    alert('Username tidak boleh mengandung spasi.');
+    return;
+  }
+
+    // ✅ Validasi: nomor HP harus 10-13 digit
+  if (form.nomorHp.length < 10 || form.nomorHp.length > 13) {
+    alert('Nomor Handphone harus terdiri dari 10 hingga 13 digit.');
+    return;
+  }
+
+    // ✅ Validasi: email harus valid
+  if (!isValidEmail(form.email)) {
+    alert('Email tidak valid. Contoh: user@gmail.com');
     return;
   }
 
@@ -111,12 +145,13 @@ const body: CreateUserRequest = {
     const path = pathname?.split("/")[1];
     setTab(path || "welcome");
   }, [pathname]);
-
+   
+  
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="min-h-screen w-full p-8 mt-20">
-        <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl">
+    <div>
+      <div>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -239,8 +274,8 @@ const body: CreateUserRequest = {
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               >
                 <option value="">Pilih Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Non-Aktif</option>
               </select>
             </div>
 
@@ -274,19 +309,19 @@ const body: CreateUserRequest = {
             Batal
           </Button>
 
-<Button
-  variant="simpan"
-  icon={Save}
-  iconPosition="left"
-  onClick={isFormValid && !loading ? handleSave : undefined}
-  disabled={!isFormValid || loading}
-  className={`px-4 py-2 rounded-md text-white 
-    ${isFormValid && !loading 
-      ? 'bg-[#263859] text-white px-12' 
-      : 'bg-gray-400 cursor-not-allowed px-12'}`}
->
-  {loading ? 'Menyimpan...' : 'Simpan'}
-</Button>
+          <Button
+            variant="simpan"
+            icon={Save}
+            iconPosition="left"
+            onClick={isFormValid && !loading ? handleSave : undefined}
+            disabled={!isFormValid || loading}
+            className={`px-4 py-2 rounded-md text-white 
+              ${isFormValid && !loading 
+                ? 'bg-[#263859] text-white px-12' 
+                : 'bg-gray-400 cursor-not-allowed px-12'}`}
+          >
+            {loading ? 'Menyimpan...' : 'Simpan'}
+          </Button>
           </div>
         </div>
       </div>

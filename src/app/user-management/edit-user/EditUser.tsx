@@ -63,11 +63,18 @@ useEffect(() => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
+
   if (name === 'nomorHp') {
-    // Hanya izinkan angka atau kosong
-    if (value === '' || /^[0-9]*$/.test(value)) {
-      setForm({ ...form, [name]: value });
-    }
+  const numericValue = value.replace(/\D/g, ''); // Hapus non-digit
+  if (numericValue.length <= 13) { // ✅ Batasi maks 13 digit
+    setForm({ ...form, [name]: numericValue });
+  }
+  return;
+
+  }  else if (name === 'username') {
+    // ✅ Hapus semua spasi dari username saat diketik
+    const noSpaceValue = value.replace(/\s/g, '');
+    setForm({ ...form, [name]: noSpaceValue });
     return;
   }
   // Untuk semua input lain
@@ -81,6 +88,24 @@ useEffect(() => {
 const handleSave = async () => {
   if (!form.userId || !form.username || !form.namaUser || !form.status) {
     alert('Mohon lengkapi field wajib: User ID, Username, Nama User, Status');
+    return;
+  }
+
+    // ✅ Validasi: username tidak boleh mengandung spasi
+  if (form.username.includes(' ')) {
+    alert('Username tidak boleh mengandung spasi.');
+    return;
+  }
+
+    // ✅ Validasi: nomor HP harus 10-13 digit
+  if (form.nomorHp.length < 10 || form.nomorHp.length > 13) {
+    alert('Nomor Handphone harus terdiri dari 10 hingga 13 digit.');
+    return;
+  }
+
+    // ✅ Validasi: email harus valid
+  if (!isValidEmail(form.email)) {
+    alert('Email tidak valid. Contoh: nama@domain.com');
     return;
   }
 
@@ -111,8 +136,21 @@ const handleSave = async () => {
 }
 };
 
+// ✅ Fungsi validasi email
+const isValidEmail = (email: string) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
   const isFormValid =
-    form.userId && form.username && form.password && form.namaUser && form.status;
+  form.userId &&
+  form.username &&
+  !form.username.includes(' ') &&
+  form.namaUser &&
+  isValidEmail(form.email) && // ✅ email harus valid
+  form.status &&
+  form.nomorHp.length >= 10 &&
+  form.nomorHp.length <= 13;
 
   useEffect(() => {
     const path = pathname?.split("/")[1];
@@ -122,7 +160,7 @@ const handleSave = async () => {
   if (loading) {
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 mt-20">
+      <main className="min-h-screen w-full p-8 ">
         <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
           <p>Loading data user...</p>
         </div>
@@ -134,7 +172,7 @@ const handleSave = async () => {
 if (error) {
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 mt-20">
+      <main className="min-h-screen w-full p-8 ">
         <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
           <p className="text-red-500">Error: {error}</p>
         </div>
@@ -143,10 +181,12 @@ if (error) {
   );
 }
 
+
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 mt-20">
-        <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto">
+    <div>
+      <main>
+        <div className="bg-white rounded-lg p-8 max-w-7xl w-full mx-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -273,8 +313,8 @@ if (error) {
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
               >
                 <option value="">Pilih Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Non-Aktif</option>
               </select>
             </div>
 
