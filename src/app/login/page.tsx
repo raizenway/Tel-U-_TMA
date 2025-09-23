@@ -30,11 +30,16 @@
         const result = await res.json();
 
       if (result.status === 'success') {
-  // ✅ Ambil roleId dari backend — jangan hardcode
-  const userWithRole = {
-    ...result.data,
-    roleId: result.data.roleId, // ← ambil dari backend
+      const userWithRole = {
+        ...result.data,
+        roleId: result.data.roleId,
   };
+
+  if (result.data.status === 'inactive') {
+    setError('Akun Anda telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.');
+    return; 
+  }
+
   localStorage.setItem('user', JSON.stringify(userWithRole));
   router.push('/welcome');
 }
@@ -70,7 +75,11 @@
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                   onChange={(e) => {
+                  // ✅ Filter: Hanya huruf dan angka, tanpa spasi/simbol
+                  const filteredValue = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+                  setUsername(filteredValue);
+                }}
                   required
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#c8102e] focus:border-[#c8102e]"
                   placeholder="Username"

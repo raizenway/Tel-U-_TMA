@@ -47,7 +47,7 @@ export default function AssessmentPage() {
       const dataWithNomor = questionData.map((item, index) => ({
         ...item,
         nomor: index + 1,
-        variable: "V1 (Mutu)",
+        variable: item.transformationVariableId,
         indikator: item.indicator || '-',
         pertanyaan: item.questionText || '-',
         deskripsiSkor0: item.scoreDescription0 || '-',
@@ -104,17 +104,6 @@ export default function AssessmentPage() {
   const indexOfLastItem = page * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Log untuk debug
-  console.log("========================================");
-  console.log("📌 data dari API:", data);
-  console.log("📌 array pertanyaan:", questionData);
-  console.log("📌 loading:", loading);
-  console.log("📌 error:", error);
-  console.log("📌 data lokal (setelah diproses):", localData);
-  console.log("🔍 filteredData:", filteredData);
-  console.log("📄 currentData:", currentData);
-  console.log("========================================");
 
   // Toggle status
   const toggleStatus = (index: number) => {
