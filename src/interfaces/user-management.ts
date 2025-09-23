@@ -10,7 +10,7 @@ export interface User {
   status: UserStatus;
   roleId: number; 
   phoneNumber: number;
-  branch_id: number;
+  branchId: number;
   created_at: string; // ISO date
   updated_at: string; // ISO date
   logo_file_id?: number | null; // ← tambah ini
@@ -29,4 +29,11 @@ export interface CreateUserRequest {
   logo_file_id?: number | null; // ← tambah ini
   
   
+}
+
+// Interface baru untuk branch
+export interface Branch {
+  id: number;
+  name: string;
+  email: string; // opsional
 }

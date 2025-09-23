@@ -9,8 +9,9 @@ import TableButton from '@/components/TableButton';
 import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
-import { useListUsers,  useActivateUser, useDeactivateUser  } from "@/hooks/useUserManagement"; // ← Tambahkan import
+import { useListUsers,  useActivateUser, useDeactivateUser, useListBranches  } from "@/hooks/useUserManagement"; // ← Tambahkan import
 import { User } from "@/interfaces/user-management";
+import { BRANCH_NAMES } from '@/interfaces/branch';
 
 
 export default function UserManagementPage() {
@@ -19,9 +20,18 @@ export default function UserManagementPage() {
 // Refresh data dari API
 const [refreshFlag, setRefreshFlag] = useState(0);
 const { data, loading, error } = useListUsers(refreshFlag);
-
-//DATA DARI API
+ // DATA DARI API
 const users = data?.data || [];
+ // Ambil data kampus cabang
+const { data: branchData, loading: branchLoading, error: branchError } = useListBranches();
+
+const branchNames = useMemo(() => {
+  if (!branchData?.data) return {};
+  return branchData.data.reduce((acc, branch) => {
+    acc[branch.id] = branch.name;
+    return acc;
+  }, {} as Record<number, string>);
+}, [branchData]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,6 +57,7 @@ const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!
   { header: 'User Name', key: 'username', width: '160px', sortable: true },
   { header: 'Nama User', key: 'fullname', width: '200px', sortable: true },
   { header: 'Role', key: 'roleId', width: '140px', sortable: true },
+  { header: 'Kampus Cabang', key: 'branchId', width: '180px', sortable: true },
   { header: 'Status', key: 'status', width: '100px', sortable: true },
   { 
     header: 'Aksi', 
@@ -184,7 +195,15 @@ const handleConfirm = async () => {
 // Siapkan data yang sudah dimodifikasi untuk tabel
 const processedUsers = currentUsers.map(user => ({
   ...user,
-  roleId: user.roleId === 1 ? 'Super User' : user.roleId === 2 ? 'UPPS/KC' : user.roleId === 3 ? 'SSO' : user.roleId === 4 ? 'Non-SSO' : `Role ${user.roleId}`,
+  roleId: user.roleId === 1 ? 'Super User' :
+          user.roleId === 2 ? 'UPPS/KC' :
+          user.roleId === 3 ? 'SSO' :
+          user.roleId === 4 ? 'Non-SSO' :
+          `Role ${user.roleId}`,
+
+  // ✅ Tinggal panggil dari konstanta
+  branchId: BRANCH_NAMES[user.branchId] || `Cabang ${user.branchId}`,
+
   password: '••••••',
 }));
 
@@ -192,7 +211,8 @@ const dataForExport = processedUsers.map((user) => ({
   'User ID': user.id,
   'User Name': user.username,
   'Nama User': user.fullname,
-  Role: user.roleId, // ✅ Sekarang sudah string (UPPS/KC, Non-SSO)
+  Role: user.roleId,
+  'Kampus Cabang': branchNames[user.branchId] || user.branchId,
   Status: user.status,
 }));
 
