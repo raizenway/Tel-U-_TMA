@@ -6,7 +6,6 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
-import ContainerForm from '@/components/ContainerForm';
 
 export default function EditVariablePage() {
   const { id } = useParams();

@@ -1,5 +1,5 @@
 import ContainerForm from "@/components/ContainerForm";
-import AddMaturityLevelPage from "./addMaturity";
+import AddMaturityLevelPage from "./AddMaturity";
 
 export default function Page() {
   return (

@@ -12,6 +12,7 @@ import { Info as LucideInfo } from 'lucide-react';
 import SuccessNotification from '@/components/SuccessNotification';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList';
+import RoleBasedStatusCell from '@/components/RoleBasedStatusCell';
 
 // ✅ Tambahkan ini
 type TableItem = {
@@ -237,12 +238,24 @@ const currentData = filteredData
       className: 'text-center',
       sortable: false,
     },
+     ...(roleId === 1
+    ? [
     {
       header: 'Aksi',
       key: 'action',
       width: '150px',
       className: 'text-center sticky right-0 z-10 bg-gray-100',
     },
+  ]
+  : [
+     {
+          header: 'Status',
+          key: 'status',
+          width: '150px',
+          className: 'text-center sticky right-0 z-10 bg-white-100',
+          sortable: false,
+        },
+  ]),
   ];
 
   // Data untuk export
@@ -301,19 +314,38 @@ const currentData = filteredData
             <div className="p-10 text-center text-gray-500">Memuat data dari API...</div>
           ) : (
             <div className="overflow-x-auto">
-              <TableUpdate
-                columns={columns}
-                data={currentData}
-                currentPage={currentPage}
-                rowsPerPage={rowsPerPage}
-                onEdit={(item) => { 
-                  router.push(`/transformation-variable/edit/${item.id}`);
-                }}
-                onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
-                onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
-                onSort={handleSort}
-                sortConfig={sortConfig}
-              />
+             <TableUpdate
+  columns={columns}
+  data={currentData}
+  currentPage={currentPage}
+  rowsPerPage={rowsPerPage}
+  onEdit={(item) => { 
+    router.push(`/transformation-variable/edit/${item.id}`);
+  }}
+  onDeactivate={(index) => openConfirmModal(currentData[index].id, 'deactivate')}
+  onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
+  onSort={handleSort}
+  sortConfig={sortConfig}
+  renderCell={(columnKey, item) => {
+    if (columnKey === 'status') {
+      return (
+        <RoleBasedStatusCell
+          status={item.status}
+          id={item.id}
+          onEdit={(id) => router.push(`/transformation-variable/edit/${id}`)}
+          onToggleStatus={(id, action) => {
+            if (action === 'deactivate') {
+              openConfirmModal(id, 'deactivate');
+            } else {
+              openConfirmModal(id, 'activate');
+            }
+          }}
+        />
+      );
+    }
+    return null; 
+  }}
+/>
             </div>
           )}
 

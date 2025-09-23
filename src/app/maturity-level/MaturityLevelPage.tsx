@@ -32,6 +32,21 @@ const TablePage = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedDeskripsiList, setSelectedDeskripsiList] = useState<string[]>([]);
 
+   const [roleId, setRoleId] = useState<number | null>(null);
+  
+    // 🔹 Ambil roleId dari localStorage
+    useEffect(() => {
+      const user = localStorage.getItem('user');
+      if (user) {
+        try {
+          const parsed = JSON.parse(user);
+          setRoleId(Number(parsed.roleId));
+        } catch (e) {
+          console.error("Gagal parse user:", e);
+        }
+      }
+    }, []);
+
   // Mapping API -> struktur tabel
   useEffect(() => {
     if (maturityRes?.data) {
@@ -142,35 +157,79 @@ const TablePage = () => {
     ),
   }));
 
-  const columns = [
-    { header: "Level", key: "level", width: "60px",
-      onClick: () => requestSort("level"),
-      isSorted: sortConfig?.key === "level" ? sortConfig.direction : undefined
-    },
-    { header: "Nama Level", key: "namaLevel", width: "200px",
-      onClick: () => requestSort("namaLevel"),
-      isSorted: sortConfig?.key === "namaLevel" ? sortConfig.direction : undefined
-    },
-    { header: "Skor Minimum", key: "skorMin", width: "160px",
-      onClick: () => requestSort("skorMin"),
-      isSorted: sortConfig?.key === "skorMin" ? sortConfig.direction : undefined
-    },
-    { header: "Skor Maximum", key: "skorMax", width: "160px",
-      onClick: () => requestSort("skorMax"),
-      isSorted: sortConfig?.key === "skorMax" ? sortConfig.direction : undefined
-    },
-    { header: "Deskripsi Umum", key: "deskripsiUmum", width: "250px",
-      onClick: () => requestSort("deskripsiUmum"),
-      isSorted: sortConfig?.key === "deskripsiUmum" ? sortConfig.direction : undefined
-    },
-    { header: "Deskripsi Per Variabel", key: "deskripsiPerVariabel", width: "250px" },
-    {
-      header: "Aksi",
-      key: "aksi",
-      width: "200px",
-      className: "text-center sticky right-0 border border-gray-200 z-10 bg-gray-100",
-    },
-  ];
+  // 🔹 Buat baseColumns — tanpa kolom "Aksi"
+const baseColumns = [
+  { 
+    header: "Level", 
+    key: "level", 
+    width: "60px",
+    onClick: () => requestSort("level"),
+    isSorted: sortConfig?.key === "level" ? sortConfig.direction : undefined
+  },
+  { 
+    header: "Nama Level", 
+    key: "namaLevel", 
+    width: "200px",
+    onClick: () => requestSort("namaLevel"),
+    isSorted: sortConfig?.key === "namaLevel" ? sortConfig.direction : undefined
+  },
+  { 
+    header: "Skor Minimum", 
+    key: "skorMin", 
+    width: "160px",
+    onClick: () => requestSort("skorMin"),
+    isSorted: sortConfig?.key === "skorMin" ? sortConfig.direction : undefined
+  },
+  { 
+    header: "Skor Maximum", 
+    key: "skorMax", 
+    width: "160px",
+    onClick: () => requestSort("skorMax"),
+    isSorted: sortConfig?.key === "skorMax" ? sortConfig.direction : undefined
+  },
+  { 
+    header: "Deskripsi Umum", 
+    key: "deskripsiUmum", 
+    width: "250px",
+    onClick: () => requestSort("deskripsiUmum"),
+    isSorted: sortConfig?.key === "deskripsiUmum" ? sortConfig.direction : undefined
+  },
+  { 
+    header: "Deskripsi Per Variabel", 
+    key: "deskripsiPerVariabel", 
+    width: "250px" 
+  },
+  
+];
+
+// 🔹 Tambahkan kolom "Aksi" hanya jika roleId === 1
+const columns = roleId === 1
+  ? [
+      ...baseColumns,
+      {
+        header: "Aksi",
+        key: "aksi",
+        width: "200px",
+        className: "text-center sticky right-0 border border-gray-200 z-10 bg-gray-100",
+        render: (item) => (
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => handleEdit(item.id)}
+              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => handleDelete(item.id)}
+              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Hapus
+            </button>
+          </div>
+        ),
+      },
+    ]
+  : baseColumns; // 👈 Jika bukan roleId 1 → jangan tambahkan kolom "Aksi"
 
   const dataForExport = paginatedData.map((item, index) => ({
     Nomor: (currentPage - 1) * itemsPerPage + index + 1,
@@ -206,9 +265,11 @@ const TablePage = () => {
               />
               <div className="flex items-center gap-2">
                 <TableButton data={dataForExport} />
+                {roleId === 1 && (
                 <Button className="px-8" onClick={handleTambah}>
                   Tambah Maturity Level
                 </Button>
+                )}
               </div>
             </div>
 
