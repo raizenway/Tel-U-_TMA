@@ -22,6 +22,7 @@ interface TableUpdateProps {
   onReactivate?: (index: number) => void;
   onSort?: (key: string) => void;
   sortConfig?: { key: string; direction: "asc" | "desc" } | null;
+  renderCell?: (columnKey: string, item: any) => React.ReactNode;
 }
 
 export default function TableUpdate({
@@ -34,6 +35,7 @@ export default function TableUpdate({
   onReactivate,
   onSort,
   sortConfig,
+  renderCell,
 }: TableUpdateProps) {
   return (
     <div className="bg-white rounded-lg mx-auto w-full mt-6 shadow-sm">
@@ -89,46 +91,49 @@ export default function TableUpdate({
       : ""
   } ${col.className || ""}`}
 >
-  {col.key === "nomor"
+ {renderCell && renderCell(col.key, item)
+  ? renderCell(col.key, item)
+  : col.key === "nomor"
     ? (currentPage - 1) * rowsPerPage + index + 1
-    : col.key === "action" ? (
-      <div className="flex justify-center gap-2">
-        {onEdit && (
-          <button
-            type="button"
-            onClick={() => onEdit(item)}
-            className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium transition"
-          >
-            <Pencil size={14} className="mr-1" /> Edit
-          </button>
-        )}
-        {isActive ? (
-          onDeactivate && (
-            <button
-              type="button"
-              onClick={() => onDeactivate(index)}
-              className="flex items-center text-red-600 hover:text-red-800 text-xs font-medium transition"
-            >
-              <X size={14} className="mr-1" /> Deactive
-            </button>
-          )
-        ) : (
-          onReactivate && (
-            <button
-              type="button"
-              onClick={() => onReactivate(index)}
-              className="flex items-center text-green-600 hover:text-green-800 text-xs font-medium transition"
-            >
-              <Check size={14} className="mr-1" /> Reactive
-            </button>
-          )
-        )}
-      </div>
-    ) : col.key === "status" ? (
-      item.status === 'active' ? 'Aktif' : 'Nonaktif'
-    ) : (
-      item[col.key]
-    )}
+    : col.key === "status"
+      ? item.status === 'active' ? 'Aktif' : 'Nonaktif'
+      : col.key === "action"
+        ? (
+          <div className="flex justify-center gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(item)}
+                className="flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium transition"
+              >
+                <Pencil size={14} className="mr-1" /> Edit
+              </button>
+            )}
+            {isActive ? (
+              onDeactivate && (
+                <button
+                  type="button"
+                  onClick={() => onDeactivate(index)}
+                  className="flex items-center text-red-600 hover:text-red-800 text-xs font-medium transition"
+                >
+                  <X size={14} className="mr-1" /> Deactive
+                </button>
+              )
+            ) : (
+              onReactivate && (
+                <button
+                  type="button"
+                  onClick={() => onReactivate(index)}
+                  className="flex items-center text-green-600 hover:text-green-800 text-xs font-medium transition"
+                >
+                  <Check size={14} className="mr-1" /> Reactive
+                </button>
+              )
+            )}
+          </div>
+        )
+        : item[col.key] || '-'
+}
 </td>
                     ))}
                   </tr>
