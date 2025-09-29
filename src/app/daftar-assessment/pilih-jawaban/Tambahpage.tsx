@@ -216,7 +216,6 @@ export default function PilihJawabanPage() {
 
         // Berhasil
         localStorage.setItem('newDataAdded', 'true');
-        alert('Data berhasil diperbarui!');
         router.push('/daftar-assessment');
       } else {
         // ✅ Mode Create — kirim ke API
@@ -258,7 +257,6 @@ export default function PilihJawabanPage() {
 
         // Berhasil
         localStorage.setItem('newDataAdded', 'true');
-        alert('Data berhasil disimpan!');
         router.push('/daftar-assessment');
       }
     } catch (error) {

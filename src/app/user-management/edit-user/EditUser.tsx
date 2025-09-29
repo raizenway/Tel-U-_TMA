@@ -27,7 +27,6 @@ export default function EditUserPage() {
     email: '',
     nomorHp: '',
     status: '',
-    role: '',
     branchId: '',
     logoPreview: '', // base64 image
   });
@@ -54,7 +53,6 @@ useEffect(() => {
     email: user.email,
     nomorHp: String(user.phoneNumber) || '',
     status: user.status,
-    role,
     branchId: user.branchId.toString(),
     logoPreview: user.logo_file_id ? `/api/logo/${user.logo_file_id}` : '',
   });
@@ -117,7 +115,7 @@ const handleSave = async () => {
     username: form.username,
     email: form.email,
     phoneNumber: form.nomorHp,
-    roleId: form.role === 'UPPS/KC' ? 2 : 4,
+    roleId: data.data.roleId,
     branchId: Number(form.branchId),
     status: form.status as 'active' | 'inactive',
   };
@@ -244,7 +242,7 @@ if (error) {
               />
             </div>
 
-            {form.role !== 'Non SSO' && (
+            {data.data?.roleId === 2 && (
               <>
                 <div>
                   <label className="block mb-1 text-sm font-medium">Logo UPPS/KC</label>
