@@ -31,7 +31,7 @@ export default function AssessmentPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(false); 
   const [modalAction, setModalAction] = useState<'activate' | 'deactivate' | null>(null);
   const [itemId, setItemId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
