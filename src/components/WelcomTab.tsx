@@ -3,8 +3,26 @@
 
 import Image from "next/image";
 import Button from "@/components/button";
+import { useState, useEffect } from "react";
 
 const WelcomeTab = () => {
+  const [userName, setUserName] = useState<string>("User");
+
+  // Ambil nama user dari localStorage
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const parsed = JSON.parse(user);
+        // Coba ambil fullname dulu, kalau tidak ada coba name, kalau tidak ada pakai "User"
+        setUserName(parsed.fullname || parsed.name || "User");
+      } catch (e) {
+        console.error("Gagal baca user di WelcomeTab:", e);
+        setUserName("User");
+      }
+    }
+  }, []);
+  
   return (
     <div className="space-y-10">
       {/* ===================== */}
@@ -42,12 +60,14 @@ const WelcomeTab = () => {
 
   {/* Teks: geser 4px ke bawah */}
    <div className="text-right text-center">
-   <h2 className="text-xl lg:text-2xl font-semibold text-white relative -translate-x-150"
-   style={{ 
-      transform: 'translateX(10px) translateY(4px)' // Atur: X = kiri/kanan, Y = atas/bawah
-    }}>
-  Hallo, Wilson Curtis
-</h2>
+    <h2 
+      className="text-xl lg:text-2xl font-semibold text-white relative -translate-x-150"
+      style={{ 
+        transform: 'translateX(10px) translateY(4px)' 
+      }}
+    >
+      Hallo, {userName} {/* ⬅️ NAMA DIGANTI DENGAN STATE */}
+    </h2>
 
     <p className="text-sm lg:text-base text-white relative -translate-x-150 mt-4 text-center"
     style={{ 

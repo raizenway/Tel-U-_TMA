@@ -26,6 +26,7 @@ export interface CreateUserRequest {
   roleId: number;          // camelCase
   branchId: number;  
   status: 'active' | 'inactive';
+  pic?: string;
   logo_file_id?: number | null; // ← tambah ini
   
   

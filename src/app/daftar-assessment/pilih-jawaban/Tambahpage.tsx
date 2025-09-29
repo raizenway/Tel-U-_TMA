@@ -6,6 +6,7 @@ import Button from '@/components/button';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import { X, Save } from 'lucide-react';
 import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
 // Interface untuk data assessment
 interface AssessmentItem {
@@ -42,6 +43,8 @@ export default function PilihJawabanPage() {
   const [jumlahPertanyaan, setJumlahPertanyaan] = useState<'1 Pertanyaan' | '2 Pertanyaan' | ''>('');
   const [tipePertanyaan, setTipePertanyaan] = useState<'pg' | 'short-answer'>('pg');
   const [urutan, setUrutan] = useState<string>('');
+  const { data: transformationVariables = [], loading: variablesLoading } = useTransformationVariableList();  
+  const [selectedVariableId, setSelectedVariableId] = useState<number | null>(null);
 
   // Skor dan deskripsi
   const [skor, setSkor] = useState<{ [key: number]: { min: string; max: string } }>({
@@ -125,7 +128,7 @@ export default function PilihJawabanPage() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!namaVariabel.trim()) newErrors.namaVariabel = 'Wajib diisi';
+    if (!selectedVariableId) newErrors.namaVariabel = 'Wajib dipilih';
     if (!indikator.trim()) newErrors.indikator = 'Wajib diisi';
     if (!pertanyaan1.trim()) newErrors.pertanyaan1 = 'Wajib diisi';
     if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) {
@@ -161,27 +164,17 @@ export default function PilihJawabanPage() {
     try {
       const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
 
-      const variableMap: Record<string, number> = {
-        "Mutu": 1,
-        "Akademik": 2,
-        "Akademisi": 3,
-        "Alumni": 4,
-        "Kemahasiswaan": 5,
-        "Kerjasama": 6,
-        "Keuangan": 7,
-        "Mahasiswa Asing": 8,
-        "SDM": 9,
-        "PPM, Publikasi, HKI": 10,
-      };
-
-      const transformationVariableId = variableMap[namaVariabel] || 1;
+     if (!selectedVariableId) {
+        alert('Silakan pilih Nama Variabel terlebih dahulu.');
+        return;
+      }
 
       if (isEditMode && editNomor !== null) {
         // ✅ Mode Edit — kirim ke API
 
         // Kirim Pertanyaan 1
         const payload1 = {
-          transformationVariableId,
+          transformationVariableId: selectedVariableId,
           type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
           indicator: indikator.trim(),
           questionText: pertanyaan1.trim(),
@@ -216,14 +209,13 @@ export default function PilihJawabanPage() {
 
         // Berhasil
         localStorage.setItem('newDataAdded', 'true');
-        alert('Data berhasil diperbarui!');
         router.push('/daftar-assessment');
       } else {
         // ✅ Mode Create — kirim ke API
 
         // Kirim Pertanyaan 1
         const payload1 = {
-          transformationVariableId,
+          transformationVariableId: selectedVariableId,
           type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
           indicator: indikator.trim(),
           questionText: pertanyaan1.trim(),
@@ -258,7 +250,6 @@ export default function PilihJawabanPage() {
 
         // Berhasil
         localStorage.setItem('newDataAdded', 'true');
-        alert('Data berhasil disimpan!');
         router.push('/daftar-assessment');
       }
     } catch (error) {
@@ -366,13 +357,28 @@ export default function PilihJawabanPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Variabel</label>
-              <input
-                type="text"
+              <select
                 className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
                 value={namaVariabel}
-                onChange={(e) => setNamaVariabel(e.target.value)}
-                placeholder="Masukkan Nama Variabel"
-              />
+                onChange={(e) => {
+                  const selectedName = e.target.value;
+                  const selectedVar = transformationVariables.find(v => v.name === selectedName);
+                  setNamaVariabel(selectedName);
+                  setSelectedVariableId(selectedVar?.id || null); // ✅ UPDATE ID
+                }}
+                disabled={variablesLoading}
+              >
+                <option value="">Pilih Nama Variabel</option>
+                {variablesLoading ? (
+                  <option>Loading...</option>
+                ) : (
+                  transformationVariables.map((varItem) => (
+                    <option key={varItem.id} value={varItem.name}>
+                      {varItem.name}
+                    </option>
+                  ))
+                )}
+              </select>
               {errors.namaVariabel && <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>}
             </div>
             <div>
