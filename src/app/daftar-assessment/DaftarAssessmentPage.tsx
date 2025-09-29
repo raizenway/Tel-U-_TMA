@@ -11,6 +11,7 @@ import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info } from 'lucide-react';
 import { useQuestionList } from '@/hooks/useDaftarAssessment';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
 import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
 
@@ -27,6 +28,16 @@ export default function AssessmentPage() {
   const [targetStatus, setTargetStatus] = useState<'deactivate' | 'reactivate' | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const { data: transformationVariables = [] } = useTransformationVariableList();
+
+  // Buat mapping: id → name
+const variableNameMap = React.useMemo(() => {
+  const map: Record<number, string> = {};
+  transformationVariables.forEach((v) => {
+    map[v.id] = v.name;
+  });
+  return map;
+}, [transformationVariables]);
 
   const [roleId, setRoleId] = useState<number | null>(null);
   useEffect(() => {
@@ -47,7 +58,7 @@ export default function AssessmentPage() {
       const dataWithNomor = questionData.map((item, index) => ({
         ...item,
         nomor: index + 1,
-        variable: item.transformationVariableId,
+        variable: variableNameMap[item.transformationVariableId] || `ID ${item.transformationVariableId}`,       
         indikator: item.indicator || '-',
         pertanyaan: item.questionText || '-',
         deskripsiSkor0: item.scoreDescription0 || '-',
