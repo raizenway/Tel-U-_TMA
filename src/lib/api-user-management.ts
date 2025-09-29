@@ -1,5 +1,6 @@
-import { User, CreateUserRequest } from "@/interfaces/user-management"; // Interface User Management
+import { User, CreateUserRequest, Branch } from "@/interfaces/user-management"; // Interface User Management
 import { ApiResponse } from "@/interfaces/api-response"; // Interface API Response
+
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL + "/user";
 
@@ -43,3 +44,11 @@ export async function activateUser(id: number): Promise<ApiResponse<User>> {
   if (!res.ok) throw new Error("Failed to activate user");
   return res.json();
 }
+
+// lib/api-user-management.ts
+export async function listBranches(): Promise<ApiResponse<Branch[]>> {
+  const res = await fetch(`${API_URL}/branches`);
+  if (!res.ok) throw new Error("Failed to fetch branches");
+  return res.json();
+}
+

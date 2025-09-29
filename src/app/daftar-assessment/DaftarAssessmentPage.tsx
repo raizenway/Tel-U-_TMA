@@ -48,7 +48,7 @@ export default function AssessmentPage() {
       const dataWithNomor = questionData.map((item, index) => ({
         ...item,
         nomor: index + 1,
-        variable: "V1 (Mutu)",
+        variable: item.transformationVariableId,
         indikator: item.indicator || '-',
         pertanyaan: item.questionText || '-',
         deskripsiSkor0: item.scoreDescription0 || '-',

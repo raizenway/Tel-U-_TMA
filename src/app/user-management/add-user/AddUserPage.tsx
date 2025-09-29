@@ -6,6 +6,7 @@ import { X, Save} from "lucide-react";
 import Button  from "@/components/button";
 import { useCreateUser } from '@/hooks/useUserManagement';
 import { CreateUserRequest } from '@/interfaces/user-management';
+import { BRANCHES } from '@/interfaces/branch';
 
 export default function AddUserPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function AddUserPage() {
     email: '',
     nomorHp: '',
     status: '' as 'active' | 'inactive' | '',
+    branchId: '' as string,
   }); 
   
   // ✅ Gunakan hook untuk create user
@@ -73,7 +75,8 @@ const isValidEmail = (email: string) => {
   isValidEmail(form.email) && // ✅ Ganti cek kosong → cek format valid
   form.nomorHp.length >= 10 &&
   form.nomorHp.length <= 13 &&
-  form.status.trim() !== '';
+  form.status.trim() !== '' &&
+  form.branchId !== ''; 
 
 const handleSave = async () => {
   if (!isFormValid) return;
@@ -110,7 +113,7 @@ const body: CreateUserRequest = {
   roleId: role === 'UPPS/KC' ? 2 : 4, // ✅ Ubah string → number
   email: form.email,
   phoneNumber: form.nomorHp,
-  branchId: 1,
+  branchId: Number(form.branchId), // ✅ Konversi string → number
   status: form.status,
 };
 
@@ -293,8 +296,29 @@ const body: CreateUserRequest = {
                 placeholder="Masukkan Nomor Handphone "
                 className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
               />
-            </div>  
+            </div>           
+            
+            {/* Kampus Cabang */}
+            <div>
+              <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
+              <select
+                name="branchId"
+                value={form.branchId}
+                onChange={handleChange}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
+                required
+              >
+                <option value="">Pilih Kampus Cabang</option>
+                {BRANCHES.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </div> 
           </form>
+
+
 
           {/* Tombol */}
           <div className="flex justify-end mt-6 gap-4">
