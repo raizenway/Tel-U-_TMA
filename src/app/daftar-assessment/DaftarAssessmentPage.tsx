@@ -13,6 +13,7 @@ import { Info } from 'lucide-react';
 import { useQuestionList } from '@/hooks/useDaftarAssessment';
 import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
 import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
+import RoleBasedStatusCell from '@/components/RoleBasedStatusCell';
 
 export default function AssessmentPage() {
   const router = useRouter();
@@ -137,67 +138,39 @@ export default function AssessmentPage() {
   };
 
   // Kolom tabel — termasuk render aksi
+ 
   const columns = [
     { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
     { header: 'Nama Variable', key: 'variable', width: '180px', sortable: true },
-    { header: 'Indikator', key: 'indikator', width: '250px' },
-    { header: 'Pertanyaan', key: 'pertanyaan', width: '250px' },
-    { header: 'Deskripsi Skor 0', key: 'deskripsiSkor0', width: '200px' },
-    { header: 'Deskripsi Skor 1', key: 'deskripsiSkor1', width: '200px' },
-    { header: 'Deskripsi Skor 2', key: 'deskripsiSkor2', width: '200px' },
-    { header: 'Deskripsi Skor 3', key: 'deskripsiSkor3', width: '200px' },
-    { header: 'Deskripsi Skor 4', key: 'deskripsiSkor4', width: '200px' },
+    { header: 'Indikator', key: 'indikator', width: '250px', sortable: false },
+    { header: 'Pertanyaan', key: 'pertanyaan', width: '250px', sortable: false },
+    { header: 'Deskripsi Skor 0', key: 'deskripsiSkor0', width: '200px', sortable: false },
+    { header: 'Deskripsi Skor 1', key: 'deskripsiSkor1', width: '200px', sortable: false },
+    { header: 'Deskripsi Skor 2', key: 'deskripsiSkor2', width: '200px', sortable: false },
+    { header: 'Deskripsi Skor 3', key: 'deskripsiSkor3', width: '200px', sortable: false },
+    { header: 'Deskripsi Skor 4', key: 'deskripsiSkor4', width: '200px', sortable: false },
     { header: 'Tipe Soal', key: 'tipeSoal', width: '140px', className: 'text-center', sortable: true },
+  ...(roleId === 1
+    ? [
     {
       header: 'Aksi',
       key: 'action',
-      width: '200px',
-      className: 'text-center sticky right-0 bg-gray-100 z-10',
-      render: (item: any, index: number) => (
-        <div className="flex gap-2 justify-center">
-          <button
-            onClick={() => {
-              if (roleId === 1) {
-                router.push(`/daftar-assessment/edit-assessment/${item.id}`);
-              } else {
-                alert("❌ Hanya admin yang bisa edit data.");
-              }
-            }}
-            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-          >
-            Edit
-          </button>
-          {item.status === 'active' ? (
-            <button
-              onClick={() => {
-                if (roleId === 1) {
-                  toggleStatus(index);
-                } else {
-                  alert("❌ Hanya admin yang bisa nonaktifkan data.");
-                }
-              }}
-              className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-            >
-              Nonaktifkan
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (roleId === 1) {
-                  toggleStatus(index);
-                } else {
-                  alert("❌ Hanya admin yang bisa aktifkan data.");
-                }
-              }}
-              className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-            >
-              Aktifkan
-            </button>
-          )}
-        </div>
-      ),
+      width: '150px',
+      className: 'text-center sticky right-0 z-10 bg-gray-100',
     },
-  ];
+  ]
+  : [
+     {
+          header: 'Status',
+          key: 'status',
+          width: '150px',
+          className: 'text-center  right-0 z-10 bg-white-100',
+          sortable: false,
+        },
+  ]),
+];
+
+
 
   if (loading) {
     return (
@@ -283,35 +256,24 @@ export default function AssessmentPage() {
 
             <div className="overflow-x-auto">
               {currentData.length > 0 ? (
-                <TableUpdate
-                  columns={columns}
-                  data={currentData}
-                  currentPage={page}
-                  rowsPerPage={itemsPerPage}
-                  onEdit={(item) => {
-                    if (roleId === 1) {
-                      router.push(`/daftar-assessment/edit-assessment/${item.id}`);
-                    } else {
-                      alert("❌ Hanya admin yang bisa edit data.");
-                    }
-                  }}
-                  onDeactivate={(index) => {
-                    if (roleId === 1) {
-                      toggleStatus(index);
-                    } else {
-                      alert("❌ Hanya admin yang bisa nonaktifkan data.");
-                    }
-                  }}
-                  onReactivate={(index) => {
-                    if (roleId === 1) {
-                      toggleStatus(index);
-                    } else {
-                      alert("❌ Hanya admin yang bisa aktifkan data.");
-                    }
-                  }}
-                  onSort={handleSort}
-                  sortConfig={sortConfig}
-                />
+             <TableUpdate
+  columns={columns}
+  data={currentData}
+  currentPage={page}
+  rowsPerPage={itemsPerPage}
+  onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
+  onDeactivate={(index) => toggleStatus(index)}
+  onReactivate={(index) => toggleStatus(index)}
+  onSort={handleSort}
+  sortConfig={sortConfig}
+  renderCell={(columnKey, item) => {
+    if (columnKey === 'status' && [2, 3, 4].includes(Number(roleId))) {
+      return <RoleBasedStatusCell status={item.status} id={item.id} />;
+    }
+
+    return undefined; // <-- INI KUNCI: biar fallback ke default
+  }}
+/>
               ) : (
                 <div className="p-6 text-center text-gray-500 border-t">
                   {loading ? "Loading..." : "Tidak ada data assessment untuk ditampilkan."}

@@ -57,6 +57,42 @@ export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
 
+    // ✅ State untuk data dashboard dari API
+  const [dashboardData, setDashboardData] = useState({
+    totalBranches: 0,
+    totalVariable: 0,
+    submittedAssessments: 0,
+    approvedAssessments: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Fetch data dari API saat komponen mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/assessment/dashboard');
+        if (!response.ok) throw new Error('Failed to fetch dashboard data');
+
+        const result = await response.json();
+        const data = result.data;
+
+        setDashboardData({
+          totalBranches: data?.totalBranches || 0,
+          totalVariable: data?.totalVariable || 0,
+          submittedAssessments: data?.submittedAssessments || 0,
+          approvedAssessments: data?.approvedAssessments || 0,
+        });
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   // Data Student Body
   const [studentYears, setStudentYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
   const [studentInputData, setStudentInputData] = useState<CampusData>({
@@ -66,33 +102,80 @@ export default function DashboardTab() {
     "Tel-U Bandung": [140, 135, 160, 170],
   });
 
-  // Data Akreditasi Prodi
-  const [accreditationYears, setAccreditationYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
-  const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
-    "Tel-U Jakarta": [85, 87, 89, 90],
-    "Tel-U Surabaya": [80, 82, 85, 88],
-    "Tel-U Purwokerto": [78, 80, 83, 85],
-    "Tel-U Bandung": [90, 91, 92, 93],
-  });
+// Data Akreditasi Prodi — AWALNYA KOSONG, NANTI DIISI DARI API
+const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
+const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
+  "Tel-U Jakarta": [],
+  "Tel-U Surabaya": [],
+  "Tel-U Purwokerto": [],
+  "Tel-U Bandung": [],
+});
 
-  const [accreditationData, setAccreditationData] = useState<{
-    tahun: string;
-    Jakarta: number;
-    Bandung: number;
-    Purwokerto: number;
-    Surabaya: number;
-  }[]>([]);
+const [accreditationData, setAccreditationData] = useState<{
+  tahun: string;
+  Jakarta: number;
+  Bandung: number;
+  Purwokerto: number;
+  Surabaya: number;
+}[]>([]);
 
-  useEffect(() => {
-    const initialData = accreditationYears.map((year, idx) => ({
-      tahun: year,
-      Jakarta: accreditationInputData["Tel-U Jakarta"][idx],
-      Bandung: accreditationInputData["Tel-U Bandung"][idx],
-      Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx],
-      Surabaya: accreditationInputData["Tel-U Surabaya"][idx],
-    }));
-    setAccreditationData(initialData);
-  }, [accreditationInputData, accreditationYears]);
+// ✅ Ambil data akreditasi dari API dan isi state
+useEffect(() => {
+  const fetchAccreditationData = async () => {
+    try {
+      console.log("🚀 Fetching from /api/assessment/dashboard...");
+
+      const response = await fetch('http://localhost:3000/api/assessment/dashboard');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const result = await response.json();
+      console.log("📥 Full API Response:", result);
+
+      const apiData = result.data?.accreditationGrowth;
+
+      if (!Array.isArray(apiData)) {
+        throw new Error("accreditationGrowth is missing or not an array");
+      }
+
+      const years = apiData.map(item => String(item.year));
+      const scores = apiData.map(item => Number(item.score));
+
+      setAccreditationYears(years);
+      setAccreditationInputData({
+        "Tel-U Jakarta": [],
+        "Tel-U Surabaya": [],
+        "Tel-U Purwokerto": [],
+        "Tel-U Bandung": scores,
+      });
+
+      console.log("✅ Data akreditasi berhasil diambil dan diisi");
+
+    } catch (error: any) {
+      console.error("❌ Error fetching accreditation ", error.message || error);
+      // Fallback ke dummy
+      setAccreditationYears(["2021", "2022", "2023", "2024"]);
+      setAccreditationInputData({
+        "Tel-U Jakarta": [85, 87, 89, 90],
+        "Tel-U Surabaya": [80, 82, 85, 88],
+        "Tel-U Purwokerto": [78, 80, 83, 85],
+        "Tel-U Bandung": [90, 91, 92, 93],
+      });
+    }
+  };
+
+  fetchAccreditationData();
+}, []);
+// ✅ Biarkan useEffect INI TETAP APA ADANYA (tidak diubah!)
+useEffect(() => {
+  const initialData = accreditationYears.map((year, idx) => ({
+    tahun: year,
+    Jakarta: accreditationInputData["Tel-U Jakarta"][idx] ?? 0,
+    Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
+    Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
+    Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
+  }));
+  setAccreditationData(initialData);
+}, [accreditationInputData, accreditationYears]);
 
   // ✅ Fix: handleAddYear - Pastikan lastYearNum adalah number
   const handleAddYear = () => {
@@ -290,69 +373,79 @@ export default function DashboardTab() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
+
   return (
     <div className="space-y-8 px-4 py-6">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
-        <div
-          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-          style={{ backgroundImage: "url('/KC.png')" }}
-        >
-          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-          <div className="relative flex items-center space-x-2 text-white p-4 rounded-lg">
-            <div className="flex items-center justify-center w-10 h-10 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-              <Building2 className="text-white w-6 h-6" />
-            </div>
-            <span className="text-sm font-semibold">UPPS/Kampus Cabang</span>
-            <div
-              className="absolute top-0 right-0 w-6 h-6 text-white text-sm font-bold rounded-full flex items-center justify-center"
-              style={{ marginTop: '45px', marginRight: '90px' }}
-            >
-              8
-            </div>
-          </div>
-        </div>
+  {/* Stat Cards — DINAMIS DARI API */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+{/* Card 1: UPPS / Kampus Cabang */}
+<div
+  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+  style={{ backgroundImage: "url('/KC.png')" }}
+>
+  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 biar lebih rapat */}
+    <div className="flex items-center justify-center w-10 h-10 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+      <Building2 className="text-white w-6 h-6" />
+    </div>
+    <span className="text-sm font-semibold text-center leading-tight">UPPS/Kampus Cabang</span> {/* tambah text-center & leading-tight */}
+    <div className="text-xl font-bold">
+      {loading ? '...' : dashboardData.totalBranches}
+    </div>
+  </div>
+</div>
 
-        <div
-          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-          style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
-        >
-          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-          <div className="relative flex flex-col items-center space-y-2 z-10">
-            <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-              <BookOpenCheckIcon className="text-white w-6 h-6" />
-            </div>
-            <span className="text-sm font-semibold">Jumlah Variabel & Pertanyaan</span>
-          </div>
-        </div>
+{/* Card 2: Jumlah Variabel & Pertanyaan */}
+<div
+  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+  style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
+>
+  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 */}
+    <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+      <BookOpenCheckIcon className="text-white w-6 h-6" />
+    </div>
+    <span className="text-sm font-semibold text-center leading-tight">Jumlah Variabel & Pertanyaan</span>
+    <div className="text-xl font-bold">
+      {loading ? '...' : dashboardData.totalVariable}
+    </div>
+  </div>
+</div>
 
-        <div
-          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-          style={{ backgroundImage: "url('/Assessment Submitted.png')" }}
-        >
-          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-          <div className="relative flex flex-col items-center space-y-2 z-10">
-            <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-              <ClipboardList className="text-white w-6 h-6" />
-            </div>
-            <span className="text-sm font-semibold">Assessment Submitted</span>
-          </div>
-        </div>
+{/* Card 3: Assessment Submitted */}
+<div
+  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+  style={{ backgroundImage: "url('/Assessment Submitted.png')" }}
+>
+  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 */}
+    <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+      <ClipboardList className="text-white w-6 h-6" />
+    </div>
+    <span className="text-sm font-semibold text-center leading-tight">Assessment Submitted</span>
+    <div className="text-xl font-bold">
+      {loading ? '...' : dashboardData.submittedAssessments}
+    </div>
+  </div>
+</div>
 
-        <div
-          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-          style={{ backgroundImage: "url('/Assessment Approve.png')" }}
-        >
-          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-          <div className="relative flex flex-col items-center space-y-2 z-10">
-            <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-              <ClipboardCheck className="text-white w-6 h-6" />
-            </div>
-            <span className="text-sm font-semibold">Assessment Approved</span>
-          </div>
-        </div>
-      </div>
-
+{/* Card 4: Assessment Approved */}
+<div
+  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+  style={{ backgroundImage: "url('/Assessment Approve.png')" }}
+>
+  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 */}
+    <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+      <ClipboardCheck className="text-white w-6 h-6" />
+    </div>
+    <span className="text-sm font-semibold text-center leading-tight">Assessment Approved</span>
+    <div className="text-xl font-bold">
+      {loading ? '...' : dashboardData.approvedAssessments}
+    </div>
+  </div>
+</div>
+</div>
       {/* Progress & Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow p-6">
