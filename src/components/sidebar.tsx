@@ -15,6 +15,7 @@ import {
   FileText,
   Info,
 } from "lucide-react";
+import { BRANCH_NAMES } from "@/interfaces/branch";
 
 type NavItem = {
   name: string;
@@ -31,6 +32,8 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
+  
+  const [userData, setUserData] = useState<any>(null); // ← simpan semua data user
   const [roleId, setRoleId] = useState<number | null>(null);
 
   // Ambil roleId dari localStorage
@@ -39,7 +42,8 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
     if (user) {
       try {
         const parsed = JSON.parse(user);
-        setRoleId(Number(parsed.roleId));
+        setUserData(parsed);           // ← simpan semua data
+        setRoleId(Number(parsed.roleId)); // ← tetap butuh roleId untuk filter menu
       } catch (e) {
         console.error("Gagal baca user:", e);
       }
@@ -227,10 +231,25 @@ const filteredNavItems = allNavItems
           height={40}
           className="rounded-full"
         />
-        {!collapsed && (
+        {!collapsed && userData && (
           <div>
-            <p className="font-semibold text-gray-800">Wilson</p>
-            <p className="text-xs text-gray-500">012345678</p>
+            {/* Nama User */}
+            <p className="font-semibold text-gray-800">
+              {userData.fullname || userData.name || "User"}
+            </p>
+
+            {/* Nama Kampus Cabang */}
+            <p className="text-xs text-gray-500">
+              {BRANCH_NAMES[Number(userData.branchId)] || `Cabang ${userData.branchId}`}
+            </p>
+          </div>
+        )}
+
+        {/* Fallback jika data tidak ada */}
+        {!collapsed && !userData && (
+          <div>
+            <p className="font-semibold text-gray-800">User</p>
+            <p className="text-xs text-gray-500">Kampus Tidak Diketahui</p>
           </div>
         )}
       </div>
