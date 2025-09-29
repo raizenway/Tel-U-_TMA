@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { X, Save} from "lucide-react";
 import Button  from "@/components/button";
 import { useGetUserById, useUpdateUser } from '@/hooks/useUserManagement';
+import { BRANCHES } from '@/interfaces/branch'; 
 
 
 export default function EditUserPage() {
@@ -27,6 +28,7 @@ export default function EditUserPage() {
     nomorHp: '',
     status: '',
     role: '',
+    branchId: '',
     logoPreview: '', // base64 image
   });
 
@@ -53,6 +55,7 @@ useEffect(() => {
     nomorHp: String(user.phoneNumber) || '',
     status: user.status,
     role,
+    branchId: user.branchId.toString(),
     logoPreview: user.logo_file_id ? `/api/logo/${user.logo_file_id}` : '',
   });
 
@@ -115,7 +118,7 @@ const handleSave = async () => {
     email: form.email,
     phoneNumber: form.nomorHp,
     roleId: form.role === 'UPPS/KC' ? 2 : 4,
-    branchId: 1, // Ganti sesuai kebutuhan
+    branchId: Number(form.branchId),
     status: form.status as 'active' | 'inactive',
   };
 
@@ -149,6 +152,7 @@ const isValidEmail = (email: string) => {
   form.namaUser &&
   isValidEmail(form.email) && // ✅ email harus valid
   form.status &&
+  form.branchId !== '' && 
   form.nomorHp.length >= 10 &&
   form.nomorHp.length <= 13;
 
@@ -330,7 +334,23 @@ if (error) {
               />
             </div>
 
-            
+            <div>
+              <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
+              <select
+                name="branchId"
+                value={form.branchId}
+                onChange={handleChange}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
+                required
+              >
+                <option value="">Pilih Kampus Cabang</option>
+                {BRANCHES.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </form>
 
           <div className="flex justify-end mt-8 gap-6">

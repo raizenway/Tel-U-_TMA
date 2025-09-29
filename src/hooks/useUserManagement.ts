@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useGet } from "./useGet";
-import { listUsers, getUserById, createUser,deactivateUser, activateUser, API_URL} from "@/lib/api-user-management";
+import { listUsers, getUserById, createUser, deactivateUser, activateUser, API_URL, listBranches} from "@/lib/api-user-management";
 import { CreateUserRequest, User } from "@/interfaces/user-management";
 import { ApiResponse } from "@/interfaces/api-response";
+import { Branch } from "@/interfaces/user-management";
+
 
 export function useListUsers(dep: any = null) {
   return useGet<ApiResponse<User[]>>(() => listUsers(), [dep]);
@@ -106,4 +108,8 @@ export function useActivateUser() {
   };
 
   return { mutate, loading, error };
+}
+
+export function useListBranches() {
+  return useGet<ApiResponse<Branch[]>>(() => listBranches(), []);
 }
