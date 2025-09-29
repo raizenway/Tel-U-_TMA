@@ -11,16 +11,18 @@ import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info } from 'lucide-react';
 import { useQuestionList } from '@/hooks/useDaftarAssessment';
-import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
 import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
-import RoleBasedStatusCell from '@/components/RoleBasedStatusCell';
 
 export default function AssessmentPage() {
   const router = useRouter();
   const { data, loading, error, refetch } = useQuestionList();
-  const questionData = (data as unknown as ApiResponse<Question[]> | null)?.data || [];// <-- ambil .data dari ApiResponse
+  const questionData = (data as unknown as ApiResponse<Question[]> | null)?.data || [];
   const [localData, setData] = useState<any[]>([]);
+  const [variableMap, setVariableMap] = useState<Record<number, string>>({}); // ✅ State untuk mapping variabel
+  const { data: variablesData, loading: loadingVariables } = useTransformationVariableList();
+   const { mutate: saveAnswer, loading: saving, error: saveError } = useCreateAssessmentDetail();
+
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [search, setSearch] = useState('');
@@ -53,13 +55,24 @@ const variableNameMap = React.useMemo(() => {
     }
   }, []);
 
-  // Load data dari API
+  // ✅ Load variableMap dari API
   useEffect(() => {
-  if (!loading && !error && questionData && Array.isArray(questionData)) {
+    if (variablesData) {
+      const map: Record<number, string> = {};
+      variablesData.forEach((variable: any) => {
+        map[variable.id] = variable.name; // Sesuaikan field jika perlu
+      });
+      setVariableMap(map);
+    }
+  }, [variablesData]);
+
+  // ✅ Load data soal — tunggu variableMap siap
+  useEffect(() => {
+    if (!loading && !error && questionData && Array.isArray(questionData) && Object.keys(variableMap).length > 0) {
       const dataWithNomor = questionData.map((item, index) => ({
         ...item,
         nomor: index + 1,
-        variable: variableNameMap[item.transformationVariableId] || `ID ${item.transformationVariableId}`,       
+        variable: item.transformationVariableId,
         indikator: item.indicator || '-',
         pertanyaan: item.questionText || '-',
         deskripsiSkor0: item.scoreDescription0 || '-',
@@ -71,7 +84,7 @@ const variableNameMap = React.useMemo(() => {
         status: item.status,
       }));
       setData(dataWithNomor);
-      setSearch(''); // Reset pencarian agar semua data tampil
+      setSearch('');
       console.log("✅ localData berhasil di-set:", dataWithNomor);
 
       if (localStorage.getItem('newDataAdded') === 'true') {
@@ -79,7 +92,7 @@ const variableNameMap = React.useMemo(() => {
         localStorage.removeItem('newDataAdded');
       }
     }
-  }, [questionData, loading, error]);
+  }, [questionData, loading, error, variableMap]);
 
   // Sorting
   const handleSort = (key: string) => {
@@ -183,7 +196,7 @@ const variableNameMap = React.useMemo(() => {
 
 
 
-  if (loading) {
+  if (loading || loadingVariables) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-lg">Loading data assessment...</div>
