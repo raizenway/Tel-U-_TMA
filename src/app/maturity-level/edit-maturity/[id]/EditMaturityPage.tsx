@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
@@ -68,8 +69,8 @@ export default function EditMaturityPage() {
         scoreDescription3: maturityDetail.scoreDescription3 || "",
         scoreDescription4: maturityDetail.scoreDescription4 || "",
         generalDescription: maturityDetail.generalDescription || "",
-        minScore: String(maturityDetail.minScore || ""),
-        maxScore: String(maturityDetail.maxScore || ""),
+        minScore: String(maturityDetail.minScore ?? ""),
+        maxScore: String(maturityDetail.maxScore ?? ""),
       });
     }
   }, [maturityDetail, realId]);
@@ -80,7 +81,7 @@ export default function EditMaturityPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "levelNumber" ? Number(value) : value, 
+      [name]: name === "levelNumber" ? Number(value) : value,
     }));
   };
 
@@ -93,8 +94,8 @@ export default function EditMaturityPage() {
         ...payload,
         name: payload.name?.trim() || "",
         levelNumber: Number(payload.levelNumber) || 0,
-        minScore: payload.minScore?.trim() || "", 
-        maxScore: payload.maxScore?.trim() || "", 
+        minScore: payload.minScore?.trim() || "",
+        maxScore: payload.maxScore?.trim() || "",
         generalDescription: payload.generalDescription?.trim() || "",
         scoreDescription0: payload.scoreDescription0?.trim() || "",
         scoreDescription1: payload.scoreDescription1?.trim() || "",
@@ -148,7 +149,6 @@ export default function EditMaturityPage() {
   return (
     <div>
       <form onSubmit={handleSubmit}>
-        {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Level</label>
@@ -172,7 +172,6 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Row 2 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Skor Minimum</label>
@@ -196,7 +195,6 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Row 3 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
@@ -223,7 +221,6 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="flex justify-end gap-4 mt-6">
           <Button
             onClick={() => router.push("/maturity-level")}
@@ -251,3 +248,4 @@ export default function EditMaturityPage() {
     </div>
   );
 }
+
