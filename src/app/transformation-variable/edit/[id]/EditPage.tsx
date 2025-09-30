@@ -6,6 +6,7 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
+import { fdatasync } from 'fs';
 
 export default function EditVariablePage() {
   const { id } = useParams();
@@ -37,15 +38,19 @@ export default function EditVariablePage() {
 
   // ✅ Isi form + logo preview dari data
   useEffect(() => {
-    if (data) {
-      setNamaVariabel(data.name || '');
-      setBobot(data.weight?.toString() || '');
-      setDeskripsi(data.description || '');
-      setReferensi(data.reference || '');
-      setStatus(data.status === 'active' ? 'Active' : 'Inactive');
+  if (data) {
+    setNamaVariabel(data.name || '');
+    setBobot(data.weight?.toString() || '');
+    setDeskripsi(data.description || '');
+    setReferensi(data.reference || '');
+    setStatus(data.status === 'active' ? 'Active' : 'Inactive');
+    
+    // ✅ Ambil path dari iconFile
+    if (data.iconFile?.path) {
+      setLogoPreview(data.iconFile.path);
     }
-  }, [data]);
-
+  }
+}, [data]);
   // 🚫 Loading
   if (loadingData) {
     return (
@@ -94,7 +99,7 @@ export default function EditVariablePage() {
       reference: referensi.trim(),
       sortOrder: 1,
       status: status.toLowerCase() as 'active' | 'inactive',
-      // ❗ logo sengaja tidak dikirim — hanya untuk tampilan frontend
+       iconFileId: data.iconFileId,
     };
 
     console.log('📤 Payload:', payload);

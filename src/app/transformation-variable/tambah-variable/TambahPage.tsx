@@ -101,37 +101,40 @@ export default function VariabelFormPage() {
 
   // Simpan data ke API (create atau update)
   const handleSimpan = async () => {
-    if (!isFormValid) {
-      alert('Mohon lengkapi semua field wajib.');
-      return;
+  if (!isFormValid) {
+    alert('Mohon lengkapi semua field wajib.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('name', namaVariabel.trim());
+  formData.append('weight', bobot);
+  formData.append('description', deskripsi.trim());
+  formData.append('reference', referensi.trim());
+  formData.append('sortOrder', '1');
+  formData.append('status', status.toLowerCase());
+
+  // 🔥 Kirim file dengan field "icon" — SESUAI POSTMAN!
+  if (logoFile) {
+    formData.append('icon', logoFile);
+  }
+
+  try {
+    if (isEdit && editId) {
+      // Pastikan hook update terima FormData
+      await update(editId, formData);
+    } else {
+      // Pastikan hook create terima FormData
+      await create(formData);
     }
 
-    const payload: CreateRequest = {
-      name: namaVariabel.trim(),
-      weight: parseFloat(bobot) || 0,
-      description: deskripsi.trim(),
-      reference: referensi.trim(),
-      sortOrder: 1,
-      status: status.toLowerCase() as 'active' | 'inactive',
-      // Tambahkan field lain jika diperlukan
-    };
-
-    try {
-      if (isEdit && editId) {
-        await update(editId, payload);
-      } else {
-        await create(payload);
-      }
-
-      // Bersihkan state dan localStorage
-      localStorage.removeItem('editData');
-      router.push('/transformation-variable?success=true');
-    } catch (err) {
-      console.error('Gagal menyimpan data:', err);
-      alert('Gagal menyimpan data. Periksa koneksi atau isi ulang form.');
-    }
-  };
-
+    localStorage.removeItem('editData');
+    router.push('/transformation-variable?success=true');
+  } catch (err) {
+    console.error('Gagal menyimpan ', err);
+    alert('Gagal menyimpan data.');
+  }
+};
   // Batal
   const handleBatal = () => {
     
