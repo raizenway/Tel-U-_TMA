@@ -21,7 +21,7 @@ type TableItem = {
   bobot: string | number;
   deskripsi: string;
   referensi: string;
-  logoUrl: any;
+  LogoUrl: string;
   status: string;
   nomor_urut: number; // <-- ini yang baru
 };
@@ -107,7 +107,7 @@ export default function AssessmentPage() {
     bobot: item.weight || '-',
     deskripsi: item.description || '-',
     referensi: item.reference || '-',
-    logoUrl: null,
+    LogoUrl: item.iconFile?.path|| '',
     status: item.status === 'active' ? 'Active' : 'Inactive',
   }));
 
@@ -265,7 +265,7 @@ const currentData = filteredData
     Bobot: item.bobot,
     Deskripsi: item.deskripsi,
     Referensi: item.referensi,
-    'Logo URL': item.logoUrl || '-',
+    'Logo Url': item.LogoUrl || '-',
     Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan',
   }));
 
@@ -326,25 +326,39 @@ const currentData = filteredData
   onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
   onSort={handleSort}
   sortConfig={sortConfig}
-  renderCell={(columnKey, item) => {
-    if (columnKey === 'status') {
-      return (
-        <RoleBasedStatusCell
-          status={item.status}
-          id={item.id}
-          onEdit={(id) => router.push(`/transformation-variable/edit/${id}`)}
-          onToggleStatus={(id, action) => {
-            if (action === 'deactivate') {
-              openConfirmModal(id, 'deactivate');
-            } else {
-              openConfirmModal(id, 'activate');
-            }
-          }}
-        />
-      );
-    }
-    return null; 
-  }}
+ renderCell={(columnKey, item) => {
+  if (columnKey === 'status') {
+    return (
+      <RoleBasedStatusCell
+        status={item.status}
+        id={item.id}
+        onEdit={(id) => router.push(`/transformation-variable/edit/${id}`)}
+        onToggleStatus={(id, action) => {
+          if (action === 'deactivate') {
+            openConfirmModal(id, 'deactivate');
+          } else {
+            openConfirmModal(id, 'activate');
+          }
+        }}
+      />
+    );
+  }
+
+  // ✅ Tambahkan ini: render logo
+  if (columnKey === 'logo') {
+    return item.LogoUrl ? (
+      <img
+        src={item.LogoUrl}
+        alt="Logo"
+        className="w-8 h-8 object-contain mx-auto"
+      />
+    ) : (
+      <span className="text-gray-400">-</span>
+    );
+  }
+
+  return null;
+}}
 />
             </div>
           )}

@@ -148,7 +148,7 @@
         {/* KANAN: BACKGROUND */}
      <div className="hidden md:flex w-2/3 relative h-full overflow-hidden bg-red-200">
     <Image
-      src="/Konten.png"  
+      src="/Konten (2).png"  
       alt="Tel-U Background"
       fill
       className="object-cover z-0"
