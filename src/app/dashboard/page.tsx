@@ -65,7 +65,7 @@ export default function WelcomePage() {
                 onClick={() => router.push("/assessment")}
                 className="text-sm"
               >
-                Buat Assessment
+                Start Assessment
               </Button>
             </div>
         </div>

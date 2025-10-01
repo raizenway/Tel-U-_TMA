@@ -31,20 +31,24 @@
 
         const result = await res.json();
 
-      if (result.status === 'success') {
+         // ✅ PERBAIKAN UTAMA: cek status === 200 (bukan 'success')
+    if (res.ok && result.status === 200) {
       const userWithRole = {
         ...result.data,
-        roleId: result.data.roleId,
-  };
+        roleId: Number(result.data.roleId), // pastikan jadi number
+      };
 
-  if (result.data.status === 'inactive') {
-    setError('Akun Anda telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.');
-    return; 
-  }
+      if (result.data.status === 'inactive') {
+        setError('Akun Anda telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.');
+        return; 
+      }
 
-  localStorage.setItem('user', JSON.stringify(userWithRole));
-  router.push('/welcome');
-}
+      localStorage.setItem('user', JSON.stringify(userWithRole));
+      router.replace('/welcome');
+    } else {
+      // Tampilkan pesan error dari backend
+      setError(result.message || 'Username atau password salah');
+    }
       } catch {
         setError('Terjadi kesalahan, coba lagi');
       } finally {
@@ -78,7 +82,6 @@
                   type="text"
                   value={username}
                    onChange={(e) => {
-                  // ✅ Filter: Hanya huruf dan angka, tanpa spasi/simbol
                   const filteredValue = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
                   setUsername(filteredValue);
                 }}
