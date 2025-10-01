@@ -33,7 +33,7 @@ export default function EditMaturityPage() {
     levelNumber: 0,
     minScore: "",
     maxScore: "",
-    generalDescription: "",
+    description: "",
     scoreDescription0: "",
     scoreDescription1: "",
     scoreDescription2: "",
@@ -68,7 +68,7 @@ export default function EditMaturityPage() {
         scoreDescription2: maturityDetail.scoreDescription2 || "",
         scoreDescription3: maturityDetail.scoreDescription3 || "",
         scoreDescription4: maturityDetail.scoreDescription4 || "",
-        generalDescription: maturityDetail.generalDescription || "",
+        description: maturityDetail.description || "",
         minScore: String(maturityDetail.minScore ?? ""),
         maxScore: String(maturityDetail.maxScore ?? ""),
       });
@@ -96,7 +96,7 @@ export default function EditMaturityPage() {
         levelNumber: Number(payload.levelNumber) || 0,
         minScore: payload.minScore?.trim() || "",
         maxScore: payload.maxScore?.trim() || "",
-        generalDescription: payload.generalDescription?.trim() || "",
+        description: payload.description?.trim() || "",
         scoreDescription0: payload.scoreDescription0?.trim() || "",
         scoreDescription1: payload.scoreDescription1?.trim() || "",
         scoreDescription2: payload.scoreDescription2?.trim() || "",
@@ -200,7 +200,7 @@ export default function EditMaturityPage() {
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
               name="generalDescription"
-              value={formData.generalDescription}
+              value={formData.description}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2 h-[100px]"
             />
