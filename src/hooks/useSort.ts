@@ -2,13 +2,17 @@ import { useState, useMemo } from "react";
 
 type Direction = "asc" | "desc";
 
-interface SortConfig<T> {
-  key: keyof T;
+// Hanya terima key yang string
+interface SortConfig {
+  key: string;
   direction: Direction;
 }
 
-export function useSort<T>(data: T[], defaultKey?: keyof T) {
-  const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(
+export function useSort<T extends Record<string, any>>(
+  data: T[],
+  defaultKey?: string
+) {
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(
     defaultKey ? { key: defaultKey, direction: "asc" } : null
   );
 
@@ -17,8 +21,11 @@ export function useSort<T>(data: T[], defaultKey?: keyof T) {
 
     const sortableData = [...data];
     sortableData.sort((a, b) => {
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
+      // Pastikan key ada di objek
+      if (!(sortConfig.key in a) || !(sortConfig.key in b)) return 0;
+
+      const aVal = a[sortConfig.key as keyof T];
+      const bVal = b[sortConfig.key as keyof T];
 
       if (aVal === undefined || bVal === undefined) return 0;
 
@@ -30,7 +37,7 @@ export function useSort<T>(data: T[], defaultKey?: keyof T) {
     return sortableData;
   }, [data, sortConfig]);
 
-  const requestSort = (key: keyof T) => {
+  const requestSort = (key: string) => {
     let direction: Direction = "asc";
     if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";

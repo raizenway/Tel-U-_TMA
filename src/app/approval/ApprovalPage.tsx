@@ -33,26 +33,13 @@ const TablePage = () => {
     { header: "Nama Variable", key: "variable", width: "160px", sortable: true },
     { header: "Indikator", key: "indikator", width: "319px" },
     { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
-    { header: "Jawaban", key: "jawaban", width: "120px", sortable: true},
+    { header: "Jawaban", key: "jawaban", width: "120px", sortable: true },
     { header: "Skor", key: "skor", width: "319px", sortable: true },
     { header: "Tipe Soal", key: "tipeSoal", width: "160px", sortable: true },
   ];
 
-  // Data dummy
-  const data = Array.from({ length: 20 }, (_, i) => ({
-    variable: i % 2 === 0 ? "V1 (Mutu)" : "V4 (Sarana & Prasarana)",
-    indikator:
-      i % 2 === 0
-        ? "Jumlah sertifikasi/akreditasi dalam lingkup Direktorat TUNC"
-        : "Luas perpustakaan di TUNC (m2)",
-    pertanyaan:
-      i % 2 === 0
-        ? "Jumlah sertifikasi/akreditasi dalam lingkup Direktorat TUNC oleh lembaga internasional"
-        : "Luas perpustakaan di TUNC (m2)",
-    jawaban: i % 2 === 0 ? "2" : "300",
-    skor: i % 2 === 0 ? "2" : "4",
-    tipeSoal: i % 2 === 0 ? "Pilihan Ganda" : "Isian",
-  }));
+ 
+  const data: any[] = []; 
 
   const { sortedData, sortConfig, requestSort } = useSort(data);
 
@@ -70,22 +57,18 @@ const TablePage = () => {
     <div className="flex">
       {tab === "approval-assessment" && (
         <div className="bg-white rounded-xl w-full">
-          {/* Filter & Tools */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            {/* Search di kiri */}
             <div className="flex items-center gap-2">
               <SearchTable 
                 value={search} 
                 onChange={setSearch} 
                 placeholder="Cari"
-                />
+              />
             </div>
 
-            {/* Tombol + Dropdown di kanan */}
             <div className="flex items-center gap-2">
               <TableButton data={data} />
 
-              {/* Dropdown Kampus */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -129,17 +112,15 @@ const TablePage = () => {
             sortConfig={sortConfig}
           />
 
-          {/* Pagination */}
           <div className="flex items-center justify-between mt-4 ">
             <div className="h-10 flex items-center">
               <Pagination
                 currentPage={currentPage}
-                totalPages={5} // misalnya 5 halaman
+                totalPages={5} 
                 onPageChange={(page) => setCurrentPage(page)}
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-4">
               <Button
                 variant="success"
