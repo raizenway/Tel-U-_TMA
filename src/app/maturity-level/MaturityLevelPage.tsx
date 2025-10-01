@@ -56,7 +56,7 @@ const TablePage = () => {
         namaLevel: item.name,
         skorMin: item.minScore,
         skorMax: item.maxScore,
-        deskripsiUmum: item.generalDescription,
+        deskripsiUmum: item.description,
         deskripsiPerVariabel: [
           item.scoreDescription0,
           item.scoreDescription1,
@@ -229,7 +229,7 @@ const columns = roleId === 1
         ),
       },
     ]
-  : baseColumns; // 👈 Jika bukan roleId 1 → jangan tambahkan kolom "Aksi"
+  : baseColumns; 
 
   const dataForExport = paginatedData.map((item, index) => ({
     Nomor: (currentPage - 1) * itemsPerPage + index + 1,
