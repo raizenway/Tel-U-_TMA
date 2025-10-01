@@ -50,7 +50,7 @@ export default function AddMaturityLevelPage() {
           levelNumber: String(parsed.levelNumber ?? ""),
           minScore: String(parsed.minScore ?? ""),
           maxScore: String(parsed.maxScore ?? ""),
-          description: parsed.generalDescription || "",
+          description: parsed.description || "",
           scoreDescription0: parsed.scoreDescription0 || "",
           scoreDescription1: parsed.scoreDescription1 || "",
           scoreDescription2: parsed.scoreDescription2 || "",
@@ -227,7 +227,7 @@ export default function AddMaturityLevelPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
-              name="generalDescription"
+              name="description"
               value={formData.description}
               onChange={handleChange}
               placeholder="Masukkan Deskripsi"

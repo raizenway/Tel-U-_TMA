@@ -199,7 +199,7 @@ export default function EditMaturityPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
-              name="generalDescription"
+              name="description"
               value={formData.description}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2 h-[100px]"
