@@ -132,9 +132,8 @@ export default function TableUpdate({
             )}
           </div>
         )
-        : item[col.key] || '-'
-}
-</td>
+             : (item[col.key] ??  '-')}
+                  </td>
                     ))}
                   </tr>
                 );

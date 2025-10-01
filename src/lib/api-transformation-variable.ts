@@ -1,12 +1,15 @@
 // src/lib/api-transformation-variable.ts
 
-import { TransformationVariable } from '@/interfaces/transformation-variable';
+import { 
+  TransformationVariable, 
+  CreateTransformationVariableRequest,
+  UpdateTransformationVariableRequest 
+} from '@/interfaces/transformation-variable';
 import { ApiResponse } from '@/interfaces/api-response';
-
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL + "/assessment/variable"; 
 
-//list
+// 🔹 LIST
 export const listTransformationVariables = async (): Promise<ApiResponse<TransformationVariable[]>> => {
   try {
     const res = await fetch(API_URL, {
@@ -42,10 +45,9 @@ export const listTransformationVariables = async (): Promise<ApiResponse<Transfo
   }
 };
 
-
-//nambah
+// 🔹 CREATE (JSON - tanpa file)
 export const createTransformationVariable = async (
-  body: Omit<TransformationVariable, 'id'>
+  body: CreateTransformationVariableRequest
 ): Promise<ApiResponse<TransformationVariable>> => {
   const res = await fetch(API_URL, {
     method: 'POST',
@@ -63,11 +65,28 @@ export const createTransformationVariable = async (
   return await res.json(); 
 };
 
+// 🔥 CREATE DENGAN FILE (FormData - dengan logo)
+export const createTransformationVariableWithFile = async (
+  formData: FormData
+): Promise<ApiResponse<TransformationVariable>> => {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    // ⚠️ JANGAN set 'Content-Type' — biarkan browser atur otomatis
+    body: formData,
+  });
 
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Gagal membuat variable: ${res.status}`);
+  }
 
+  return await res.json(); 
+};
+
+// 🔹 UPDATE (JSON - tanpa file)
 export const updateTransformationVariable = async (
   id: number,
-  body: Partial<Omit<TransformationVariable, 'id'>>
+  body: UpdateTransformationVariableRequest
 ): Promise<ApiResponse<TransformationVariable>> => {
   const res = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
@@ -85,6 +104,26 @@ export const updateTransformationVariable = async (
   return await res.json();
 };
 
+// 🔥 UPDATE DENGAN FILE (FormData - dengan logo)
+export const updateTransformationVariableWithFile = async (
+  id: number,
+  formData: FormData
+): Promise<ApiResponse<TransformationVariable>> => {
+  const res = await fetch(`${API_URL}/${id}`, {
+    method: 'PUT',
+    // ⚠️ JANGAN set 'Content-Type'
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Gagal update variable: ${res.status}`);
+  }
+
+  return await res.json();
+};
+
+// 🔹 GET BY ID
 export const getTransformationVariableById = async (
   id: number
 ): Promise<ApiResponse<TransformationVariable>> => {

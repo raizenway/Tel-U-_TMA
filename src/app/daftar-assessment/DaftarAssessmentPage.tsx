@@ -13,13 +13,19 @@ import { Info } from 'lucide-react';
 import { useQuestionList } from '@/hooks/useDaftarAssessment';
 import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
 import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
-import RoleBasedStatusCell from '@/components/RoleBasedStatusCell';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
+import { useCreateAssessmentDetail } from '@/hooks/useAssessment';
+import RoleBasedStatusCell from "@/components/RoleBasedStatusCell";
 
 export default function AssessmentPage() {
   const router = useRouter();
   const { data, loading, error, refetch } = useQuestionList();
-  const questionData = (data as unknown as ApiResponse<Question[]> | null)?.data || [];// <-- ambil .data dari ApiResponse
+  const questionData = (data as unknown as ApiResponse<Question[]> | null)?.data || [];
   const [localData, setData] = useState<any[]>([]);
+  const [variableMap, setVariableMap] = useState<Record<number, string>>({}); // ✅ State untuk mapping variabel
+  const { data: variablesData, loading: loadingVariables } = useTransformationVariableList();
+   const { mutate: saveAnswer, loading: saving, error: saveError } = useCreateAssessmentDetail();
+
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [search, setSearch] = useState('');
@@ -28,6 +34,16 @@ export default function AssessmentPage() {
   const [targetStatus, setTargetStatus] = useState<'deactivate' | 'reactivate' | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const { data: transformationVariables = [] } = useTransformationVariableList();
+
+  // Buat mapping: id → name
+const variableNameMap = React.useMemo(() => {
+  const map: Record<number, string> = {};
+  transformationVariables.forEach((v) => {
+    map[v.id] = v.name;
+  });
+  return map;
+}, [transformationVariables]);
 
   const [roleId, setRoleId] = useState<number | null>(null);
   useEffect(() => {
@@ -42,9 +58,20 @@ export default function AssessmentPage() {
     }
   }, []);
 
-  // Load data dari API
+  // ✅ Load variableMap dari API
   useEffect(() => {
-  if (!loading && !error && questionData && Array.isArray(questionData)) {
+    if (variablesData) {
+      const map: Record<number, string> = {};
+      variablesData.forEach((variable: any) => {
+        map[variable.id] = variable.name; // Sesuaikan field jika perlu
+      });
+      setVariableMap(map);
+    }
+  }, [variablesData]);
+
+  // ✅ Load data soal — tunggu variableMap siap
+  useEffect(() => {
+    if (!loading && !error && questionData && Array.isArray(questionData) && Object.keys(variableMap).length > 0) {
       const dataWithNomor = questionData.map((item, index) => ({
         ...item,
         nomor: index + 1,
@@ -60,7 +87,7 @@ export default function AssessmentPage() {
         status: item.status,
       }));
       setData(dataWithNomor);
-      setSearch(''); // Reset pencarian agar semua data tampil
+      setSearch('');
       console.log("✅ localData berhasil di-set:", dataWithNomor);
 
       if (localStorage.getItem('newDataAdded') === 'true') {
@@ -68,7 +95,7 @@ export default function AssessmentPage() {
         localStorage.removeItem('newDataAdded');
       }
     }
-  }, [questionData, loading, error]);
+  }, [questionData, loading, error, variableMap]);
 
   // Sorting
   const handleSort = (key: string) => {
@@ -172,7 +199,7 @@ export default function AssessmentPage() {
 
 
 
-  if (loading) {
+  if (loading || loadingVariables) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-lg">Loading data assessment...</div>

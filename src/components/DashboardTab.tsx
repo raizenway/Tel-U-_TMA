@@ -27,12 +27,13 @@ import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'luc
 
 // Data Radar
 const radarData = [
-  { subject: "Akademik", A: 90 },
-  { subject: "SDM", A: 85 },
-  { subject: "Keuangan", A: 70 },
-  { subject: "Kemahasiswaan", A: 75 },
-  { subject: "SHO", A: 80 },
-  { subject: "Publikasi", A: 95 },
+  { subject: "Mutu", A: 80 },
+  { subject: "Akademik", A: 60 },
+  { subject: "SDM", A: 98 },
+  { subject: "Spio", A: 90 },
+  { subject: "Kemahasiswaan", A: 80 },
+  { subject: "Admisi", A: 80 },
+  { subject: "PPN,Publikasi,Abdimas",A:80},
 ];
 
 // Daftar Kampus
@@ -289,7 +290,7 @@ useEffect(() => {
     }));
   };
 
-  // ✅ Fix: handleAddAccreditationYear - Pastikan lastYearNum adalah number
+  
   const handleAddAccreditationYear = () => {
     const lastYearStr = accreditationYears[accreditationYears.length - 1] ?? '';
     const lastYearNum = Number(lastYearStr);

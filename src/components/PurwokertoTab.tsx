@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import clsx from "clsx";
-
 import * as XLSX from "xlsx";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
@@ -10,34 +9,106 @@ import { Download, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import SuccessNotification from "./SuccessNotification";
 import ModalBlockNavigation from "@/components/ModalBlockNavigation";
-import {
-
-  ArrowRight,
-  ArrowLeft,
-} from "lucide-react";
-
-const questions = Array.from({ length: 30 }, (_, i) => {
-  const section = `V${Math.floor(i / 5) + 1}`;
-  return {
-    id: i + 1,
-    section,
-    title: `${section} (Mutu)`,
-    number: i + 1,
-    question:
-      i + 1 === 1
-        ? "Jumlah sertifikasi/akreditasi dalam lingkup direktorat TUNC yang diberikan oleh lembaga internasional bereputasi"
-        : i + 1 === 30
-        ? "Jumlah program studi pada program utama (S1) di TUNC yang terakreditasi oleh lembaga internasional bereputasi"
-        : "Jumlah sertifikasi/akreditasi dalam lingkup direktorat TUNC yang diberikan oleh lembaga internasional bereputasi",
-    options: i + 1 === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"],
-  };
-});
+import { ArrowRight, ArrowLeft } from "lucide-react";
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList'; 
+import { useCreateAssessmentDetail } from '@/hooks/useAssessment';
 
 interface PurwokertoTabProps {
   setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
+  const [rawQuestions, setRawQuestions] = useState<Array<{
+    id: number;
+    section: string;
+    number: number;
+    question: string;
+    indicator?: string;
+    options: string[];
+    transformationVariableId?: number;
+  }>>([]);
+
+  const [loading, setLoading] = useState(true);
+  const result = useTransformationVariableList();
+  const transformationVariables = Array.isArray(result?.data) ? result.data : [];
+  const [variableMap, setVariableMap] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (Array.isArray(transformationVariables) && transformationVariables.length > 0) {
+      const map: Record<number, string> = {};
+      transformationVariables.forEach((variable: any) => {
+        if (typeof variable?.id === 'number' && typeof variable?.name === 'string') {
+          map[variable.id] = variable.name;
+        }
+      });
+      setVariableMap(map);
+    }
+  }, [transformationVariables]);
+
+  const getSectionTitle = (sectionCode: string, transformationVariableId?: number) => {
+    if (transformationVariableId && variableMap[transformationVariableId]) {
+      return `${sectionCode} - ${variableMap[transformationVariableId]}`;
+    }
+    const sectionNumber = parseInt(sectionCode.slice(1));
+    if (variableMap[sectionNumber]) {
+      return `${sectionCode} - ${variableMap[sectionNumber]}`;
+    }
+    return `${sectionCode} (Mutu)`;
+  };
+
+  useEffect(() => {
+    const fetchAllQuestions = async () => {
+      const tempQuestions = [];
+      for (let i = 0; i < 30; i++) {
+        const id = i + 1;
+        try {
+          const response = await fetch(`http://localhost:3000/api/question/${id}`);
+          if (!response.ok) continue;
+          const result = await response.json();
+          if (result.status === 'success' && result.data?.questionText) {
+            const section = `V${Math.floor(i / 5) + 1}`;
+            tempQuestions.push({
+              id,
+              section,
+              number: id,
+              question: result.data.questionText,
+              indicator: result.data.indicator,
+              options: id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"],
+              transformationVariableId: result.data.transformationVariableId,
+            });
+          }
+        } catch (err) {
+          console.error(`Error fetching question ${id}:`, err);
+        }
+      }
+      setRawQuestions(tempQuestions);
+    };
+    fetchAllQuestions();
+  }, []);
+
+  const questions = useMemo(() => {
+    return rawQuestions.map(q => ({
+      ...q,
+      title: getSectionTitle(q.section, q.transformationVariableId),
+      indicator: q.indicator || getSectionTitle(q.section, q.transformationVariableId),
+    }));
+  }, [rawQuestions, variableMap]);
+
+  useEffect(() => {
+    if (Object.keys(variableMap).length > 0 && rawQuestions.length > 0) {
+      setLoading(false);
+    }
+  }, [variableMap, rawQuestions.length]);
+
+  const { mutate: saveAssessmentDetail, loading: savingAnswers, error: saveError } = useCreateAssessmentDetail();
+
+  useEffect(() => {
+    if (saveError) {
+      console.error("Error menyimpan jawaban:", saveError);
+      alert("Gagal menyimpan jawaban: " + saveError);
+    }
+  }, [saveError]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [showModal, setShowModal] = useState(false);
@@ -53,20 +124,10 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
 
   const router = useRouter();
   const current = questions[currentIndex];
-  const isLast = current.id === 30;
+  const isLast = currentIndex === questions.length - 1;
 
-  
-
-  const handleNext = () => {
-    if (currentIndex < questions.length - 1) setCurrentIndex(currentIndex + 1);
-  };
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-  };
-
-
-
+  const handleNext = () => { if (currentIndex < questions.length - 1) setCurrentIndex(currentIndex + 1); };
+  const handlePrevious = () => { if (currentIndex > 0) setCurrentIndex(currentIndex - 1); };
   const handleBrowseClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +140,6 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       const workbook = XLSX.read(data, { type: "array" });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
       const rows = jsonData.slice(1);
       const updatedAnswers: { [key: string]: string } = {};
       const modalDataArray: any[] = [];
@@ -87,15 +147,11 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       (rows as any[][]).forEach((row) => {
         const id = row?.[0];
         const jawaban = row?.[3];
-
         if (id !== undefined && jawaban !== undefined && jawaban !== "") {
           const idStr = String(id).trim();
           const jawabanStr = String(jawaban).trim() === "4" ? "Lebih dari 3" : String(jawaban).trim();
-
           updatedAnswers[idStr] = jawabanStr;
-
           const questionItem = questions.find((q) => q.id.toString() === idStr);
-
           modalDataArray.push({
             no: idStr,
             kode: questionItem?.section,
@@ -113,7 +169,62 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
     reader.readAsArrayBuffer(file);
   };
 
-  const handleConfirm = () => {
+ // ✅ FUNGSI SIMPAN UTAMA - DENGAN PENGECEKAN ERROR YANG JELAS
+const handleConfirm = async () => {
+  try {
+    let successCount = 0;
+    let totalCount = 0;
+    
+    for (const q of questions) {
+      const userAnswer = answers[q.id];
+      if (userAnswer == null) continue;
+
+      totalCount++;
+      
+      // Inisialisasi semua textAnswer ke 0 (camelCase sesuai backend)
+      const answerData = {
+        assessmentId: 2,
+        questionId: q.id,
+        textAnswer1: 0,
+        textAnswer2: 0,
+        textAnswer3: 0,
+        textAnswer4: 0,
+        textAnswer5: 0,
+      };
+
+      // Cari indeks opsi yang dipilih
+      const optionIndex = q.options.findIndex(opt => opt === userAnswer);
+      if (optionIndex >= 0 && optionIndex < 5) {
+        answerData[`textAnswer${optionIndex + 1}` as keyof typeof answerData] = 1;
+      }
+
+      try {
+        await saveAssessmentDetail(answerData);
+        successCount++;
+        console.log(`✅ Jawaban untuk soal ID ${q.id} berhasil disimpan`);
+      } catch (error) {
+        console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
+        // Lanjutkan ke soal berikutnya meski ada error
+      }
+    }
+
+    // 🔍 PERIKSA APAKAH SEMUA DATA BERHASIL DISIMPAN
+    if (successCount === 0 && totalCount > 0) {
+      // 🚨 TAMPILKAN PESAN ERROR YANG JELAS
+      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\n" +
+            "Data assessment TIDAK MASUK ke sistem.\n" +
+            "Silakan coba lagi atau hubungi administrator.");
+      return;
+    }
+
+    if (successCount < totalCount) {
+      // ⚠️ TAMPILKAN PERINGATAN SEBAGIAN GAGAL
+      alert("⚠️ PERINGATAN: Sebagian data gagal disimpan!\n\n" +
+            `Berhasil: ${successCount}/${totalCount} soal\n` +
+            "Silakan coba kirim ulang atau hubungi administrator.");
+    }
+
+    // Simpan ke localStorage
     const resultData = questions.map((q) => ({
       no: q.id,
       kode: q.section,
@@ -129,18 +240,23 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       unit: "Tel-U Purwokerto",
       tanggal: new Date().toLocaleDateString("id-ID"),
       totalTerisi: Object.keys(answers).length,
-      data: resultData,
+      resultData,
     };
     localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
 
     setShowModal(false);
     setShowSuccess(true);
+    localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+    setTimeout(() => router.push("/assessment/assessmenttable"), 1500);
 
-    setTimeout(() => {
-      router.push("/assessmenttable");
-    }, 1500);
-  };
-
+  } catch (err) {
+    console.error("❌ Gagal menyimpan jawaban ke API:", err);
+    alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\n" +
+          "Error: " + (err instanceof Error ? err.message : String(err)) + "\n\n" +
+          "Data assessment TIDAK MASUK ke sistem.\n" +
+          "Silakan coba lagi atau hubungi administrator.");
+  }
+};
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (formBelumDisimpan) {
@@ -148,14 +264,11 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         e.returnValue = "";
       }
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [formBelumDisimpan]);
 
-  const allAnswered = questions.slice(0, 29).every((q) => {
+  const allAnswered = questions.slice(0, -1).every((q) => {
     if (q.id === 1) {
       const val = answers["1"];
       return val != null && val !== "" && !isNaN(Number(val)) && Number(val) >= 0;
@@ -164,8 +277,27 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
     }
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600">Memuat variabel transformasi dan soal...</div>
+      </div>
+    );
+  }
+
+  if (!loading && questions.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600 text-center">
+          <div className="text-2xl mb-2">📭</div>
+          <div>Tidak ada soal tersedia saat ini.</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 min-h-screen bg-gray">
+    <div className="max-w-7xl mx-auto px-6 py-10 min-h-screen bg-gray-50">
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-6">
           <div className="text-center font-semibold text-lg text-black bg-white py-2 rounded-md border shadow">
@@ -179,7 +311,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
               </div>
             </div>
             <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm flex-1">
-              <p className="text-sm text-gray-800">{current.question}</p>
+              <p className="text-sm text-gray-800">{current.indicator}</p>
             </div>
           </div>
 
@@ -384,7 +516,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         </div>
       </div>
 
-      {/* Modal 1: Konfirmasi Selesai */}
+      {/* Modal Pre-Confirm */}
       <ModalConfirm
         isOpen={showPreConfirmModal}
         onCancel={() => setShowPreConfirmModal(false)}
@@ -419,7 +551,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         </div>
       </ModalConfirm>
 
-      {/* Modal 2: Submit Assessment */}
+      {/* ✅ Modal Submit - HANYA PANGGIL handleConfirm */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -437,46 +569,11 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
             </Button>
             <Button
               variant="primary"
-              onClick={() => {
-                const allAnswers = Object.keys(answers).map((id) => ({
-                  id,
-                  jawaban: answers[id],
-                  evidence: answers[`evidence-${id}`] || "-",
-                }));
-
-                const skorTinggi = allAnswers.filter(
-                  (a) => a.jawaban === "3" || a.jawaban === "Lebih dari 3"
-                ).length;
-                const hasilSkor = Math.min(4, Math.ceil(skorTinggi / 7));
-
-                const submissionData = {
-                  id: 3,
-                  logo: "school",
-                  nama: "Tel-U Purwokerto",
-                  tanggal: new Date().toLocaleDateString("id-ID"),
-                  skor: [hasilSkor, hasilSkor, hasilSkor, hasilSkor],
-                  hasil: hasilSkor,
-                  status: "Lulus",
-                  aksi: "view",
-                  evidence: Object.fromEntries(
-                    questions.map((q) => [q.id, answers[`evidence-${q.id}`] || "-"])
-                  ),
-                };
-
-                localStorage.setItem("assessment_submission_purwokerto", JSON.stringify(submissionData));
-                setFormBelumDisimpan(false);
-
-                handleConfirm();
-                setShowSuccess(true);
-                localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
-
-                setTimeout(() => {
-                  router.push("/assessment/assessmenttable");
-                }, 1500);
-              }}
+              onClick={handleConfirm}
+              disabled={savingAnswers}
               className="px-4 py-2 text-white rounded"
             >
-              Submit
+              {savingAnswers ? 'Menyimpan...' : 'Submit'}
             </Button>
           </div>
         }
@@ -495,7 +592,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         </div>
       </ModalConfirm>
 
-      {/* Modal 3: Reset Jawaban */}
+      {/* Modal Reset */}
       <ModalConfirm
         isOpen={showResetModal}
         onCancel={() => {

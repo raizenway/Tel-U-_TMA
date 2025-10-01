@@ -1,4 +1,4 @@
-import { Assessment, CreateAssessment } from "@/interfaces/assessment";
+import { Assessment, CreateAssessment, CreateAssessmentDetail } from "@/interfaces/assessment";
 import { ApiResponse } from "@/interfaces/api-response";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL + "/assessment";
@@ -45,5 +45,23 @@ export async function createAssessment(body: CreateAssessment): Promise<ApiRespo
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Failed to create user");
+  return res.json();
+}
+
+
+export async function createAssessmentDetail(
+  body: CreateAssessmentDetail
+): Promise<ApiResponse<Assessment>> {
+  const res = await fetch("http://localhost:3000/api/assessment/detail", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`❌ Gagal create assessment detail: ${errorText}`);
+  }
+
   return res.json();
 }

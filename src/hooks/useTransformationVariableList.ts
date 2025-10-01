@@ -6,6 +6,8 @@ import {
   createTransformationVariable,
   updateTransformationVariable, 
   getTransformationVariableById,
+   updateTransformationVariableWithFile,
+  createTransformationVariableWithFile,
 } from '@/lib/api-transformation-variable';
 import { 
   TransformationVariable, 
@@ -46,17 +48,26 @@ export const useTransformationVariableList = () => {
 
   return { data, loading, error, refetch };
 };
-
-//Hook untuk create 
+// 🔥 HOOK CREATE YANG SUDAH DIPERBAIKI
 export const useCreateTransformationVariable = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = async (body: CreateTransformationVariable): Promise<TransformationVariable | null> => {
+  const mutate = async (
+    body: FormData | CreateTransformationVariable
+  ): Promise<TransformationVariable | null> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await createTransformationVariable(body);
+      let res;
+      
+      // 🔥 PILIH FUNGSI BERDASARKAN TIPE
+      if (body instanceof FormData) {
+        res = await createTransformationVariableWithFile(body); // ← gunakan fungsi baru
+      } else {
+        res = await createTransformationVariable(body); // ← fungsi lama untuk JSON
+      }
+
       if (res.status === 'success') {
         return res.data;
       } else {
@@ -74,20 +85,27 @@ export const useCreateTransformationVariable = () => {
 
   return { mutate, loading, error };
 };
-
 //Hook untuk update 
+// 🔥 HOOK UPDATE YANG SEMPURNA
 export const useUpdateTransformationVariable = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const mutate = async (
     id: number,
-    body: Partial<Omit<TransformationVariable, 'id'>>
+    body: FormData | Partial<Omit<TransformationVariable, 'id'>>
   ): Promise<TransformationVariable | null> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await updateTransformationVariable(id, body);
+      let res;
+      if (body instanceof FormData) {
+        // 🔥 Pastikan sudah impor updateTransformationVariableWithFile!
+        res = await updateTransformationVariableWithFile(id, body);
+      } else {
+        res = await updateTransformationVariable(id, body);
+      }
+
       if (res.status === 'success') {
         return res.data;
       } else {
@@ -105,7 +123,6 @@ export const useUpdateTransformationVariable = () => {
 
   return { mutate, loading, error };
 };
-
 export const useGetTransformationVariableById = (id: number) => {
   const [data, setData] = useState<TransformationVariable | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
