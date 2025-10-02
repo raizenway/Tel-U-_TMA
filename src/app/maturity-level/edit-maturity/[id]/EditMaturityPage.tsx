@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
@@ -32,7 +33,7 @@ export default function EditMaturityPage() {
     levelNumber: 0,
     minScore: "",
     maxScore: "",
-    generalDescription: "",
+    description: "",
     scoreDescription0: "",
     scoreDescription1: "",
     scoreDescription2: "",
@@ -67,9 +68,9 @@ export default function EditMaturityPage() {
         scoreDescription2: maturityDetail.scoreDescription2 || "",
         scoreDescription3: maturityDetail.scoreDescription3 || "",
         scoreDescription4: maturityDetail.scoreDescription4 || "",
-        generalDescription: maturityDetail.generalDescription || "",
-        minScore: String(maturityDetail.minScore || ""),
-        maxScore: String(maturityDetail.maxScore || ""),
+        description: maturityDetail.description || "",
+        minScore: String(maturityDetail.minScore ?? ""),
+        maxScore: String(maturityDetail.maxScore ?? ""),
       });
     }
   }, [maturityDetail, realId]);
@@ -80,7 +81,7 @@ export default function EditMaturityPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "levelNumber" ? Number(value) : value, 
+      [name]: name === "levelNumber" ? Number(value) : value,
     }));
   };
 
@@ -93,9 +94,9 @@ export default function EditMaturityPage() {
         ...payload,
         name: payload.name?.trim() || "",
         levelNumber: Number(payload.levelNumber) || 0,
-        minScore: payload.minScore?.trim() || "", 
-        maxScore: payload.maxScore?.trim() || "", 
-        generalDescription: payload.generalDescription?.trim() || "",
+        minScore: payload.minScore?.trim() || "",
+        maxScore: payload.maxScore?.trim() || "",
+        description: payload.description?.trim() || "",
         scoreDescription0: payload.scoreDescription0?.trim() || "",
         scoreDescription1: payload.scoreDescription1?.trim() || "",
         scoreDescription2: payload.scoreDescription2?.trim() || "",
@@ -148,7 +149,6 @@ export default function EditMaturityPage() {
   return (
     <div>
       <form onSubmit={handleSubmit}>
-        {/* Row 1 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Level</label>
@@ -172,7 +172,6 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Row 2 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Skor Minimum</label>
@@ -196,13 +195,12 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Row 3 */}
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
-              name="generalDescription"
-              value={formData.generalDescription}
+              name="description"
+              value={formData.description}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2 h-[100px]"
             />
@@ -223,7 +221,6 @@ export default function EditMaturityPage() {
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="flex justify-end gap-4 mt-6">
           <Button
             onClick={() => router.push("/maturity-level")}
@@ -251,3 +248,4 @@ export default function EditMaturityPage() {
     </div>
   );
 }
+

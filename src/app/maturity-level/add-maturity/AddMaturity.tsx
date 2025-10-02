@@ -8,18 +8,22 @@ import SuccessNotification from "@/components/SuccessNotification";
 import { useCreateMaturityLevel } from "@/hooks/useMaturityLevel";
 import { CreateMaturityLevelRequest } from "@/interfaces/maturity-level";
 
-type CreateMaturityLevelState = Omit<CreateMaturityLevelRequest, 'minScore' | 'maxScore'> & {
-  minScore: number;
-  maxScore: number;
+type CreateMaturityLevelState = Omit<
+  CreateMaturityLevelRequest,
+  "levelNumber" | "minScore" | "maxScore"
+> & {
+  levelNumber: string;
+  minScore: string;
+  maxScore: string;
 };
 
 export default function AddMaturityLevelPage() {
   const [formData, setFormData] = useState<CreateMaturityLevelState>({
     name: "",
-    levelNumber: 0,
-    minScore: 0,
-    maxScore: 0,
-    generalDescription: "",
+    levelNumber: "",
+    minScore: "",
+    maxScore: "",
+    description: "",
     scoreDescription0: "",
     scoreDescription1: "",
     scoreDescription2: "",
@@ -43,10 +47,10 @@ export default function AddMaturityLevelPage() {
       if (parsed.fromAdd === true) {
         setFormData({
           name: parsed.name || "",
-          levelNumber: parsed.levelNumber || 0,
-          minScore: Number(parsed.minScore) || 0,
-          maxScore: Number(parsed.maxScore) || 0,
-          generalDescription: parsed.generalDescription || "",
+          levelNumber: String(parsed.levelNumber ?? ""),
+          minScore: String(parsed.minScore ?? ""),
+          maxScore: String(parsed.maxScore ?? ""),
+          description: parsed.description || "",
           scoreDescription0: parsed.scoreDescription0 || "",
           scoreDescription1: parsed.scoreDescription1 || "",
           scoreDescription2: parsed.scoreDescription2 || "",
@@ -83,40 +87,30 @@ export default function AddMaturityLevelPage() {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => {
-      if (name === "levelNumber") {
-        return {
-          ...prev,
-          [name]: value === "" ? 0 : Number(value) || 0,
-        };
-      } else if (name === "minScore" || name === "maxScore") {
-        const numValue = value === "" ? 0 : Number(value);
-        return {
-          ...prev,
-          [name]: isNaN(numValue) ? 0 : numValue,
-        };
-      } else {
-        return {
-          ...prev,
-          [name]: value,
-        };
-      }
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
+
+  const parsedLevel = Number(formData.levelNumber);
+  const parsedMin = Number(formData.minScore);
+  const parsedMax = Number(formData.maxScore);
 
   const isFormValid =
     formData.name.trim() !== "" &&
-    !isNaN(formData.levelNumber) &&
-    formData.levelNumber >= 0 &&
-    !isNaN(formData.minScore) &&
-    formData.minScore >= 0 &&
-    !isNaN(formData.maxScore) &&
-    formData.maxScore >= 0 &&
-    formData.minScore <= formData.maxScore &&
-    formData.generalDescription.trim() !== "";
+    !isNaN(parsedLevel) &&
+    parsedLevel >= 0 &&
+    !isNaN(parsedMin) &&
+    parsedMin >= 0 &&
+    !isNaN(parsedMax) &&
+    parsedMax >= 0 &&
+    parsedMin <= parsedMax &&
+    formData.description.trim() !== "";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -128,10 +122,10 @@ export default function AddMaturityLevelPage() {
     try {
       const payload: CreateMaturityLevelRequest = {
         name: formData.name.trim(),
-        levelNumber: formData.levelNumber,
-        minScore: String(formData.minScore), 
-        maxScore: String(formData.maxScore), 
-        generalDescription: formData.generalDescription.trim(),
+        levelNumber: parsedLevel,
+        minScore: String(parsedMin),
+        maxScore: String(parsedMax),
+        description: formData.description.trim(),
         scoreDescription0: formData.scoreDescription0.trim(),
         scoreDescription1: formData.scoreDescription1.trim(),
         scoreDescription2: formData.scoreDescription2.trim(),
@@ -144,10 +138,10 @@ export default function AddMaturityLevelPage() {
       localStorage.removeItem("maturityTempForm");
       setFormData({
         name: "",
-        levelNumber: 0,
-        minScore: 0,
-        maxScore: 0,
-        generalDescription: "",
+        levelNumber: "",
+        minScore: "",
+        maxScore: "",
+        description: "",
         scoreDescription0: "",
         scoreDescription1: "",
         scoreDescription2: "",
@@ -182,7 +176,7 @@ export default function AddMaturityLevelPage() {
             <input
               type="number"
               name="levelNumber"
-              value={formData.levelNumber || ""}
+              value={formData.levelNumber}
               onChange={handleChange}
               placeholder="Masukkan Angka Level"
               min="0"
@@ -207,11 +201,11 @@ export default function AddMaturityLevelPage() {
             <input
               type="number"
               name="minScore"
-              value={formData.minScore || ""}
+              value={formData.minScore}
               onChange={handleChange}
               placeholder="Masukan Angka Minimum"
               min="0"
-              step="0.1" 
+              step="0.1"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -221,11 +215,11 @@ export default function AddMaturityLevelPage() {
             <input
               type="number"
               name="maxScore"
-              value={formData.maxScore || ""}
+              value={formData.maxScore}
               onChange={handleChange}
               placeholder="Masukan Angka Maximum"
               min="0"
-              step="0.1" 
+              step="0.1"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -233,8 +227,8 @@ export default function AddMaturityLevelPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
-              name="generalDescription"
-              value={formData.generalDescription}
+              name="description"
+              value={formData.description}
               onChange={handleChange}
               placeholder="Masukkan Deskripsi"
               className="w-full border rounded-md px-3 py-2 h-[90px]"
@@ -258,7 +252,7 @@ export default function AddMaturityLevelPage() {
             >
               {Object.values(formData)
                 .slice(5)
-                .some((d) => typeof d === 'string' && d.trim() !== '')
+                .some((d) => d.trim() !== "")
                 ? "Lihat Deskripsi"
                 : "+ Tambah Deskripsi"}
             </button>
@@ -298,4 +292,4 @@ export default function AddMaturityLevelPage() {
       </form>
     </div>
   );
-}
+}  

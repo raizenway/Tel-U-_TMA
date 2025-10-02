@@ -22,7 +22,6 @@ export default function AssessmentPage() {
   const { data, loading, error, refetch } = useQuestionList();
   const questionData = (data as unknown as ApiResponse<Question[]> | null)?.data || [];
   const [localData, setData] = useState<any[]>([]);
-  const [variableMap, setVariableMap] = useState<Record<number, string>>({}); // ✅ State untuk mapping variabel
   const { data: variablesData, loading: loadingVariables } = useTransformationVariableList();
    const { mutate: saveAnswer, loading: saving, error: saveError } = useCreateAssessmentDetail();
 
@@ -33,19 +32,17 @@ export default function AssessmentPage() {
   const [pendingToggleIndex, setPendingToggleIndex] = useState<number | null>(null);
   const [targetStatus, setTargetStatus] = useState<'deactivate' | 'reactivate' | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [variableMap, setVariableMap] = useState<Record<number, string>>({});
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-  const { data: transformationVariables = [] } = useTransformationVariableList();
 
-  // Buat mapping: id → name
-const variableNameMap = React.useMemo(() => {
+  const variableNameMap = React.useMemo(() => {
   const map: Record<number, string> = {};
-  if (Array.isArray(transformationVariables)){
-  transformationVariables.forEach((v) => {
+  variablesData.forEach((v) => {
     map[v.id] = v.name;
   });
 }
   return map;
-}, [transformationVariables]);
+}, [variablesData]); 
 
   const [roleId, setRoleId] = useState<number | null>(null);
   useEffect(() => {
@@ -76,11 +73,11 @@ const variableNameMap = React.useMemo(() => {
 
   // ✅ Load data soal — tunggu variableMap siap
   useEffect(() => {
-    if (!loading && !error && questionData && Array.isArray(questionData) && Object.keys(variableMap).length > 0) {
+    if (!loading && !error && questionData && Array.isArray(questionData) && Object.keys(variableNameMap).length > 0) {
       const dataWithNomor = questionData.map((item, index) => ({
         ...item,
         nomor: index + 1,
-        variable: item.transformationVariableId,
+        variable: variableNameMap[item.transformationVariableId] || `ID ${item.transformationVariableId}`,
         indikator: item.indicator || '-',
         pertanyaan: item.questionText || '-',
         deskripsiSkor0: item.scoreDescription0 || '-',
@@ -100,7 +97,7 @@ const variableNameMap = React.useMemo(() => {
         localStorage.removeItem('newDataAdded');
       }
     }
-  }, [questionData, loading, error, variableMap]);
+  }, [questionData, loading, error, variableNameMap]);
 
   // Sorting
   const handleSort = (key: string) => {

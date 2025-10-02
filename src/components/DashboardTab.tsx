@@ -94,14 +94,14 @@ export default function DashboardTab() {
     fetchDashboardData();
   }, []);
 
-  // Data Student Body
-  const [studentYears, setStudentYears] = useState<string[]>(["2021", "2022", "2023", "2024"]);
-  const [studentInputData, setStudentInputData] = useState<CampusData>({
-    "Tel-U Jakarta": [100, 120, 125, 135],
-    "Tel-U Surabaya": [130, 150, 170, 180],
-    "Tel-U Purwokerto": [110, 115, 130, 140],
-    "Tel-U Bandung": [140, 135, 160, 170],
-  });
+  // Di atas, setelah state lainnya
+const [studentBodyData, setStudentBodyData] = useState<{
+  year: string;
+  "Tel-U Jakarta": number;
+  "Tel-U Surabaya": number;
+  "Tel-U Purwokerto": number;
+  "Tel-U Bandung": number;
+}[]>([]);
 
 // Data Akreditasi Prodi — AWALNYA KOSONG, NANTI DIISI DARI API
 const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
@@ -112,6 +112,91 @@ const [accreditationInputData, setAccreditationInputData] = useState<CampusData>
   "Tel-U Bandung": [],
 });
 
+// Derived state — otomatis dari studentBodyData
+const studentYears = Array.from(new Set(studentBodyData.map(d => d.year))).sort();
+const studentInputData = {
+  "Tel-U Jakarta": studentYears.map(year => {
+    const item = studentBodyData.find(d => d.year === year);
+    return item ? item["Tel-U Jakarta"] : 0;
+  }),
+  "Tel-U Surabaya": studentYears.map(year => {
+    const item = studentBodyData.find(d => d.year === year);
+    return item ? item["Tel-U Surabaya"] : 0;
+  }),
+  "Tel-U Purwokerto": studentYears.map(year => {
+    const item = studentBodyData.find(d => d.year === year);
+    return item ? item["Tel-U Purwokerto"] : 0;
+  }),
+  "Tel-U Bandung": studentYears.map(year => {
+    const item = studentBodyData.find(d => d.year === year);
+    return item ? item["Tel-U Bandung"] : 0;
+  }),
+};
+
+useEffect(() => {
+  const fetchStudentBodyData = async () => {
+    try {
+      console.log("🚀 Fetching student body data from /api/assessment/dashboard...");
+
+      const response = await fetch('http://localhost:3000/api/assessment/dashboard');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const result = await response.json();
+      console.log("📥 Full API Response:", result);
+
+      const apiData = result.data?.studentBody; // 👈 Pastikan nama field ini sesuai dengan API Anda!
+
+      if (!Array.isArray(apiData)) {
+        throw new Error("studentGrowth is missing or not an array");
+      }
+
+      // Transformasi data API ke format yang kita butuhkan
+      const transformedData = apiData.map(item => {
+        const branchMap: Record<string, CampusKey> = {
+          "Telkom University Jakarta": "Tel-U Jakarta",
+          "Telkom University Surabaya": "Tel-U Surabaya",
+          "Telkom University Purwokerto": "Tel-U Purwokerto",
+          "Telkom University Bandung": "Tel-U Bandung",
+        };
+
+        const campusKey = branchMap[item.branch] || ("Tel-U " + item.branch.split(" ").pop()) as CampusKey;
+
+        return {
+          year: String(item.year),
+          [campusKey]: Number(item.totalStudents) || 0,
+        };
+      });
+
+      // Gabungkan data per tahun & kampus
+      const years = Array.from(new Set(transformedData.map(d => d.year))).sort();
+
+      const finalData = years.map(year => {
+        const row: any = { year };
+        CAMPUS_LIST.forEach(campus => {
+          const found = transformedData.find(d => d.year === year && d[campus]);
+          row[campus] = found ? found[campus] : 0;
+        });
+        return row;
+      });
+
+      setStudentBodyData(finalData);
+      console.log("✅ Student body data successfully loaded:", finalData);
+
+    } catch (error: any) {
+      console.error("❌ Error fetching student body data:", error.message || error);
+      // Fallback ke data dummy jika gagal
+      setStudentBodyData([
+        { year: "2021", "Tel-U Jakarta": 100, "Tel-U Surabaya": 130, "Tel-U Purwokerto": 110, "Tel-U Bandung": 140 },
+        { year: "2022", "Tel-U Jakarta": 120, "Tel-U Surabaya": 150, "Tel-U Purwokerto": 115, "Tel-U Bandung": 135 },
+        { year: "2023", "Tel-U Jakarta": 125, "Tel-U Surabaya": 170, "Tel-U Purwokerto": 130, "Tel-U Bandung": 160 },
+        { year: "2024", "Tel-U Jakarta": 135, "Tel-U Surabaya": 180, "Tel-U Purwokerto": 140, "Tel-U Bandung": 170 },
+      ]);
+    }
+  };
+
+  fetchStudentBodyData();
+}, []);
+
 const [accreditationData, setAccreditationData] = useState<{
   tahun: string;
   Jakarta: number;
@@ -120,6 +205,7 @@ const [accreditationData, setAccreditationData] = useState<{
   Surabaya: number;
 }[]>([]);
 
+// ✅ Ambil data akreditasi dari API dan isi state
 // ✅ Ambil data akreditasi dari API dan isi state
 useEffect(() => {
   const fetchAccreditationData = async () => {
@@ -142,6 +228,7 @@ useEffect(() => {
       const scores = apiData.map(item => Number(item.score));
 
       setAccreditationYears(years);
+      // ✅ ISI SEMUA KAMPUS DENGAN NILAI YANG SAMA — TAPI TETAP PAKE NAMA KAMPUS UNTUK STRUKTUR
       setAccreditationInputData({
         "Tel-U Jakarta": [],
         "Tel-U Surabaya": [],
@@ -402,7 +489,7 @@ useEffect(() => {
   style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
 >
   <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 */}
+  <div className="relative flex flex-col items-center space-y-1 p-2 z-10"> {/* space-y-1 & p-3 */}
     <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
       <BookOpenCheckIcon className="text-white w-6 h-6" />
     </div>

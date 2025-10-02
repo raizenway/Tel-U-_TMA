@@ -21,7 +21,6 @@ export default function RoleBasedStatusCell({
  
   const normalizedStatus = (status || 'inactive').toLowerCase();
 
-  // 👉 Role 1: Tampilkan tombol Edit & Toggle Status
   if (roleId === 1 && onEdit && onToggleStatus) {
     return (
       <div className="flex gap-2 justify-center">
@@ -45,7 +44,6 @@ export default function RoleBasedStatusCell({
     );
   }
 
-  // 👉 Role 2,3,4: Tampilkan badge seperti Figma
   if ([2, 3, 4].includes(roleId)) {
     return (
       <span

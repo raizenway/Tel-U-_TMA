@@ -20,7 +20,7 @@ export default function AssessmentPage() {
     if (campus === "Tel-U Purwokerto") {
       router.push("/assessment/assessment-form");
     } else if (campus === "Tel-U Jakarta") {
-      router.push("/assessment/Jakarta");
+      router.push("/assessment/jakarta");
     } else if (campus === "Tel-U Surabaya") {
       router.push("/assessment/Surabaya");
     }
