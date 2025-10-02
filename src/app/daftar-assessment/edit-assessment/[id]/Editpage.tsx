@@ -59,7 +59,7 @@ export default function EditAssessmentPage() {
 
       try {
         // ✅ Ambil data dari API
-      const response = await fetch(`http://localhost:3000/api/question/${questionId}`);
+      const response = await fetch(`http:///api/question/${questionId}`);
         if (!response.ok) {
           throw new Error('Gagal memuat data');
         }

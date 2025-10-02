@@ -16,9 +16,6 @@ export default function AssessmentPage() {
   const router = useRouter();
 
   
-  
-  
-
   const handleSelectCampus = (campus: string) => {
     if (campus === "Tel-U Purwokerto") {
       router.push("/assessment/assessment-form");

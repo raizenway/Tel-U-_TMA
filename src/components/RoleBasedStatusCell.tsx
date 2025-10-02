@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 interface RoleBasedStatusCellProps {
   status: string;
   id: number;
+  roleId: number;
   onEdit?: (id: number) => void;
   onToggleStatus?: (id: number, action: 'activate' | 'deactivate') => void;
 }
@@ -13,27 +14,11 @@ interface RoleBasedStatusCellProps {
 export default function RoleBasedStatusCell({
   status,
   id,
+  roleId,
   onEdit,
   onToggleStatus,
 }: RoleBasedStatusCellProps) {
-  const [roleId, setRoleId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      try {
-        const parsed = JSON.parse(user);
-        setRoleId(Number(parsed.roleId));
-      } catch (e) {
-        console.error("Gagal parse user:", e);
-      }
-    }
-  }, []);
-
-  if (roleId === null) {
-    return <div className="text-center">-</div>;
-  }
-
+ 
   const normalizedStatus = (status || 'inactive').toLowerCase();
 
   // 👉 Role 1: Tampilkan tombol Edit & Toggle Status

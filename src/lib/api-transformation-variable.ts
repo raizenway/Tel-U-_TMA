@@ -7,7 +7,7 @@ import {
 } from '@/interfaces/transformation-variable';
 import { ApiResponse } from '@/interfaces/api-response';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL + "/assessment/variable"; 
+const API_URL = process.env.NEXT_PUBLIC_API_URL + "/variable"; 
 
 // 🔹 LIST
 export const listTransformationVariables = async (): Promise<ApiResponse<TransformationVariable[]>> => {
