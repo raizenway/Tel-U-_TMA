@@ -1,20 +1,23 @@
-
+// ✅ PERBAIKI FILE INI → SESUAI DENGAN BACKEND
 export interface Assessment {
-    periodeId: number;
-    userId: number;
-    submission_date: Date;
+  periodId: number; 
+  userId: number;
+  submission_date: string; // tetap string (karena dari JSON)
 }
+
 export interface CreateAssessmentDetail {
   assessmentId: number;
   questionId: number;
-  textAnswer1: number;
-  textAnswer2: number;
-  textAnswer3: number;
-  textAnswer4: number;
-  textAnswer5: number;
+  textAnswer1: string;
+  textAnswer2: string;
+  textAnswer3: string;
+  textAnswer4: string;
+  textAnswer5: string;
 }
+
+// ✅ INI YANG BENAR — SESUAI DENGAN BACKEND SAAT INI
 export interface CreateAssessment {
-    periodeId: number;
-    userId: number;
-    submission_date: Date;
+ periodId: number; 
+  userId: number;           // ← HARUS ADA
+  submission_date: string;  // ← HARUS ADA (format: "YYYY-MM-DD")
 }

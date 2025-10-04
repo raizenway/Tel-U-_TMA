@@ -15,7 +15,7 @@
   } from '@/interfaces/transformation-variable';
   import { ApiResponse } from '@/interfaces/api-response';
 
-  //Hook untuk list
+ //Hook untuk list
 export const useTransformationVariableList = () => {
   const [data, setData] = useState<TransformationVariable[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -28,12 +28,27 @@ export const useTransformationVariableList = () => {
       const response = await listTransformationVariables();
       console.log('API Response:', response);
 
-      if (response.status === 'success' && Array.isArray(response.data)) {
-        setData(response.data); // ✅ response.data sudah array
+      if (response.status === 'success') {
+        // ✅ Handle struktur nested dari API-mu
+        if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+          if (Array.isArray(response.data.data)) {
+            setData(response.data.data); // ← INI YANG BENAR UNTUK API-MU
+          } else {
+            console.warn('Format data tidak valid:', response.data);
+            setError('Format data tidak valid');
+            setData([]);
+          }
+        } else if (Array.isArray(response.data)) {
+          // Handle format flat (jika ada)
+          setData(response.data);
+        } else {
+          console.warn('Format data tidak dikenali:', response.data);
+          setError('Format data tidak valid');
+          setData([]);
+        }
       } else {
-        // Tangani semua kasus selain success + array
-        console.warn('Format data tidak valid:', response);
-        setError('Format data tidak valid');
+        console.warn('API error:', response);
+        setError(response.message || 'Gagal memuat data');
         setData([]);
       }
     } catch (err) {
@@ -41,14 +56,16 @@ export const useTransformationVariableList = () => {
       setError('Gagal memuat data');
       setData([]);
     } finally {
-      setLoading(false);
-    }
+  console.log('✅ Loading set to false');
+  setLoading(false);
+}
   };
 
   useEffect(() => {
     refetch();
   }, []);
 
+  
   return { data, loading, error, refetch };
 };
   // 🔥 HOOK CREATE YANG SUDAH DIPERBAIKI

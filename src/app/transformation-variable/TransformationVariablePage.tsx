@@ -87,7 +87,8 @@
     }, [searchParams, router]);
 
     //Ambil data
-    const { data, loading, error, refetch } = useTransformationVariableList();
+  // ✅ KODE YANG BENAR
+const { data, loading, error, refetch } = useTransformationVariableList();
    
     // 🔹 Ambil mutate
     const { mutate: updateVariable, loading: updating } = useUpdateTransformationVariable();

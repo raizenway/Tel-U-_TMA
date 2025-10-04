@@ -37,13 +37,13 @@ export default function AssessmentPage() {
 
   const variableNameMap = React.useMemo(() => {
   const map: Record<number, string> = {};
-  variablesData.forEach((v) => {
-    map[v.id] = v.name;
-  });
-}
+  if (Array.isArray(variablesData)) { // ✅ GANTI JADI variablesData
+    variablesData.forEach((v) => {
+      map[v.id] = v.name;
+    });
+  }
   return map;
 }, [variablesData]); 
-
   const [roleId, setRoleId] = useState<number | null>(null);
   useEffect(() => {
     const user = localStorage.getItem('user');
