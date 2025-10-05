@@ -18,7 +18,7 @@ export interface IconFile {
 export interface TransformationVariable {
   id: number;
   name: string;
-  weight: number;
+  weight: string;
   description: string;
   reference: string;
   status: 'active' | 'inactive';
@@ -26,27 +26,27 @@ export interface TransformationVariable {
   iconFile: IconFile | null;        // ✅ tambahkan
   createdAt: string;
   updatedAt: string;
-  sortOrder: number;
+  sortOrder: string;
 }
 
 
 export interface CreateTransformationVariableRequest {
   name: string;
-  weight: number;
+  weight: string;
   description: string;
   reference: string;
   status: 'active' | 'inactive';
   iconFileId: number | null;        // ✅ tambahkan
-  sortOrder: number;
+  sortOrder: string;
 }
 
 export interface UpdateTransformationVariableRequest {
   name?: string;
-  weight?: number;
+  weight?: string;
   description?: string;
   reference?: string;
   status?: 'active' | 'inactive';
  iconFileId?: number | null;
-  sortOrder?: number;
+  sortOrder?: string;
 }
 
