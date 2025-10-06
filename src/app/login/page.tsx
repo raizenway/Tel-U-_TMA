@@ -59,18 +59,18 @@
     return (
       <div className="flex min-h-screen h-full w-full">
         {/* KIRI: FORM LOGIN */}
-        <div className="w-full md:w-2/3 flex items-center justify-center bg-white px-6 py-12 rounded-tr-lg rounded-br-lg">
+        <div className="w-full md:w-1/3 flex items-center justify-center bg-white px-6 py-12 rounded-tr-lg rounded-br-lg">
           <div className="w-full max-w-md">
             {/* Logo */}
             <div className="flex justify-center items-center gap-6 mb-10">
-              <Image src="/logo.png" alt="Logo Telkom University" width={150} height={100} />
-              <Image src="/tr.png" alt="Logo Program Studi" width={190} height={100} />
+              <Image src="/Logo.png" alt="Logo Telkom University" width={95} height={32} className="me-10" />
+              <Image src="/tr.png" alt="Logo Program Studi" width={190} height={31} />
             </div>
 
             {/* Judul */}
-            <h2 className="text-xl font-semibold text-black mb-4">Log In An Account</h2>
-            <p className="text-sm text-gray-500 mb-11">
-              Enter your Username and Password to log in to our dashboard
+            <h2 className="text-xl font-semibold text-black mb-4">Login An Account</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Single Account, SSO
             </p>
 
             {/* Form Login */}
@@ -122,7 +122,7 @@
                   className="w-2/3"
                   isLoading={loading}
                 >
-                  Login SSO
+                  Log In SSO
                 </Button>
               </div>
             </form>
@@ -153,7 +153,7 @@
         {/* KANAN: BACKGROUND */}
      <div className="hidden md:flex w-2/3 relative h-full overflow-hidden bg-red-200">
     <Image
-      src="/Konten (2).png"  
+      src="/bg_login2.jpg"  
       alt="Tel-U Background"
       fill
       className="object-cover z-0"
