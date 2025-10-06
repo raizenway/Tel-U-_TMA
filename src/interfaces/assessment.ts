@@ -15,9 +15,9 @@ export interface CreateAssessmentDetail {
   textAnswer5: string;
 }
 
-// ✅ INI YANG BENAR — SESUAI DENGAN BACKEND SAAT INI
+
 export interface CreateAssessment {
  periodId: number; 
-  userId: number;           // ← HARUS ADA
-  submission_date: string;  // ← HARUS ADA (format: "YYYY-MM-DD")
+  userId: number;           
+  submission_date: string;  
 }

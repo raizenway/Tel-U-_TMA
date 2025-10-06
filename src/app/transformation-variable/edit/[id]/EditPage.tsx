@@ -36,21 +36,28 @@ export default function EditVariablePage() {
   // ✅ Hook update
   const { mutate: update, loading: updating } = useUpdateTransformationVariable();
 
-  // ✅ Isi form + logo preview dari data
-  useEffect(() => {
-  if (data) {
-    setNamaVariabel(data.name || '');
-    setBobot(data.weight?.toString() || '');
-    setDeskripsi(data.description || '');
-    setReferensi(data.reference || '');
-    setStatus(data.status === 'active' ? 'Active' : 'Inactive');
-    
-    // ✅ Ambil path dari iconFile
-    if (data.iconFile?.path) {
-      setLogoPreview(data.iconFile.path);
-    }
+ useEffect(() => {
+  console.log('🚀 useEffect dipanggil, data:', data);
+  console.log('🚀 variableId:', variableId);
+
+  if (!data || !variableId) {
+    console.log('❌ Data atau ID belum siap');
+    return;
   }
-}, [data]);
+
+  // ✅ Isi form jika data sudah tersedia
+  setNamaVariabel(data.name || '');
+  setBobot(data.weight?.toString() || '');
+  setDeskripsi(data.description || '');
+  setReferensi(data.reference || '');
+  setStatus(data.status === 'active' ? 'Active' : 'Inactive');
+
+  // ❌ Jangan akses iconFile karena tidak ada di API
+  // if (data.iconFile?.path) {
+  //   setLogoPreview(data.iconFile.path);
+  // }
+
+}, [data, variableId]); // 👈 Tambahkan variableId sebagai dependency
   // 🚫 Loading
   if (loadingData) {
     return (
