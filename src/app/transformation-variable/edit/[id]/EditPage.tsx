@@ -6,7 +6,6 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
-import { fdatasync } from 'fs';
 
 export default function EditVariablePage() {
   const { id } = useParams();
@@ -36,28 +35,24 @@ export default function EditVariablePage() {
   // ✅ Hook update
   const { mutate: update, loading: updating } = useUpdateTransformationVariable();
 
- useEffect(() => {
-  console.log('🚀 useEffect dipanggil, data:', data);
-  console.log('🚀 variableId:', variableId);
+useEffect(() => {
+  if (!data || !variableId) return;
 
-  if (!data || !variableId) {
-    console.log('❌ Data atau ID belum siap');
+  // Jika data adalah respons API (punya properti 'data'), ambil dari sana
+  const item = ('data' in data && typeof data === 'object') ? (data as any).data : data;
+
+  if (!item) {
+    console.log('❌ Item tidak ditemukan');
     return;
   }
 
-  // ✅ Isi form jika data sudah tersedia
-  setNamaVariabel(data.name || '');
-  setBobot(data.weight?.toString() || '');
-  setDeskripsi(data.description || '');
-  setReferensi(data.reference || '');
-  setStatus(data.status === 'active' ? 'Active' : 'Inactive');
+  setNamaVariabel(item.name || '');
+  setBobot(item.weight?.toString() || '');
+  setDeskripsi(item.description || '');
+  setReferensi(item.reference || '');
+  setStatus(item.status === 'active' ? 'Active' : 'Inactive');
 
-  // ❌ Jangan akses iconFile karena tidak ada di API
-  // if (data.iconFile?.path) {
-  //   setLogoPreview(data.iconFile.path);
-  // }
-
-}, [data, variableId]); // 👈 Tambahkan variableId sebagai dependency
+}, [data, variableId]);
   // 🚫 Loading
   if (loadingData) {
     return (
@@ -150,7 +145,7 @@ export default function EditVariablePage() {
   };
 
   return (
-    <div className="flex ">
+  <div key={variableId} className="flex ">
       <main className="flex-1">
         <div className="p-8  mx-auto">
           <div className="p-8 border-b border-gray-200">

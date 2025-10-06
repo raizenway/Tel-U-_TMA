@@ -1,3 +1,4 @@
+// app/assessment/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -5,12 +6,14 @@ import Button from "@/components/button";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useCreateAssessment } from "@/hooks/useAssessment";
-import { useState } from "react";
+import { useAssessmentPeriod } from "@/hooks/useAssessmentPeriod";
+import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
+import { useState, useEffect } from "react";
 
-const campusToPeriodeId: Record<string, number> = {
-  "Tel-U Jakarta": 1,
-  "Tel-U Surabaya": 2,
-  "Tel-U Purwokerto": 3,
+const campusToPeriodIds: Record<string, number[]> = {
+  "Tel-U Jakarta": [2, 4],
+  "Tel-U Surabaya": [1, 5],
+  "Tel-U Purwokerto": [3, 6],
 };
 
 const campuses = [
@@ -21,38 +24,86 @@ const campuses = [
 
 export default function AssessmentPage() {
   const router = useRouter();
-  const { mutate, loading, error } = useCreateAssessment();
+  const { mutate, loading: isCreating, error } = useCreateAssessment();
+  const { list, loading: loadingPeriodsFromHook } = useAssessmentPeriod();
+
   const [submittingCampus, setSubmittingCampus] = useState<string | null>(null);
+  const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+  const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
-  const handleSelectCampus = async (campus: string) => {
-    const periodeId = campusToPeriodeId[campus];
-    if (periodeId === undefined) {
-      console.error("PeriodeId tidak ditemukan untuk kampus:", campus);
-      return;
-    }
-
-    setSubmittingCampus(campus);
+  useEffect(() => {
+  const fetchPeriods = async () => {
     try {
-      // ✅ Hanya kirim periodeId — userId diisi oleh backend
-    await mutate({
-   periodId: periodeId, 
-  userId: 1, // hardcode sementara atau ambil dari auth
-  submission_date: "2025-08-15", // atau new Date().toISOString().split('T')[0]
-});
+      const response = await list();
+      
+      // ✅ Deteksi apakah respons punya .data atau langsung array
+      let periods: AssessmentPeriodResponseDto[] = [];
+      
+      if (Array.isArray(response)) {
+        // API return array langsung
+        periods = response;
+      } else if (response && Array.isArray(response.data)) {
+        // API return { data: [...] }
+        periods = response.data;
+      } else {
+        console.warn("Struktur respons API tidak dikenali:", response);
+        periods = [];
+      }
 
-      // Redirect sesuai kampus
-      if (campus === "Tel-U Purwokerto") {
-        router.push("/assessment/assessment-form");
-      } else if (campus === "Tel-U Jakarta") {
-        router.push("/assessment/jakarta");
-      } else if (campus === "Tel-U Surabaya") {
-        router.push("/assessment/Surabaya");
+      setAllPeriods(periods);
+    } catch (err) {
+      console.error("Gagal memuat periode:", err);
+      setAllPeriods([]); // Pastikan state tetap array
+    }
+  };
+
+  fetchPeriods();
+}, [list]);
+
+ const getPeriodsForCampus = (campus: string) => {
+  const allowedIds = campusToPeriodIds[campus] || [];
+  return allPeriods
+    .filter((p) => allowedIds.includes(p.id))
+    .filter((p) => p.status === 'active') // 👈 INI SATU-SATUNYA PERUBAHAN
+};
+
+  const handleSelectCampus = (campus: string) => {
+    setSelectedCampus(campus);
+    setShowPeriodModal(true);
+  };
+
+  const handleSelectPeriod = async (periodId: number) => {
+    if (!selectedCampus) return;
+
+    setSubmittingCampus(selectedCampus);
+    setShowPeriodModal(false);
+
+    try {
+      await mutate({
+        periodId,
+        userId: 1,
+        submission_date: new Date().toISOString().split("T")[0],
+      });
+
+      if (selectedCampus === "Tel-U Purwokerto") {
+        router.push(`/assessment/assessment-form?periodId=${periodId}`);
+      } else if (selectedCampus === "Tel-U Jakarta") {
+        router.push(`/assessment/jakarta?periodId=${periodId}`);
+      } else if (selectedCampus === "Tel-U Surabaya") {
+        router.push(`/assessment/Surabaya?periodId=${periodId}`);
       }
     } catch (err) {
       console.error("Gagal membuat assessment:", err);
+      alert("Gagal memulai assessment. Silakan coba lagi.");
     } finally {
       setSubmittingCampus(null);
+      setSelectedCampus(null);
     }
+  };
+
+  const formatPeriodName = (period: AssessmentPeriodResponseDto) => {
+    return `${period.year} - ${period.semester}`;
   };
 
   return (
@@ -85,15 +136,77 @@ export default function AssessmentPage() {
                 icon={ArrowRight}
                 iconPosition="right"
                 onClick={() => handleSelectCampus(campus.name)}
-                disabled={loading || submittingCampus === campus.name}
+                disabled={isCreating || submittingCampus === campus.name || loadingPeriodsFromHook}
                 className="rounded-[12px] px-17 py-2 text-sm font-semibold"
               >
-                {submittingCampus === campus.name ? "Memuat..." : "Pilih"}
+                {loadingPeriodsFromHook
+                  ? "Memuat periode..."
+                  : submittingCampus === campus.name
+                  ? "Memuat..."
+                  : "Pilih"}
               </Button>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Modal Pemilihan Periode */}
+      {showPeriodModal && selectedCampus && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Pilih Periode — {selectedCampus}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowPeriodModal(false);
+                  setSelectedCampus(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingPeriodsFromHook ? (
+              <p className="text-gray-500 text-sm py-4 text-center">Memuat periode...</p>
+            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                {getPeriodsForCampus(selectedCampus).length > 0 ? (
+                  getPeriodsForCampus(selectedCampus).map((period) => (
+                    <button
+                      key={period.id}
+                      onClick={() => handleSelectPeriod(period.id)}
+                      disabled={submittingCampus === selectedCampus}
+                      className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition text-sm font-medium disabled:opacity-60"
+                    >
+                      {formatPeriodName(period)}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm py-4 text-center">
+                    Tidak ada periode tersedia.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPeriodModal(false);
+                  setSelectedCampus(null);
+                }}
+                className="px-4 py-2"
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

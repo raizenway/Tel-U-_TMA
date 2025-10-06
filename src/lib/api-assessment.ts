@@ -47,7 +47,7 @@ export async function createAssessment(body: CreateAssessment): Promise<ApiRespo
   if (!res.ok) throw new Error("Failed to create user");
   return res.json();
 }
-
+  
 
 export async function createAssessmentDetail(
   body: CreateAssessmentDetail
