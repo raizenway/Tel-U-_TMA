@@ -15,6 +15,10 @@ export interface CreateAssessmentDetail {
   textAnswer5: string;
 }
 
+export interface FinishAssessment {
+  assessmentId: number;
+}
+
 
 export interface CreateAssessment {
  periodId: number; 
