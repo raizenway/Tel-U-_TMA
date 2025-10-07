@@ -28,12 +28,22 @@ export default function AddUserPage() {
     status: '' as 'active' | 'inactive' | '',
     branchId: '' as string,
   }); 
+
+  const [picName, setPicName] = useState('');
+  const [logoFileId, setLogoFileId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+ 
   
   // ✅ Gunakan hook untuk create user
 const { mutate: createUser, loading} = useCreateUser();
 
 
 const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // ✅ Reset error saat user ketik
+  if (errorMessage) {
+    setErrorMessage(null);
+  }
+
   const { name, value } = e.target;
 
   if (name === 'nomorHp') {
@@ -53,6 +63,10 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     // ✅ Hapus semua spasi dari username saat diketik
     const noSpaceValue = value.replace(/\s/g, '');
     setForm({ ...form, [name]: noSpaceValue });
+
+  } else if (name === 'namaPIC') {
+    setPicName(value); // 👈 Tambahkan ini 
+
   } else {
     setForm({ ...form, [name]: value });
   }
@@ -104,6 +118,12 @@ const handleSave = async () => {
     alert('Email tidak valid. Contoh: user@gmail.com');
     return;
   }
+   
+// Validasi hanya untuk PIC
+if (role !== 'Non SSO' && !picName.trim()) {
+  alert('Nama PIC wajib diisi');
+  return;
+}
 
   // Siapkan data yang akan dikirim ke API
 const body: CreateUserRequest = {
@@ -115,34 +135,26 @@ const body: CreateUserRequest = {
   phoneNumber: form.nomorHp,
   branchId: Number(form.branchId), // ✅ Konversi string → number
   status: form.status,
+  picName: picName,            // 👈 Tambahkan ini
+  //...(logoFileId !== null && { logo_file_id: logoFileId }),
+  //logo_file_id: logoFileId, // 👈 Tambahkan ini
 };
-
-  try {
-    // Kirim ke API
+ try {
     await createUser(body);
-
-    // Simpan flag untuk notifikasi "berhasil"
     localStorage.setItem('newDataAdded', 'true');
-
-    // Pindah ke halaman utama
     router.push('/user-management');
-  } catch (err) {
-    // Tangkap error (bisa ditampilkan nanti)
-    console.error('Gagal membuat user:', err);
+  } catch (err: any) {
+    setErrorMessage(err.message || 'Gagal membuat user. Silakan coba lagi.');
   }
 };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLogoFileName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string); // base64
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    setLogoFileName(file.name);
+    // Upload logo dinonaktifkan sementara
+  }
+};
 
   useEffect(() => {
     const path = pathname?.split("/")[1];
@@ -258,7 +270,7 @@ const body: CreateUserRequest = {
                   <input
                     name="namaPIC"
                     type="text"
-                    value={form.namaPIC}
+                    value={picName}           // 👈 Ganti dari form.namaPIC → picName
                     onChange={handleChange}
                     placeholder="Masukkan Nama PIC"
                     className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
@@ -318,7 +330,14 @@ const body: CreateUserRequest = {
             </div> 
           </form>
 
-
+          {/* ❗️ Tambahkan ini: Peringatan inline */}
+            {errorMessage && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-700 font-medium">
+                  <span className="font-bold">Peringatan:</span> {errorMessage}
+                </p>
+              </div>
+            )}
 
           {/* Tombol */}
           <div className="flex justify-end mt-6 gap-4">
@@ -337,8 +356,8 @@ const body: CreateUserRequest = {
             variant="simpan"
             icon={Save}
             iconPosition="left"
-            onClick={isFormValid && !loading ? handleSave : undefined}
-            disabled={!isFormValid || loading}
+            onClick={isFormValid && !loading && !errorMessage ? handleSave : undefined}
+            disabled={!isFormValid || loading || !!errorMessage}
             className={`px-4 py-2 rounded-md text-white 
               ${isFormValid && !loading 
                 ? 'bg-[#263859] text-white px-12' 

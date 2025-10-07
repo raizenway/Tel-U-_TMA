@@ -20,15 +20,33 @@ export function useCreateUser() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = async (body: CreateUserRequest): Promise<User> => {
+ const mutate = async (body: CreateUserRequest): Promise<User> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await createUser(body); // panggil API
+      const res = await createUser(body);
       return res.data;
     } catch (err: any) {
-      setError(err.message);
-      throw err;
+      // Ambil pesan error dari backend
+      let userFriendlyMessage = err.message || "Gagal membuat user";
+
+      // ✅ Ubah pesan error jadi lebih ramah
+      if (userFriendlyMessage.toLowerCase().includes('username')) {
+        userFriendlyMessage = 'Username sudah digunakan. Silakan gunakan username lain.';
+      } else if (userFriendlyMessage.toLowerCase().includes('email')) {
+        userFriendlyMessage = 'Email sudah terdaftar. Silakan gunakan email lain.';
+      } else if (userFriendlyMessage.toLowerCase().includes('duplicate')) {
+        userFriendlyMessage = 'Data duplikat ditemukan. Periksa kembali username atau email.';
+      } else if (userFriendlyMessage.toLowerCase().includes('conflict')) {
+        userFriendlyMessage = 'Terjadi konflik data. Pastikan username dan email unik.';
+      }
+
+
+      // Set error state (jika perlu ditampilkan di UI)
+      setError(userFriendlyMessage);
+
+      // Lemparkan ulang error agar bisa ditangkap di komponen
+      throw new Error(userFriendlyMessage);
     } finally {
       setLoading(false);
     }
@@ -56,8 +74,19 @@ export function useUpdateUser() {
       }
       return res.json();
     } catch (err: any) {
-      setError(err.message);
-      throw err;
+      let userFriendlyMessage = err.message || "Gagal memperbarui user";
+
+      // ✅ Ubah pesan error jadi lebih ramah
+      if (userFriendlyMessage.toLowerCase().includes('username')) {
+        userFriendlyMessage = 'Username sudah digunakan. Silakan gunakan username lain.';
+      } else if (userFriendlyMessage.toLowerCase().includes('email')) {
+        userFriendlyMessage = 'Email sudah terdaftar. Silakan gunakan email lain.';
+      } else if (userFriendlyMessage.toLowerCase().includes('duplicate')) {
+        userFriendlyMessage = 'Data duplikat ditemukan. Periksa kembali username atau email.';
+      }
+
+      setError(userFriendlyMessage);
+      throw new Error(userFriendlyMessage);
     } finally {
       setLoading(false);
     }

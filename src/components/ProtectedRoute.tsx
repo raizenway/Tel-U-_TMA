@@ -23,6 +23,8 @@ const roleAccess: Record<number, string[]> = {
     "/maturity-level",
     "/maturity-level/add-maturity",
     "/maturity-level/edit-maturity",
+    "/periode",
+    "/periode/add-periode",
   ],
   2: [ // UPPS/KC
     "/login",
