@@ -1,4 +1,4 @@
-import { Assessment, CreateAssessment, CreateAssessmentDetail } from "@/interfaces/assessment";
+import { Assessment, CreateAssessment, CreateAssessmentDetail,FinishAssessment } from "@/interfaces/assessment";
 import { ApiResponse } from "@/interfaces/api-response";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL + "/assessment";
@@ -17,22 +17,24 @@ export const ListAssessment = async (): Promise<ApiResponse<Assessment[]>> => {
       return {
         status: 'error',
         message: `Gagal ambil data: ${res.status} - ${errorText}`,
-        data: [],
+        data: [], // ✅ wajib ada
       };
     }
 
-    const data: Assessment[] = await res.json();
+    const json = await res.json();
+    
+    // Pastikan json memiliki struktur { status, message, data }
     return {
       status: 'success',
-      message: 'Data pertanyaan berhasil dimuat',
-      data,
+      message: json.message || 'Data berhasil dimuat',
+      data: json.data || [], // ✅ perbaiki typo: tambahkan ":"
     };
   } catch (error) {
-    console.error('🚨 Error di listQuestions:', error);
+    console.error('🚨 Error di ListAssessment:', error);
     return {
       status: 'error',
       message: error instanceof Error ? error.message : 'Terjadi kesalahan koneksi',
-      data: [],
+      data: [], // ✅ wajib ada
     };
   }
 };
@@ -61,6 +63,23 @@ export async function createAssessmentDetail(
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`❌ Gagal create assessment detail: ${errorText}`);
+  }
+
+  return res.json();
+}
+
+export async function finishAssessment(
+  body: FinishAssessment
+): Promise<ApiResponse<{ success: boolean }>> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/finish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`❌ Gagal menyelesaikan assessment: ${errorText}`);
   }
 
   return res.json();

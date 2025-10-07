@@ -7,7 +7,7 @@ import {
 } from '@/interfaces/transformation-variable';
 import { ApiResponse } from '@/interfaces/api-response';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL + "/assessment/variable"; 
+const API_URL = process.env.NEXT_PUBLIC_API_URL + "/variable"; 
 
 // 🔹 LIST
 export const listTransformationVariables = async (): Promise<ApiResponse<TransformationVariable[]>> => {
@@ -45,6 +45,7 @@ export const listTransformationVariables = async (): Promise<ApiResponse<Transfo
   }
 };
 
+
 // 🔹 CREATE (JSON - tanpa file)
 export const createTransformationVariable = async (
   body: CreateTransformationVariableRequest
@@ -71,7 +72,7 @@ export const createTransformationVariableWithFile = async (
 ): Promise<ApiResponse<TransformationVariable>> => {
   const res = await fetch(API_URL, {
     method: 'POST',
-    // ⚠️ JANGAN set 'Content-Type' — biarkan browser atur otomatis
+    //biarkan browser atur otomatis
     body: formData,
   });
 
@@ -112,7 +113,7 @@ export const updateTransformationVariableWithFile = async (
   const res = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
     // ⚠️ JANGAN set 'Content-Type'
-    body: formData,
+    body: formData, 
   });
 
   if (!res.ok) {

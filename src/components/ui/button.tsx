@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pencil, Trash2, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const dummyData = [
-  {
+  {                                                    
     level: 1,
     name: 'Very Low Maturity',
     minScore: '0%',

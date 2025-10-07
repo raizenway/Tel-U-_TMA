@@ -23,7 +23,7 @@ export default function AddMaturityLevelPage() {
     levelNumber: "",
     minScore: "",
     maxScore: "",
-    generalDescription: "",
+    description: "",
     scoreDescription0: "",
     scoreDescription1: "",
     scoreDescription2: "",
@@ -50,7 +50,7 @@ export default function AddMaturityLevelPage() {
           levelNumber: String(parsed.levelNumber ?? ""),
           minScore: String(parsed.minScore ?? ""),
           maxScore: String(parsed.maxScore ?? ""),
-          generalDescription: parsed.generalDescription || "",
+          description: parsed.description || "",
           scoreDescription0: parsed.scoreDescription0 || "",
           scoreDescription1: parsed.scoreDescription1 || "",
           scoreDescription2: parsed.scoreDescription2 || "",
@@ -110,7 +110,7 @@ export default function AddMaturityLevelPage() {
     !isNaN(parsedMax) &&
     parsedMax >= 0 &&
     parsedMin <= parsedMax &&
-    formData.generalDescription.trim() !== "";
+    formData.description.trim() !== "";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -125,7 +125,7 @@ export default function AddMaturityLevelPage() {
         levelNumber: parsedLevel,
         minScore: String(parsedMin),
         maxScore: String(parsedMax),
-        generalDescription: formData.generalDescription.trim(),
+        description: formData.description.trim(),
         scoreDescription0: formData.scoreDescription0.trim(),
         scoreDescription1: formData.scoreDescription1.trim(),
         scoreDescription2: formData.scoreDescription2.trim(),
@@ -141,7 +141,7 @@ export default function AddMaturityLevelPage() {
         levelNumber: "",
         minScore: "",
         maxScore: "",
-        generalDescription: "",
+        description: "",
         scoreDescription0: "",
         scoreDescription1: "",
         scoreDescription2: "",
@@ -227,8 +227,8 @@ export default function AddMaturityLevelPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Deskripsi Umum</label>
             <textarea
-              name="generalDescription"
-              value={formData.generalDescription}
+              name="description"
+              value={formData.description}
               onChange={handleChange}
               placeholder="Masukkan Deskripsi"
               className="w-full border rounded-md px-3 py-2 h-[90px]"

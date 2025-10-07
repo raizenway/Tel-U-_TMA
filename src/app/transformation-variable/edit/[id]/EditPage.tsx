@@ -6,7 +6,6 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
-import { fdatasync } from 'fs';
 
 export default function EditVariablePage() {
   const { id } = useParams();
@@ -36,21 +35,24 @@ export default function EditVariablePage() {
   // ✅ Hook update
   const { mutate: update, loading: updating } = useUpdateTransformationVariable();
 
-  // ✅ Isi form + logo preview dari data
-  useEffect(() => {
-  if (data) {
-    setNamaVariabel(data.name || '');
-    setBobot(data.weight?.toString() || '');
-    setDeskripsi(data.description || '');
-    setReferensi(data.reference || '');
-    setStatus(data.status === 'active' ? 'Active' : 'Inactive');
-    
-    // ✅ Ambil path dari iconFile
-    if (data.iconFile?.path) {
-      setLogoPreview(data.iconFile.path);
-    }
+useEffect(() => {
+  if (!data || !variableId) return;
+
+  // Jika data adalah respons API (punya properti 'data'), ambil dari sana
+  const item = ('data' in data && typeof data === 'object') ? (data as any).data : data;
+
+  if (!item) {
+    console.log('❌ Item tidak ditemukan');
+    return;
   }
-}, [data]);
+
+  setNamaVariabel(item.name || '');
+  setBobot(item.weight?.toString() || '');
+  setDeskripsi(item.description || '');
+  setReferensi(item.reference || '');
+  setStatus(item.status === 'active' ? 'Active' : 'Inactive');
+
+}, [data, variableId]);
   // 🚫 Loading
   if (loadingData) {
     return (
@@ -81,39 +83,45 @@ export default function EditVariablePage() {
     );
   }
 
-  // 📤 Handle Simpan — logo TIDAK dikirim
-  const handleSimpan = async () => {
-    if (!namaVariabel.trim()) {
-      alert('Nama variabel wajib diisi');
-      return;
-    }
-    if (!status) {
-      alert('Status harus dipilih');
-      return;
-    }
+ const handleSimpan = async () => {
+  if (!namaVariabel.trim()) {
+    alert('Nama variabel wajib diisi');
+    return;
+  }
 
-    const payload = {
+  let payload: FormData | Record<string, any>;
+
+  if (logoFile) {
+    const formData = new FormData();
+    formData.append('name', namaVariabel.trim());
+    formData.append('weight', (parseFloat(bobot) || 0).toString()); // ✅ .toString()
+    formData.append('description', deskripsi.trim());
+    formData.append('reference', referensi.trim());
+    formData.append('sortOrder', '1'); // ✅ sudah string
+    formData.append('status', status.toLowerCase());
+    formData.append('iconFile', logoFile);
+
+    payload = formData;
+  } else {
+    payload = {
       name: namaVariabel.trim(),
       weight: parseFloat(bobot) || 0,
       description: deskripsi.trim(),
       reference: referensi.trim(),
       sortOrder: 1,
       status: status.toLowerCase() as 'active' | 'inactive',
-       iconFileId: data.iconFileId,
+      iconFileId: data.iconFileId,
     };
+  }
 
-    console.log('📤 Payload:', payload);
-
-    try {
-      await update(variableId, payload);
-      console.log('✅ Update berhasil — redirect');
-      router.push('/transformation-variable');
-    } catch (err) {
-      console.error('❌ Update gagal:', err);
-      alert('Gagal menyimpan perubahan. Coba lagi.');
-    }
-  };
-
+  try {
+    await update(variableId, payload);
+    router.push('/transformation-variable');
+  } catch (err) {
+    console.error('❌ Update gagal:', err);
+    alert('Gagal menyimpan perubahan. Coba lagi.');
+  }
+};
   // 🖼️ Handle Upload Logo (hanya preview)
   const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,7 +145,7 @@ export default function EditVariablePage() {
   };
 
   return (
-    <div className="flex ">
+  <div key={variableId} className="flex ">
       <main className="flex-1">
         <div className="p-8  mx-auto">
           <div className="p-8 border-b border-gray-200">
