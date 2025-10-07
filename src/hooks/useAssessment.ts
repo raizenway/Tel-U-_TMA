@@ -1,14 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useGet } from "./useGet";
 import { createAssessment, createAssessmentDetail, ListAssessment,finishAssessment} from "@/lib/api-assessment";
 import { Assessment, CreateAssessment, CreateAssessmentDetail,FinishAssessment   } from "@/interfaces/assessment";
 import { ApiResponse } from "@/interfaces/api-response";
 
-export function useListAssessment(dep: any = null) {
-  return useGet<ApiResponse<Assessment[]>>(() => ListAssessment(), [dep]);
+export function useListAssessment() {
+  const [data, setData] = useState<Assessment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const res = await ListAssessment();
+      if (res.status === 'success') {
+        setData(res.data);
+      } else {
+        setError(res.message);
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, []);
+
+  return { data, loading, error };
 }
+
 export function useCreateAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

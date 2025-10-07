@@ -17,22 +17,24 @@ export const ListAssessment = async (): Promise<ApiResponse<Assessment[]>> => {
       return {
         status: 'error',
         message: `Gagal ambil data: ${res.status} - ${errorText}`,
-        data: [],
+        data: [], // ✅ wajib ada
       };
     }
 
-    const data: Assessment[] = await res.json();
+    const json = await res.json();
+    
+    // Pastikan json memiliki struktur { status, message, data }
     return {
       status: 'success',
-      message: 'Data pertanyaan berhasil dimuat',
-      data,
+      message: json.message || 'Data berhasil dimuat',
+      data: json.data || [], // ✅ perbaiki typo: tambahkan ":"
     };
   } catch (error) {
-    console.error('🚨 Error di listQuestions:', error);
+    console.error('🚨 Error di ListAssessment:', error);
     return {
       status: 'error',
       message: error instanceof Error ? error.message : 'Terjadi kesalahan koneksi',
-      data: [],
+      data: [], // ✅ wajib ada
     };
   }
 };
