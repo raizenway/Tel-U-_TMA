@@ -6,12 +6,12 @@ import * as XLSX from "xlsx";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
 import { Download, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import SuccessNotification from "./SuccessNotification";
 import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList'; 
-import { useCreateAssessmentDetail } from '@/hooks/useAssessment';
+import { useCreateAssessmentDetail, useFinishAssessment } from '@/hooks/useAssessment';
 
 interface PurwokertoTabProps {
   setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
@@ -29,8 +29,9 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   }>>([]);
 
   const [loading, setLoading] = useState(true);
-  const result = useTransformationVariableList();
-  const transformationVariables = Array.isArray(result?.data) ? result.data : [];
+  const hookResult = useTransformationVariableList();
+  const transformationVariables = hookResult.data;
+  const variablesLoading = hookResult.loading;
   const [variableMap, setVariableMap] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -46,12 +47,11 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   }, [transformationVariables]);
 
   const getSectionTitle = (sectionCode: string, transformationVariableId?: number) => {
-    if (transformationVariableId && variableMap[transformationVariableId]) {
-      return `${sectionCode} - ${variableMap[transformationVariableId]}`;
-    }
-    const sectionNumber = parseInt(sectionCode.slice(1));
-    if (variableMap[sectionNumber]) {
-      return `${sectionCode} - ${variableMap[sectionNumber]}`;
+    if (transformationVariableId !== undefined && transformationVariableId !== null) {
+      const variableName = variableMap[transformationVariableId];
+      if (variableName) {
+        return `${sectionCode} - ${variableName}`;
+      }
     }
     return `${sectionCode} (Mutu)`;
   };
@@ -63,9 +63,18 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         const id = i + 1;
         try {
           const response = await fetch(`http://localhost:3000/api/question/${id}`);
-          if (!response.ok) continue;
+          if (!response.ok) {
+            console.warn(`⚠️ Question ${id} not found`);
+            continue;
+          }
           const result = await response.json();
-          if (result.status === 'success' && result.data?.questionText) {
+          if (
+            (result.status === 'success' || result.status === 200) &&
+            result.data && 
+            typeof result.data === 'object' &&
+            result.data.questionText &&
+            result.data.indicator
+          ) {
             const section = `V${Math.floor(i / 5) + 1}`;
             tempQuestions.push({
               id,
@@ -74,11 +83,15 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
               question: result.data.questionText,
               indicator: result.data.indicator,
               options: id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"],
-              transformationVariableId: result.data.transformationVariableId,
+              transformationVariableId: result.data.transformationVariableId 
+                ? Number(result.data.transformationVariableId) 
+                : undefined,
             });
+          } else {
+            console.warn(`⚠️ Question ${id} has no data or invalid format`, result);
           }
         } catch (err) {
-          console.error(`Error fetching question ${id}:`, err);
+          console.error(`❌ Error fetching question ${id}:`, err);
         }
       }
       setRawQuestions(tempQuestions);
@@ -101,6 +114,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   }, [variableMap, rawQuestions.length]);
 
   const { mutate: saveAssessmentDetail, loading: savingAnswers, error: saveError } = useCreateAssessmentDetail();
+  const { mutate: finishAssessment, loading: finishing, error: finishError } = useFinishAssessment();
 
   useEffect(() => {
     if (saveError) {
@@ -108,6 +122,13 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       alert("Gagal menyimpan jawaban: " + saveError);
     }
   }, [saveError]);
+
+  useEffect(() => {
+    if (finishError) {
+      console.error("Error menyelesaikan assessment:", finishError);
+      alert("Gagal menyelesaikan assessment: " + finishError);
+    }
+  }, [finishError]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
@@ -123,6 +144,17 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   const [pendingPath, setPendingPath] = useState<string | null>(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const periodIdFromUrl = searchParams.get('periodId');
+  const selectedPeriodId = periodIdFromUrl ? parseInt(periodIdFromUrl, 10) : null;
+
+  useEffect(() => {
+    if (selectedPeriodId === null || isNaN(selectedPeriodId) || selectedPeriodId <= 0) {
+      alert("Periode tidak valid. Silakan kembali ke halaman pemilihan.");
+      router.push("/assessment");
+    }
+  }, [selectedPeriodId, router]);
+
   const current = questions[currentIndex];
   const isLast = currentIndex === questions.length - 1;
 
@@ -169,94 +201,95 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
     reader.readAsArrayBuffer(file);
   };
 
- // ✅ FUNGSI SIMPAN UTAMA - DENGAN PENGECEKAN ERROR YANG JELAS
-const handleConfirm = async () => {
-  try {
-    let successCount = 0;
-    let totalCount = 0;
-    
-    for (const q of questions) {
-      const userAnswer = answers[q.id];
-      if (userAnswer == null) continue;
-
-      totalCount++;
-      
-      // Inisialisasi semua textAnswer ke 0 (camelCase sesuai backend)
-      const answerData = {
-        assessmentId: 2,
-        questionId: q.id,
-        textAnswer1: 0,
-        textAnswer2: 0,
-        textAnswer3: 0,
-        textAnswer4: 0,
-        textAnswer5: 0,
-      };
-
-      // Cari indeks opsi yang dipilih
-      const optionIndex = q.options.findIndex(opt => opt === userAnswer);
-      if (optionIndex >= 0 && optionIndex < 5) {
-        answerData[`textAnswer${optionIndex + 1}` as keyof typeof answerData] = 1;
-      }
-
-      try {
-        await saveAssessmentDetail(answerData);
-        successCount++;
-        console.log(`✅ Jawaban untuk soal ID ${q.id} berhasil disimpan`);
-      } catch (error) {
-        console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
-        // Lanjutkan ke soal berikutnya meski ada error
-      }
-    }
-
-    // 🔍 PERIKSA APAKAH SEMUA DATA BERHASIL DISIMPAN
-    if (successCount === 0 && totalCount > 0) {
-      // 🚨 TAMPILKAN PESAN ERROR YANG JELAS
-      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\n" +
-            "Data assessment TIDAK MASUK ke sistem.\n" +
-            "Silakan coba lagi atau hubungi administrator.");
+  const handleConfirm = async () => {
+    if (selectedPeriodId === null) {
+      alert("Periode tidak valid.");
       return;
     }
 
-    if (successCount < totalCount) {
-      // ⚠️ TAMPILKAN PERINGATAN SEBAGIAN GAGAL
-      alert("⚠️ PERINGATAN: Sebagian data gagal disimpan!\n\n" +
-            `Berhasil: ${successCount}/${totalCount} soal\n` +
-            "Silakan coba kirim ulang atau hubungi administrator.");
+    try {
+      let successCount = 0;
+      let totalCount = 0;
+      
+      for (const q of questions) {
+        const userAnswer = answers[q.id];
+        if (userAnswer == null) continue;
+
+        totalCount++;
+        
+        const answerData = {
+          assessmentId: selectedPeriodId,
+          questionId: q.id,
+          textAnswer1: "0",
+          textAnswer2: "0", 
+          textAnswer3: "0",
+          textAnswer4: "0",
+          textAnswer5: "0",
+        };
+
+        const optionIndex = q.options.findIndex(opt => opt === userAnswer);
+        if (optionIndex === 0) answerData.textAnswer1 = "1";
+        else if (optionIndex === 1) answerData.textAnswer2 = "1";
+        else if (optionIndex === 2) answerData.textAnswer3 = "1";
+        else if (optionIndex === 3) answerData.textAnswer4 = "1";
+        else if (optionIndex === 4) answerData.textAnswer5 = "1";
+
+        try {
+          await saveAssessmentDetail(answerData);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
+        }
+      }
+
+      if (successCount === 0 && totalCount > 0) {
+        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\nSilakan coba lagi.");
+        return;
+      }
+
+      if (successCount < totalCount) {
+        alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
+      }
+
+      // ✅ LANGKAH BARU: Selesaikan assessment
+      try {
+        await finishAssessment({ assessmentId: selectedPeriodId });
+        console.log("✅ Assessment berhasil diselesaikan di backend");
+      } catch (err) {
+        console.error("❌ Gagal menyelesaikan assessment:", err);
+        // Tetap lanjut karena jawaban sudah tersimpan
+      }
+
+      const resultData = questions.map((q) => ({
+        no: q.id,
+        kode: q.section,
+        pertanyaan: q.question,
+        jawaban: answers[q.id] || "-",
+        evidence: answers[`evidence-${q.id}`] || "-",
+        status: answers[q.id] ? "Terisi" : "Kosong",
+      }));
+
+      const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
+      const newEntry = {
+        id: Date.now(),
+        unit: "Tel-U Purwokerto",
+        tanggal: new Date().toLocaleDateString("id-ID"),
+        totalTerisi: Object.keys(answers).length,
+        resultData,
+      };
+      localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
+
+      setShowModal(false);
+      setShowSuccess(true);
+      localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+      setTimeout(() => router.push("/assessment/assessmenttable"), 1500);
+
+    } catch (err) {
+      console.error("❌ Gagal menyimpan jawaban ke API:", err);
+      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
     }
+  };
 
-    // Simpan ke localStorage
-    const resultData = questions.map((q) => ({
-      no: q.id,
-      kode: q.section,
-      pertanyaan: q.question,
-      jawaban: answers[q.id] || "-",
-      evidence: answers[`evidence-${q.id}`] || "-",
-      status: answers[q.id] ? "Terisi" : "Kosong",
-    }));
-
-    const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
-    const newEntry = {
-      id: Date.now(),
-      unit: "Tel-U Purwokerto",
-      tanggal: new Date().toLocaleDateString("id-ID"),
-      totalTerisi: Object.keys(answers).length,
-      resultData,
-    };
-    localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
-
-    setShowModal(false);
-    setShowSuccess(true);
-    localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
-    setTimeout(() => router.push("/assessment/assessmenttable"), 1500);
-
-  } catch (err) {
-    console.error("❌ Gagal menyimpan jawaban ke API:", err);
-    alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\n" +
-          "Error: " + (err instanceof Error ? err.message : String(err)) + "\n\n" +
-          "Data assessment TIDAK MASUK ke sistem.\n" +
-          "Silakan coba lagi atau hubungi administrator.");
-  }
-};
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (formBelumDisimpan) {
@@ -277,21 +310,18 @@ const handleConfirm = async () => {
     }
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-600">Memuat variabel transformasi dan soal...</div>
-      </div>
-    );
+  const isLoading = variablesLoading || rawQuestions.length === 0;
+  if (isLoading) {
+    return <div>Memuat variabel transformasi dan soal...</div>;
   }
 
-  if (!loading && questions.length === 0) {
+  if (selectedPeriodId === null) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-600 text-center">
-          <div className="text-2xl mb-2">📭</div>
-          <div>Tidak ada soal tersedia saat ini.</div>
-        </div>
+      <div className="max-w-2xl mx-auto p-10 text-center">
+        <p className="text-red-600">Periode penilaian tidak valid.</p>
+        <Button onClick={() => router.push("/assessment")} className="mt-4">
+          Kembali ke Halaman Utama
+        </Button>
       </div>
     );
   }
@@ -498,10 +528,11 @@ const handleConfirm = async () => {
               className={`mt-4 w-full text-sm py-2 rounded-lg font-medium transition
                 ${allAnswered 
                   ? 'bg-[#263859] text-white' 
-                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300 cursor-not-allowed'
                 }
               `}
               onClick={() => {
+                if (!allAnswered) return;
                 const summaryData = questions.map((q) => ({
                   no: q.id,
                   answered: !!answers[q.id],
@@ -509,6 +540,7 @@ const handleConfirm = async () => {
                 setModalData(summaryData);
                 setShowPreConfirmModal(true);
               }}
+              disabled={!allAnswered}
             >
               Finish attempt
             </button>
@@ -551,7 +583,7 @@ const handleConfirm = async () => {
         </div>
       </ModalConfirm>
 
-      {/* ✅ Modal Submit - HANYA PANGGIL handleConfirm */}
+      {/* Modal Submit */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -570,10 +602,10 @@ const handleConfirm = async () => {
             <Button
               variant="primary"
               onClick={handleConfirm}
-              disabled={savingAnswers}
+              disabled={savingAnswers || finishing}
               className="px-4 py-2 text-white rounded"
             >
-              {savingAnswers ? 'Menyimpan...' : 'Submit'}
+              {savingAnswers || finishing ? 'Menyimpan...' : 'Submit'}
             </Button>
           </div>
         }

@@ -159,106 +159,75 @@ export default function PilihJawabanPage() {
     setShowConfirmModal(true);
   };
 
-  // ✅ HANDLE SIMPAN — INTEGRASI API (CREATE & UPDATE)
-  const handleConfirmSave = async () => {
-    try {
-      const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+ const handleConfirmSave = async () => {
+  try {
+    const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
 
-     if (!selectedVariableId) {
-        alert('Silakan pilih Nama Variabel terlebih dahulu.');
-        return;
-      }
-
-      if (isEditMode && editNomor !== null) {
-        // ✅ Mode Edit — kirim ke API
-
-        // Kirim Pertanyaan 1
-        const payload1 = {
-          transformationVariableId: selectedVariableId,
-          type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
-          indicator: indikator.trim(),
-          questionText: pertanyaan1.trim(),
-          scoreDescription0: deskripsiSkor[0].trim(),
-          scoreDescription1: deskripsiSkor[1].trim(),
-          scoreDescription2: deskripsiSkor[2].trim(),
-          scoreDescription3: deskripsiSkor[3].trim(),
-          scoreDescription4: deskripsiSkor[4].trim(),
-          order: parseInt(urutan, 10) || 1,
-          status: finalStatus as 'active' | 'inactive',
-        };
-
-        const result1 = await updateMutate(editNomor, payload1);
-        if (!result1) {
-          alert('Gagal memperbarui pertanyaan 1. Silakan coba lagi.');
-          return;
-        }
-
-        // Kirim Pertanyaan 2 (jika ada)
-        if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = {
-            ...payload1,
-            questionText: pertanyaan2.trim(),
-          };
-
-          const result2 = await updateMutate(editNomor + 1, payload2); // Asumsi ID berurutan
-          if (!result2) {
-            alert('Gagal memperbarui pertanyaan 2. Silakan coba lagi.');
-            return;
-          }
-        }
-
-        // Berhasil
-        localStorage.setItem('newDataAdded', 'true');
-        router.push('/daftar-assessment');
-      } else {
-        // ✅ Mode Create — kirim ke API
-
-        // Kirim Pertanyaan 1
-        const payload1 = {
-          transformationVariableId: selectedVariableId,
-          type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
-          indicator: indikator.trim(),
-          questionText: pertanyaan1.trim(),
-          scoreDescription0: deskripsiSkor[0].trim(),
-          scoreDescription1: deskripsiSkor[1].trim(),
-          scoreDescription2: deskripsiSkor[2].trim(),
-          scoreDescription3: deskripsiSkor[3].trim(),
-          scoreDescription4: deskripsiSkor[4].trim(),
-          order: parseInt(urutan, 10) || 1,
-          status: finalStatus as 'active' | 'inactive',
-        };
-
-        const result1 = await createMutate(payload1);
-        if (!result1) {
-          alert('Gagal menyimpan pertanyaan 1. Silakan coba lagi.');
-          return;
-        }
-
-        // Kirim Pertanyaan 2 (jika ada)
-        if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = {
-            ...payload1,
-            questionText: pertanyaan2.trim(),
-          };
-
-          const result2 = await createMutate(payload2);
-          if (!result2) {
-            alert('Gagal menyimpan pertanyaan 2. Silakan coba lagi.');
-            return;
-          }
-        }
-
-        // Berhasil
-        localStorage.setItem('newDataAdded', 'true');
-        router.push('/daftar-assessment');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Terjadi kesalahan saat menyimpan data.');
-    } finally {
-      setShowConfirmModal(false);
+    if (!selectedVariableId) {
+      setErrors((prev) => ({ ...prev, namaVariabel: 'Wajib dipilih' }));
+      return;
     }
-  };
+
+    if (isEditMode && editNomor !== null) {
+      // Mode Edit
+      const payload1 = {
+        transformationVariableId: selectedVariableId,
+        type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
+        indicator: indikator.trim(),
+        questionText: pertanyaan1.trim(),
+        scoreDescription0: deskripsiSkor[0].trim(),
+        scoreDescription1: deskripsiSkor[1].trim(),
+        scoreDescription2: deskripsiSkor[2].trim(),
+        scoreDescription3: deskripsiSkor[3].trim(),
+        scoreDescription4: deskripsiSkor[4].trim(),
+        order: parseInt(urutan, 10) || 1,
+        status: finalStatus as 'active' | 'inactive',
+      };
+
+      const result1 = await updateMutate(editNomor, payload1);
+      // Jika updateMutate melempar error, maka akan ditangkap di catch
+
+      if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
+        const payload2 = { ...payload1, questionText: pertanyaan2.trim() };
+        await updateMutate(editNomor + 1, payload2);
+      }
+
+      localStorage.setItem('newDataAdded', 'true');
+      router.push('/daftar-assessment');
+    } else {
+      // Mode Create
+      const payload1 = {
+        transformationVariableId: selectedVariableId,
+        type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
+        indicator: indikator.trim(),
+        questionText: pertanyaan1.trim(),
+        scoreDescription0: deskripsiSkor[0].trim(),
+        scoreDescription1: deskripsiSkor[1].trim(),
+        scoreDescription2: deskripsiSkor[2].trim(),
+        scoreDescription3: deskripsiSkor[3].trim(),
+        scoreDescription4: deskripsiSkor[4].trim(),
+        order: parseInt(urutan, 10) || 1,
+        status: finalStatus as 'active' | 'inactive',
+      };
+
+      const result1 = await createMutate(payload1);
+
+      if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
+        const payload2 = { ...payload1, questionText: pertanyaan2.trim() };
+        await createMutate(payload2);
+      }
+
+      localStorage.setItem('newDataAdded', 'true');
+      router.push('/daftar-assessment');
+    }
+  } catch (error) {
+    console.error('Error saat menyimpan:', error);
+    // Tidak perlu alert — error akan ditampilkan via createError/updateError
+    // Atau, jika hook tidak menangkap error, tambahkan state error khusus
+  } finally {
+    setShowConfirmModal(false);
+  }
+};
 
   const handleCancel = () => {
     localStorage.removeItem('editData');

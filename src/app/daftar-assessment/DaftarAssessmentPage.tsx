@@ -37,12 +37,13 @@ export default function AssessmentPage() {
 
   const variableNameMap = React.useMemo(() => {
   const map: Record<number, string> = {};
-  variablesData.forEach((v) => {
-    map[v.id] = v.name;
-  });
+  if (Array.isArray(variablesData)) { // ✅ GANTI JADI variablesData
+    variablesData.forEach((v) => {
+      map[v.id] = v.name;
+    });
+  }
   return map;
 }, [variablesData]); 
-
   const [roleId, setRoleId] = useState<number | null>(null);
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -58,14 +59,17 @@ export default function AssessmentPage() {
 
   // ✅ Load variableMap dari API
   useEffect(() => {
-    if (variablesData) {
-      const map: Record<number, string> = {};
-      variablesData.forEach((variable: any) => {
-        map[variable.id] = variable.name; // Sesuaikan field jika perlu
-      });
-      setVariableMap(map);
-    }
-  }, [variablesData]);
+  if (Array.isArray(variablesData)) {
+    const map: Record<number, string> = {};
+    variablesData.forEach((variable: any) => {
+      map[variable.id] = variable.name; // sesuaikan field
+    });
+    setVariableMap(map);
+  } else {
+    console.warn("⚠️ variablesData bukan array:", variablesData);
+  }
+}, [variablesData]);
+
 
   // ✅ Load data soal — tunggu variableMap siap
   useEffect(() => {
@@ -282,23 +286,23 @@ export default function AssessmentPage() {
             <div className="overflow-x-auto">
               {currentData.length > 0 ? (
              <TableUpdate
-  columns={columns}
-  data={currentData}
-  currentPage={page}
-  rowsPerPage={itemsPerPage}
-  onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
-  onDeactivate={(index) => toggleStatus(index)}
-  onReactivate={(index) => toggleStatus(index)}
-  onSort={handleSort}
-  sortConfig={sortConfig}
-  renderCell={(columnKey, item) => {
-    if (columnKey === 'status' && [2, 3, 4].includes(Number(roleId))) {
-      return <RoleBasedStatusCell status={item.status} id={item.id} />;
-    }
+                      columns={columns}
+                      data={currentData}
+                      currentPage={page}
+                      rowsPerPage={itemsPerPage}
+                      onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
+                      onDeactivate={(index) => toggleStatus(index)}
+                      onReactivate={(index) => toggleStatus(index)}
+                      onSort={handleSort}
+                      sortConfig={sortConfig}
+                      renderCell={(columnKey, item) => {
+                        if (columnKey === 'status' && [2, 3, 4].includes(Number(roleId))) {
+                          return <RoleBasedStatusCell status={item.status} id={item.id} roleId={roleId ?? 0} />;
+                        }
 
-    return undefined; // <-- INI KUNCI: biar fallback ke default
-  }}
-/>
+                        return undefined; // <-- INI KUNCI: biar fallback ke default
+                      }}
+                    />
               ) : (
                 <div className="p-6 text-center text-gray-500 border-t">
                   {loading ? "Loading..." : "Tidak ada data assessment untuk ditampilkan."}
