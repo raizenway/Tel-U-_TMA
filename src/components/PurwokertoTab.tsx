@@ -6,15 +6,12 @@ import * as XLSX from "xlsx";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
 import { Download, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import SuccessNotification from "./SuccessNotification";
 import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList'; 
-import { useCreateAssessmentDetail } from '@/hooks/useAssessment';
-
-// ✅ IMPORT DROPDOWN ASSESSMENT PERIOD
-import AssessmentPeriodDropdown from "@/components/AssessmentPeriodDropdown";
+import { useCreateAssessmentDetail, useFinishAssessment } from '@/hooks/useAssessment';
 
 interface PurwokertoTabProps {
   setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
@@ -35,7 +32,6 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   const hookResult = useTransformationVariableList();
   const transformationVariables = hookResult.data;
   const variablesLoading = hookResult.loading;
-  const safeVariables = Array.isArray(transformationVariables) ? transformationVariables : [];
   const [variableMap, setVariableMap] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -118,6 +114,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   }, [variableMap, rawQuestions.length]);
 
   const { mutate: saveAssessmentDetail, loading: savingAnswers, error: saveError } = useCreateAssessmentDetail();
+  const { mutate: finishAssessment, loading: finishing, error: finishError } = useFinishAssessment();
 
   useEffect(() => {
     if (saveError) {
@@ -125,6 +122,13 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       alert("Gagal menyimpan jawaban: " + saveError);
     }
   }, [saveError]);
+
+  useEffect(() => {
+    if (finishError) {
+      console.error("Error menyelesaikan assessment:", finishError);
+      alert("Gagal menyelesaikan assessment: " + finishError);
+    }
+  }, [finishError]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
@@ -139,10 +143,18 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
 
-  // ✅ STATE UNTUK PERIODE YANG DIPILIH
-  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
-
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const periodIdFromUrl = searchParams.get('periodId');
+  const selectedPeriodId = periodIdFromUrl ? parseInt(periodIdFromUrl, 10) : null;
+
+  useEffect(() => {
+    if (selectedPeriodId === null || isNaN(selectedPeriodId) || selectedPeriodId <= 0) {
+      alert("Periode tidak valid. Silakan kembali ke halaman pemilihan.");
+      router.push("/assessment");
+    }
+  }, [selectedPeriodId, router]);
+
   const current = questions[currentIndex];
   const isLast = currentIndex === questions.length - 1;
 
@@ -190,6 +202,11 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   };
 
   const handleConfirm = async () => {
+    if (selectedPeriodId === null) {
+      alert("Periode tidak valid.");
+      return;
+    }
+
     try {
       let successCount = 0;
       let totalCount = 0;
@@ -201,7 +218,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         totalCount++;
         
         const answerData = {
-          assessmentId: selectedPeriodId!, // ✅ GUNAKAN PERIODE YANG DIPILIH
+          assessmentId: selectedPeriodId,
           questionId: q.id,
           textAnswer1: "0",
           textAnswer2: "0", 
@@ -220,23 +237,27 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         try {
           await saveAssessmentDetail(answerData);
           successCount++;
-          console.log(`✅ Jawaban untuk soal ID ${q.id} berhasil disimpan`);
         } catch (error) {
           console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
         }
       }
 
       if (successCount === 0 && totalCount > 0) {
-        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\n" +
-              "Data assessment TIDAK MASUK ke sistem.\n" +
-              "Silakan coba lagi atau hubungi administrator.");
+        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\nSilakan coba lagi.");
         return;
       }
 
       if (successCount < totalCount) {
-        alert("⚠️ PERINGATAN: Sebagian data gagal disimpan!\n\n" +
-              `Berhasil: ${successCount}/${totalCount} soal\n` +
-              "Silakan coba kirim ulang atau hubungi administrator.");
+        alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
+      }
+
+      // ✅ LANGKAH BARU: Selesaikan assessment
+      try {
+        await finishAssessment({ assessmentId: selectedPeriodId });
+        console.log("✅ Assessment berhasil diselesaikan di backend");
+      } catch (err) {
+        console.error("❌ Gagal menyelesaikan assessment:", err);
+        // Tetap lanjut karena jawaban sudah tersimpan
       }
 
       const resultData = questions.map((q) => ({
@@ -265,10 +286,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
 
     } catch (err) {
       console.error("❌ Gagal menyimpan jawaban ke API:", err);
-      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\n" +
-            "Error: " + (err instanceof Error ? err.message : String(err)) + "\n\n" +
-            "Data assessment TIDAK MASUK ke sistem.\n" +
-            "Silakan coba lagi atau hubungi administrator.");
+      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -283,21 +301,29 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [formBelumDisimpan]);
 
-  // ✅ VALIDASI: semua soal + periode harus dipilih
-  const allAnswered = 
-    selectedPeriodId !== null &&
-    questions.slice(0, -1).every((q) => {
-      if (q.id === 1) {
-        const val = answers["1"];
-        return val != null && val !== "" && !isNaN(Number(val)) && Number(val) >= 0;
-      } else {
-        return answers[q.id] != null && answers[q.id] !== "";
-      }
-    });
+  const allAnswered = questions.slice(0, -1).every((q) => {
+    if (q.id === 1) {
+      const val = answers["1"];
+      return val != null && val !== "" && !isNaN(Number(val)) && Number(val) >= 0;
+    } else {
+      return answers[q.id] != null && answers[q.id] !== "";
+    }
+  });
 
   const isLoading = variablesLoading || rawQuestions.length === 0;
   if (isLoading) {
     return <div>Memuat variabel transformasi dan soal...</div>;
+  }
+
+  if (selectedPeriodId === null) {
+    return (
+      <div className="max-w-2xl mx-auto p-10 text-center">
+        <p className="text-red-600">Periode penilaian tidak valid.</p>
+        <Button onClick={() => router.push("/assessment")} className="mt-4">
+          Kembali ke Halaman Utama
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -518,20 +544,6 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
             >
               Finish attempt
             </button>
-
-            {/* ✅ DROPDOWN PERIODE PENILAIAN - FINAL */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <label className="block text-xs font-medium text-gray-600 mb-2">
-                Pilih Periode Penilaian *
-              </label>
-              <AssessmentPeriodDropdown
-                value={selectedPeriodId}
-                onChange={setSelectedPeriodId}
-                onlyActive={true}
-                placeholder="Pilih periode..."
-                className="text-sm"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -590,10 +602,10 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
             <Button
               variant="primary"
               onClick={handleConfirm}
-              disabled={savingAnswers}
+              disabled={savingAnswers || finishing}
               className="px-4 py-2 text-white rounded"
             >
-              {savingAnswers ? 'Menyimpan...' : 'Submit'}
+              {savingAnswers || finishing ? 'Menyimpan...' : 'Submit'}
             </Button>
           </div>
         }
@@ -688,4 +700,4 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
       />
     </div>
   );
-} 
+}

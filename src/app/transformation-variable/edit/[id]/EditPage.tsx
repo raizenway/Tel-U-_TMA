@@ -6,7 +6,6 @@ import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariab
 import { useEffect, useState } from 'react';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
-import { fdatasync } from 'fs';
 
 export default function EditVariablePage() {
   const { id } = useParams();
@@ -36,21 +35,24 @@ export default function EditVariablePage() {
   // ✅ Hook update
   const { mutate: update, loading: updating } = useUpdateTransformationVariable();
 
-  // ✅ Isi form + logo preview dari data
-  useEffect(() => {
-  if (data) {
-    setNamaVariabel(data.name || '');
-    setBobot(data.weight?.toString() || '');
-    setDeskripsi(data.description || '');
-    setReferensi(data.reference || '');
-    setStatus(data.status === 'active' ? 'Active' : 'Inactive');
-    
-    // ✅ Ambil path dari iconFile
-    if (data.iconFile?.path) {
-      setLogoPreview(data.iconFile.path);
-    }
+useEffect(() => {
+  if (!data || !variableId) return;
+
+  // Jika data adalah respons API (punya properti 'data'), ambil dari sana
+  const item = ('data' in data && typeof data === 'object') ? (data as any).data : data;
+
+  if (!item) {
+    console.log('❌ Item tidak ditemukan');
+    return;
   }
-}, [data]);
+
+  setNamaVariabel(item.name || '');
+  setBobot(item.weight?.toString() || '');
+  setDeskripsi(item.description || '');
+  setReferensi(item.reference || '');
+  setStatus(item.status === 'active' ? 'Active' : 'Inactive');
+
+}, [data, variableId]);
   // 🚫 Loading
   if (loadingData) {
     return (
@@ -143,7 +145,7 @@ export default function EditVariablePage() {
   };
 
   return (
-    <div className="flex ">
+  <div key={variableId} className="flex ">
       <main className="flex-1">
         <div className="p-8  mx-auto">
           <div className="p-8 border-b border-gray-200">
