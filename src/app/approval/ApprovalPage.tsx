@@ -11,8 +11,19 @@ import { useSort } from "@/hooks/useSort";
 import SearchTable from "@/components/SearchTable";
 import axios from "axios";
 
+// ✅ Mapping branchId dari database
+const BRANCH_ID_TO_CAMPUS: Record<number, string> = {
+  1: "Tel-U Bandung",
+  2: "Tel-U Jakarta",
+  3: "Tel-U Purwokerto",
+  4: "Tel-U Surabaya",
+};
+
 const TablePage = () => {
   const [selectedCampus, setSelectedCampus] = useState("Tel-U Jakarta");
+  const [selectedPeriodeId, setSelectedPeriodeId] = useState<number | null>(null);
+  const [periodeOptions, setPeriodeOptions] = useState<{ id: number; label: string }[]>([]);
+  const [periodeDropdownOpen, setPeriodeDropdownOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -25,8 +36,8 @@ const TablePage = () => {
   const rowsPerPage = 10;
 
   const campusOptions = [
-    "Tel-U Jakarta",
     "Tel-U Bandung",
+    "Tel-U Jakarta",
     "Tel-U Surabaya",
     "Tel-U Purwokerto",
   ];
@@ -41,91 +52,135 @@ const TablePage = () => {
     { header: "Tipe Soal", key: "tipeSoal", width: "120px", sortable: true },
   ];
 
+  // 🔁 Fetch daftar periode
   useEffect(() => {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+    const fetchPeriodeOptions = async () => {
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+        if (!API_BASE) return;
 
-  if (!API_BASE) {
-    console.error("NEXT_PUBLIC_API_URL belum di-set di .env.local");
-    setLoading(false);
-    return;
-  }
+        const res = await axios.get(`${API_BASE}/assessment-period`);
+        const periods = res.data.data || [];
 
-  const fetchApprovalData = async () => {
-    try {
-      setLoading(true);
+        const options = periods.map((p: any) => ({
+          id: p.id,
+          label: `${p.year} ${p.semester}`,
+        }));
 
-      // ✅ Ambil assessment list — ini sudah include assessmentDetails!
-      const assessmentRes = await axios.get(`${API_BASE}/assessment`, {
-        params: { approvalStatus: "onprogress" },
-      });
+        setPeriodeOptions(options);
 
-      const assessments = assessmentRes.data.data || [];
-
-      if (assessments.length === 0) {
-        setTableData([]);
-        return;
-      }
-
-      // ✅ Ambil semua questionId unik dari assessmentDetails
-      const questionIds = Array.from(
-        new Set(
-          assessments.flatMap((assessment: any) =>
-            (assessment.assessmentDetails || []).map((detail: any) => detail.questionId)
-          )
-        )
-      );
-
-      // ✅ Ambil data question — gunakan endpoint /question/:id (tanpa "s")
-      const questionPromises = questionIds.map((id: number) =>
-        axios.get(`${API_BASE}/question/${id}`).catch((err) => {
-          console.warn(`Gagal ambil question ID ${id}:`, err.message);
-          return null;
-        })
-      );
-
-      const questionResponses = await Promise.all(questionPromises);
-      const questionMap: Record<number, any> = {};
-
-      questionResponses.forEach((res, index) => {
-        if (res?.data?.data) {
-          questionMap[questionIds[index]] = res.data.data;
+        if (options.length > 0 && selectedPeriodeId === null) {
+          setSelectedPeriodeId(options[0].id);
         }
-      });
-
-      // ✅ Gabungkan jadi satu list datar untuk tabel
-      const flattenedData = assessments.flatMap((assessment: any) =>
-        (assessment.assessmentDetails || []).map((detail: any, idx: number) => {
-          const question = questionMap[detail.questionId] || {};
-          return {
-            nomor: idx + 1,
-            variable: question.transformationVariable?.name || 
-                     question.transformationVariableId?.toString() || "-",
-            indikator: question.indicator || "-",
-            pertanyaan: question.questionText || "-",
-            jawaban: detail.submissionValue || "-",
-            skor: detail.score !== undefined ? detail.score : "-", // mungkin belum ada
-            tipeSoal: question.type || "-",
-            assessmentId: assessment.id,
-            detailId: detail.id,
-          };
-        })
-      );
-
-      setTableData(flattenedData);
-    } catch (error: any) {
-      console.error("Gagal memuat data approval:", error);
-      if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Response:", error.response.data);
+      } catch (err) {
+        console.error("Gagal memuat daftar periode:", err);
+        const fallback = [
+          { id: 1, label: "2025 Ganjil" },
+          { id: 2, label: "2024 Genap" },
+          { id: 3, label: "2025 Ganjil" },
+          { id: 4, label: "2025 Genap" },
+        ];
+        setPeriodeOptions(fallback);
+        if (selectedPeriodeId === null) setSelectedPeriodeId(1);
       }
-      setTableData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchApprovalData();
-}, []);
+    fetchPeriodeOptions();
+  }, []);
+
+  // 🔁 Fetch data approval berdasarkan kampus & periode
+  useEffect(() => {
+    if (selectedPeriodeId === null) return;
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+    if (!API_BASE) {
+      console.error("NEXT_PUBLIC_API_URL belum di-set di .env.local");
+      setLoading(false);
+      return;
+    }
+
+    const fetchApprovalData = async () => {
+      try {
+        setLoading(true);
+
+        const assessmentRes = await axios.get(`${API_BASE}/assessment`, {
+          params: {
+            approvalStatus: "submitted",
+            periode_id: selectedPeriodeId,
+          },
+        });
+        const assessments = assessmentRes.data.data || [];
+
+        if (assessments.length === 0) {
+          setTableData([]);
+          return;
+        }
+
+        const questionIds = Array.from(
+          new Set(
+            assessments.flatMap((assessment: any) =>
+              (assessment.assessmentDetails || []).map((detail: any) => detail.questionId)
+            )
+          )
+        );
+
+        const questionPromises = questionIds.map((id: number) =>
+          axios.get(`${API_BASE}/question/${id}`).catch((err) => {
+            console.warn(`Gagal ambil question ID ${id}:`, err.message);
+            return null;
+          })
+        );
+
+        const questionResponses = await Promise.all(questionPromises);
+        const questionMap: Record<number, any> = {};
+
+        questionResponses.forEach((res, index) => {
+          if (res?.data?.data) {
+            questionMap[questionIds[index]] = res.data.data;
+          }
+        });
+
+        const flattenedData = assessments.flatMap((assessment: any) =>
+          (assessment.assessmentDetails || []).map((detail: any, idx: number) => {
+            const question = questionMap[detail.questionId] || {};
+            return {
+              nomor: idx + 1,
+              variable: question.transformationVariable?.name || 
+                       question.transformationVariableId?.toString() || "-",
+              indikator: question.indicator || "-",
+              pertanyaan: question.questionText || "-",
+              jawaban: detail.submissionValue || "-",
+              skor: detail.score !== undefined ? detail.score : "-",
+              tipeSoal: question.type || "-",
+              assessmentId: assessment.id,
+              detailId: detail.id,
+            };
+          })
+        );
+
+        // ✅ Filter berdasarkan kampus
+        const filteredByCampus = flattenedData.filter((row) => {
+          const assessment = assessments.find((a: any) => a.id === row.assessmentId);
+          const userBranchId = assessment?.user?.branchId;
+          const campusName = BRANCH_ID_TO_CAMPUS[userBranchId] || "UNKNOWN";
+          return campusName === selectedCampus;
+        });
+
+        setTableData(filteredByCampus);
+      } catch (error: any) {
+        console.error("Gagal memuat data approval:", error);
+        if (error.response) {
+          console.error("Status:", error.response.status);
+          console.error("Response:", error.response.data);
+        }
+        setTableData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApprovalData();
+  }, [selectedCampus, selectedPeriodeId]); // 🔁 Re-fetch jika kampus atau periode berubah
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
@@ -157,6 +212,7 @@ const TablePage = () => {
     <div className="flex">
       {tab === "approval-assessment" && (
         <div className="bg-white rounded-xl w-full">
+          {/* 🔧 Bagian header dengan dropdown */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
               <SearchTable
@@ -169,6 +225,35 @@ const TablePage = () => {
             <div className="flex items-center gap-2">
               <TableButton data={tableData} />
 
+              {/* 🔽 Dropdown Periode (kiri) */}
+              <div className="relative">
+                <button
+                  onClick={() => setPeriodeDropdownOpen(!periodeDropdownOpen)}
+                  className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
+                >
+                  {periodeOptions.find((p) => p.id === selectedPeriodeId)?.label ||
+                    "Pilih Periode"}
+                  <ChevronDown size={16} />
+                </button>
+                {periodeDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border shadow rounded z-10">
+                    {periodeOptions.map((periode) => (
+                      <div
+                        key={periode.id}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          setSelectedPeriodeId(periode.id);
+                          setPeriodeDropdownOpen(false);
+                        }}
+                      >
+                        {periode.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 🔽 Dropdown Kampus (kanan) */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -197,6 +282,7 @@ const TablePage = () => {
             </div>
           </div>
 
+          {/* 📊 Tabel */}
           {loading ? (
             <div className="p-6 text-center">Memuat data approval...</div>
           ) : (
@@ -210,6 +296,7 @@ const TablePage = () => {
             />
           )}
 
+          {/* 📄 Pagination & Tombol */}
           <div className="flex items-center justify-between mt-4">
             <div className="h-10 flex items-center">
               <Pagination
@@ -245,6 +332,7 @@ const TablePage = () => {
             </div>
           </div>
 
+          {/* 🪟 Modal Konfirmasi */}
           <ModalConfirm
             isOpen={showModal}
             onCancel={() => {
