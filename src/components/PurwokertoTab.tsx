@@ -123,12 +123,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
     }
   }, [saveError]);
 
-  useEffect(() => {
-    if (finishError) {
-      console.error("Error menyelesaikan assessment:", finishError);
-      alert("Gagal menyelesaikan assessment: " + finishError);
-    }
-  }, [finishError]);
+  
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
@@ -251,14 +246,17 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
       }
 
-      // ✅ LANGKAH BARU: Selesaikan assessment
-      try {
-        await finishAssessment({ assessmentId: selectedPeriodId });
-        console.log("✅ Assessment berhasil diselesaikan di backend");
-      } catch (err) {
-        console.error("❌ Gagal menyelesaikan assessment:", err);
-        // Tetap lanjut karena jawaban sudah tersimpan
-      }
+    // ✅ Selesaikan assessment — HENTIKAN jika gagal
+try {
+  console.log("📤 Mengirim request finishAssessment dengan ID:", selectedPeriodId);
+  const finishResult = await finishAssessment({ assessmentId: selectedPeriodId });
+  console.log("✅ Finish assessment berhasil:", finishResult);
+} catch (err) {
+  console.error("❌ Gagal menyelesaikan assessment:", err);
+  const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan tak dikenal";
+  alert(`Gagal menyelesaikan assessment: ${errorMessage}`);
+  return; // ⛔️ JANGAN LANJUT KE LANGKAH BERIKUTNYA
+}
 
       const resultData = questions.map((q) => ({
         no: q.id,

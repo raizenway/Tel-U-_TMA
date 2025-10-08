@@ -262,7 +262,7 @@ function FilterUPPSPopover({
 /* =========================
  * Main Page
  * =======================*/
-export default function WelcomePage() {
+export default function AssessmentResultPage() {
   const [tab] = useState<'assessment-result'>('assessment-result');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
@@ -569,17 +569,71 @@ export default function WelcomePage() {
                           })}
                         </tr>
 
-                        {/* Action */}
-                        <tr className="odd:bg-white even:bg-gray-50">
-                          <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
-                          {columns.map((c, i) => {
-                            const pal = getPalette(i);
+               {/* Action */}
+            <tr className="odd:bg-white even:bg-gray-50">
+              <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
+              {columns.map((c, i) => {
+                const pal = getPalette(i);
+
+                // ambil data report UPPS terkait
+                const data = reportsByUPPS[c.id] || [];
+
+                // fungsi handle download
+                const handleDownload = () => {
+                import('xlsx').then(XLSX => {
+                import('file-saver').then(FileSaver => {
+                  // === 1. Ambil assessment terkait ===
+                  const assessment = assessments.find(a => a.id === c.id);
+                  if (!assessment) return;
+
+                  // === 2. Siapkan Metadata Sheet ===
+                  const metadata = [
+                    ['Nama UPPS/KC', assessment.name],
+                    ['Periode Submit Assessment', getPeriodeLabel(assessment.submitPeriode)],
+                    ['Email', assessment.email],
+                    ['Student Body', assessment.studentBody],
+                    ['Jumlah Prodi', assessment.jumlahProdi],
+                    ['Jumlah Prodi Terakreditasi Unggul', assessment.jumlahProdiUnggul],
+                    ['Maturity Level (Institusi)', assessment.maturityLevel],
+                    ['Transformation Maturity Index (TMI)', radarDataByUPPS[c.id]?.length
+                      ? (radarDataByUPPS[c.id].reduce((a, b) => a + b, 0) / radarDataByUPPS[c.id].length).toFixed(2)
+                      : 'N/A'
+                    ],
+                  ];
+
+                              const metadataSheet = XLSX.utils.aoa_to_sheet(metadata);
+
+                              // === 3. Siapkan Detail Variabel Sheet ===
+                              const detailData = (reportsByUPPS[c.id] || []).map(item => ({
+                                'Kode Variabel': item.code,
+                                'Nama Variabel': item.name,
+                                'Point': item.point,
+                                'Maturity Level': item.maturityLevel,
+                                'Deskripsi': item.desc,
+                              }));
+
+                              const detailSheet = XLSX.utils.json_to_sheet(detailData);
+
+                              // === 4. Gabung ke Workbook ===
+                              const workbook = XLSX.utils.book_new();
+                              XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Metadata');
+                              XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail Variabel');
+
+                              // === 5. Ekspor ===
+                              const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                              const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                              FileSaver.saveAs(blob, `${c.name.replace(/\s+/g, '_')}-report.xlsx`);
+                            });
+                          });
+                        };
                             return (
                               <td
                                 key={c.id}
                                 className={`p-3 text-center border-l-2 h-full ${pal.border}`}
                               >
-                                <Button variant="primary">Download</Button>
+                                <Button variant="primary" onClick={handleDownload}>
+                                  Download
+                                </Button>
                               </td>
                             );
                           })}

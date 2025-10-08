@@ -68,6 +68,7 @@ export function useCreateAssessmentDetail() {
   return { mutate, loading, error };
 }
 
+// hooks/useAssessment.ts
 export function useFinishAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +77,16 @@ export function useFinishAssessment() {
     setLoading(true);
     setError(null);
     try {
-      const res = await finishAssessment(body); // panggil API
-      return res.data;
+      const res = await finishAssessment(body);
+
+      // ✅ Tambahkan pengecekan res tidak null
+      if (res && res.status === 'success') {
+        return { success: true };
+      }
+
+      // Jika res null atau status bukan 'success'
+      const message = res?.message || 'Gagal menyelesaikan assessment';
+      throw new Error(message);
     } catch (err: any) {
       setError(err.message);
       throw err;
