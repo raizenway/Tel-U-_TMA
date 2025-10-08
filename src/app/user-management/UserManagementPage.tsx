@@ -195,13 +195,10 @@ const handleConfirm = async () => {
 // Siapkan data yang sudah dimodifikasi untuk tabel
 const processedUsers = currentUsers.map(user => ({
   ...user,
-  roleId: user.roleId === 1 ? 'Super User' :
-          user.roleId === 2 ? 'UPPS/KC' :
-          user.roleId === 3 ? 'SSO' :
-          user.roleId === 4 ? 'Non-SSO' :
-          `Role ${user.roleId}`,
+  // Ambil nama role langsung dari objek role yang dikirim API
+  roleId: user.role?.name || 'Role tidak ditemukan',
 
-  // ✅ Tinggal panggil dari konstanta
+  // Untuk branch, tetap gunakan BRANCH_NAMES jika belum ada mapping dari API
   branchId: BRANCH_NAMES[user.branchId] || `Cabang ${user.branchId}`,
 
   password: '••••••',
@@ -211,7 +208,7 @@ const dataForExport = processedUsers.map((user) => ({
   'User ID': user.id,
   'User Name': user.username,
   'Nama User': user.fullname,
-  Role: user.roleId,
+  Role: user.roleId, 
   'Kampus Cabang': branchNames[user.branchId] || user.branchId,
   Status: user.status,
 }));

@@ -1,5 +1,10 @@
 export type UserStatus = 'active' | 'inactive';
 
+export interface Role {
+  id: number;
+  name: string;
+}
+
 export interface User {
   id: number;
   fullname: string;
@@ -13,8 +18,9 @@ export interface User {
   branchId: number;
   created_at: string; // ISO date
   updated_at: string; // ISO date
-  logo_file_id?: number | null; // ← tambah ini
-  pic: string | null; 
+  picName: string | null; // ← tambah ini
+  pic_name: string | null; 
+  role: Role; 
 }
 
 export interface CreateUserRequest {
@@ -26,7 +32,7 @@ export interface CreateUserRequest {
   roleId: number;          // camelCase
   branchId: number;  
   status: 'active' | 'inactive';
-  pic?: string;
+  picName?: string;  
   logo_file_id?: number | null; // ← tambah ini
   
   
