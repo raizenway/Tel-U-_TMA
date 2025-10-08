@@ -76,7 +76,7 @@ export default function EditAssessmentPage() {
         const editData = {
           id: question.id,
           nomor: question.id,
-          variable: getVariableName(question.transformationVariableId),
+          transformationVariableId: question.transformationVariableId, 
           bobot: 1,
           indikator: question.indicator,
           pertanyaan: question.questionText,

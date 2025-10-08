@@ -140,15 +140,15 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const periodIdFromUrl = searchParams.get('periodId');
-  const selectedPeriodId = periodIdFromUrl ? parseInt(periodIdFromUrl, 10) : null;
+  const assessmentIdFromUrl = searchParams.get('assessmentId');
+const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
 
   useEffect(() => {
-    if (selectedPeriodId === null || isNaN(selectedPeriodId) || selectedPeriodId <= 0) {
+    if (selectedAssessmentId === null || isNaN(selectedAssessmentId) || selectedAssessmentId <= 0) {
       alert("Periode tidak valid. Silakan kembali ke halaman pemilihan.");
       router.push("/assessment");
     }
-  }, [selectedPeriodId, router]);
+  }, [selectedAssessmentId, router]);
 
   const current = questions[currentIndex];
   const isLast = currentIndex === questions.length - 1;
@@ -197,7 +197,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
   };
 
   const handleConfirm = async () => {
-    if (selectedPeriodId === null) {
+    if (selectedAssessmentId === null) {
       alert("Periode tidak valid.");
       return;
     }
@@ -213,7 +213,7 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
         totalCount++;
         
         const answerData = {
-          assessmentId: selectedPeriodId,
+          assessmentId: selectedAssessmentId,
           questionId: q.id,
           textAnswer1: "0",
           textAnswer2: "0", 
@@ -248,8 +248,8 @@ export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
 
     // ✅ Selesaikan assessment — HENTIKAN jika gagal
 try {
-  console.log("📤 Mengirim request finishAssessment dengan ID:", selectedPeriodId);
-  const finishResult = await finishAssessment({ assessmentId: selectedPeriodId });
+  console.log("📤 Mengirim request finishAssessment dengan ID:", selectedAssessmentId);
+  const finishResult = await finishAssessment({ assessmentId: selectedAssessmentId });
   console.log("✅ Finish assessment berhasil:", finishResult);
 } catch (err) {
   console.error("❌ Gagal menyelesaikan assessment:", err);
@@ -313,10 +313,10 @@ try {
     return <div>Memuat variabel transformasi dan soal...</div>;
   }
 
-  if (selectedPeriodId === null) {
+  if (selectedAssessmentId === null) {
     return (
       <div className="max-w-2xl mx-auto p-10 text-center">
-        <p className="text-red-600">Periode penilaian tidak valid.</p>
+        <p className="text-red-6  00">Periode penilaian tidak valid.</p>
         <Button onClick={() => router.push("/assessment")} className="mt-4">
           Kembali ke Halaman Utama
         </Button>
@@ -346,40 +346,45 @@ try {
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
 
-            {current.id === 1 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">
-                    Jumlah program studi S1 TUNC yang terakreditasi oleh lembaga internasional bereputasi
-                  </label>
-                  <input
-                    type="number"
-                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-                    value={answers["1"] || ""}
-                    onChange={(e) => {
-                      setAnswers((prev) => ({ ...prev, "1": e.target.value }));
-                      setIsFormDirty(true);
-                      setFormBelumDisimpan(true);
-                    }}
-                    placeholder="Masukkan angka"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Jumlah total program studi S1 TUNC</label>
-                  <input
-                    type="number"
-                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-                    value={answers["1b"] || ""}
-                    onChange={(e) => {
-                      setAnswers((prev) => ({ ...prev, "1b": e.target.value }));
-                      setIsFormDirty(true);
-                      setFormBelumDisimpan(true);
-                    }}
-                    placeholder="Masukkan angka"
-                  />
-                </div>
-              </div>
-            )}
+          {current.id === 1 && (
+  <div className="space-y-4">
+    {/* Bagian 1: Terakreditasi */}
+    <div>
+      <label className="block text-sm text-gray-800 mb-1">
+        {current.question.split('|')[0]?.trim() || "Pertanyaan bagian 1 tidak tersedia"}
+      </label>
+      <input
+        type="number"
+        className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+        value={answers["1"] || ""}
+        onChange={(e) => {
+          setAnswers((prev) => ({ ...prev, "1": e.target.value }));
+          setIsFormDirty(true);
+          setFormBelumDisimpan(true);
+        }}
+        placeholder="Masukkan angka"
+      />
+    </div>
+
+    {/* Bagian 2: Total */}
+    <div>
+      <label className="block text-sm text-gray-800 mb-1">
+        {current.question.split('|')[1]?.trim() || "Pertanyaan bagian 2 tidak tersedia"}
+      </label>
+      <input
+        type="number"
+        className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+        value={answers["1b"] || ""}
+        onChange={(e) => {
+          setAnswers((prev) => ({ ...prev, "1b": e.target.value }));
+          setIsFormDirty(true);
+          setFormBelumDisimpan(true);
+        }}
+        placeholder="Masukkan angka"
+      />
+    </div>
+  </div>
+)}
 
             {isLast && (
               <>
