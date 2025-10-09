@@ -17,7 +17,7 @@ interface PurwokertoTabProps {
   setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export default function PurwokertoTab({ setIsFormDirty }: PurwokertoTabProps) {
+export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps) {
   const [rawQuestions, setRawQuestions] = useState<Array<{
     id: number;
     section: string;

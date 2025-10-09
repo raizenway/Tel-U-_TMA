@@ -1,3 +1,5 @@
+import { Branch } from "./user-management";
+
 export type UserStatus = 'active' | 'inactive';
 
 export interface User {
@@ -14,6 +16,7 @@ export interface User {
   branch_id: number;
   created_at: string; // ISO date
   updated_at: string; // ISO date
+  branch: Branch;
 }
 
 export interface CreateUserRequest {
