@@ -53,11 +53,12 @@ const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!
 
   // Kolom Tabel
   const columns = [
-  { header: 'User ID', key: 'id', width: '140px', sortable: true },
+  { header: 'Nomor', key: 'id', width: '140px', sortable: true },
   { header: 'User Name', key: 'username', width: '160px', sortable: true },
   { header: 'Nama User', key: 'fullname', width: '200px', sortable: true },
   { header: 'Role', key: 'roleId', width: '140px', sortable: true },
   { header: 'Kampus Cabang', key: 'branchId', width: '180px', sortable: true },
+  { header: 'Email', key: 'email', width: '180px', sortable: true },
   { header: 'Status', key: 'status', width: '100px', sortable: true },
   { 
     header: 'Aksi', 
@@ -212,7 +213,6 @@ const dataForExport = processedUsers.map((user) => ({
   'Kampus Cabang': branchNames[user.branchId] || user.branchId,
   Status: user.status,
 }));
-
 
 
 // Loading & Error
