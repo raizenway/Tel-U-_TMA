@@ -22,6 +22,7 @@ interface ModalEditPeriodeProps {
     status: 'active' | 'inactive';
     ActiveenessStatus?: 'active' | 'inactive'; 
   } | null;
+   periodes: { id: number; tahun: number; semester: string }[];
 }
 
 export default function ModalEditPeriode({
@@ -31,71 +32,99 @@ export default function ModalEditPeriode({
   title,
   header = "Edit Periode",
   periode,
+  periodes,
 }: ModalEditPeriodeProps) {
   const [tahun, setTahun] = useState<string>('');
   const [semester, setSemester] = useState<string>('');
   const [status, setStatus] = useState<'active' | 'inactive' | ''>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Isi form dengan data periode saat modal dibuka
     useEffect(() => {
     if (periode) {
-        console.log('Data periode:', periode);
+      console.log('Data periode:', periode);
 
-        setTahun(periode.tahun.toString());
-        setSemester(periode.semester);
+      setTahun(periode.tahun.toString());
+      setSemester(periode.semester);
 
-        // Normalisasi status untuk modal
-        let normalizedStatus: 'active' | 'inactive' | '' = '';
+      let normalizedStatus: 'active' | 'inactive' | '' = '';
 
-        if (typeof periode.status === 'string') {
+      if (typeof periode.status === 'string') {
         const lower = periode.status.toLowerCase().trim();
         if (
-            lower === 'active' ||
-            lower === 'aktif' ||
-            lower === '1'
+          lower === 'active' ||
+          lower === 'aktif' ||
+          lower === '1'
         ) {
-            normalizedStatus = 'active';
+          normalizedStatus = 'active';
         } else if (
-            lower === 'inactive' ||
-            lower === 'nonaktif' ||
-            lower === '0'
+          lower === 'inactive' ||
+          lower === 'nonaktif' ||
+          lower === '0'
         ) {
-            normalizedStatus = 'inactive';
+          normalizedStatus = 'inactive';
         }
-        }
+      }
 
-        setStatus(normalizedStatus);
+      // ⚠️ JIKA MASIH KOSONG, SET KE 'inactive' SEBAGAI DEFAULT
+      if (normalizedStatus === '') {
+        normalizedStatus = 'inactive';
+      }
+
+      setStatus(normalizedStatus);
     }
-    }, [periode]);
+  }, [periode]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // Validasi tahun
-    if (!/^\d{4}$/.test(tahun)) {
-      alert("Tahun harus 4 digit angka (contoh: 2025)");
-      return;
-    }
+  // Reset error
+  setErrorMessage('');
 
-    const yearNum = parseInt(tahun);
-    if (yearNum < 2000 || yearNum > 2100) {
-      alert("Tahun harus antara 2000 - 2100");
-      return;
-    }
-
-  const validation = validatePeriodeForm({ tahun, semester, status });
-  if (!validation.isValid) {
-    alert(validation.errors[0]);
+  // Validasi tahun
+  if (!/^\d{4}$/.test(tahun)) {
+    setErrorMessage("Tahun harus 4 digit angka (contoh: 2025)");
     return;
   }
 
-  if (!periode) return;
+  const yearNum = parseInt(tahun);
+  if (yearNum < 2000 || yearNum > 2100) {
+    setErrorMessage("Tahun harus antara 2000 - 2100");
+    return;
+  }
 
-  onConfirm(periode.id, {
-    tahun: parseInt(tahun),
-    semester,
-    status: status as 'active' | 'inactive'
-  });
+  // Validasi semester
+  if (semester !== 'Ganjil' && semester !== 'Genap') {
+    setErrorMessage("Semester harus 'Ganjil' atau 'Genap'");
+    return;
+  }
+
+  // Validasi status
+  if (status === '') {
+    setErrorMessage("Status harus dipilih");
+    return;
+  }
+
+  // ✅ Cek duplikasi — exclude diri sendiri
+  const existing = periodes.find(p => 
+    p.id !== periode?.id && 
+    p.tahun === yearNum && 
+    p.semester === semester
+  );
+
+  if (existing) {
+    setErrorMessage(`Periode ${yearNum} Semester ${semester} sudah ada!`);
+    return;
+  }
+
+  // Jika semua valid, submit
+  if (periode) {
+    onConfirm(periode.id, {
+      tahun: yearNum,
+      semester,
+      status: status as 'active' | 'inactive'
+    });
+  }
 };
 
 if (!periode) return null;
@@ -129,6 +158,7 @@ if (!periode) return null;
                     const val = e.target.value;
                     if (/^\d{0,4}$/.test(val)) {
                       setTahun(val);
+                      setErrorMessage('');
                     }
                   }}
                   placeholder="Contoh: 2025"
@@ -139,21 +169,29 @@ if (!periode) return null;
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Semester</label>
-                <input
-                    type="text"
-                    value={semester}
-                    onChange={(e) => setSemester(e.target.value)}
-                    placeholder="Contoh: Ganjil, Genap, Genapppp"
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+                <select
+                  value={semester}
+                  onChange={(e) => {
+                    setSemester(e.target.value);
+                    setErrorMessage(''); // 👈 RESET ERROR
+                  }}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Pilih Semester</option>
+                  <option value="Ganjil">Ganjil</option>
+                  <option value="Genap">Genap</option>
+                </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
                 <select
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as 'active' | 'inactive' | '')}
+                    onChange={(e) => {
+                      setStatus(e.target.value as 'active' | 'inactive' | '');
+                      setErrorMessage(''); // 👈 RESET ERROR
+                    }}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
                     <option value="">Pilih Status</option>
@@ -162,6 +200,13 @@ if (!periode) return null;
                 </select>
               </div>
             </form>
+
+            {/* ✅ PESAN ERROR */}
+            {errorMessage && (
+              <div className="text-red-600 text-sm mt-1">
+                {errorMessage}
+              </div>
+            )}
 
             {/* 🔘 BUTTON */}
             <div className="flex justify-center gap-4 mt-4">
@@ -173,12 +218,13 @@ if (!periode) return null;
                 Batal
               </Button>
               <Button
-                className="px-10"
-                variant="primary"
-                onClick={() => handleSubmit(new Event('submit') as any)}
-              >
-                Simpan
-              </Button>
+              className={`px-10 ${errorMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
+              variant="primary"
+              onClick={() => handleSubmit(new Event('submit') as any)}
+              disabled={!!errorMessage}
+            >
+              Simpan
+            </Button>
             </div>
           </div>
         </Dialog.Panel>

@@ -71,6 +71,12 @@ export default function PeriodePage() {
   // Sort
   const { sortedData, requestSort, sortConfig } = useSort<Periode>(filteredPeriodes, "id");
 
+  // ✅ FORMAT STATUS DI sortedData DULU
+const formattedSortedData = sortedData.map(p => ({
+  ...p,
+  status: formatStatus(p.status), // 👈 Ini yang penting!
+}));
+
   // Pagination
   const totalItems = sortedData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -129,22 +135,46 @@ export default function PeriodePage() {
     setShowEditModal(true);     // buka modal
   };
 
-const processedData = currentPeriodes.map(p => ({
-  ...p,
-  status: formatStatus(p.status), // ← p.status sudah pasti 'active' atau 'inactive'
-}));
+  console.log('[DEBUG] Data dari API:', data?.data);
 
-  const dataForExport = processedData.map(p => ({
+
+
+  const dataForExport = currentPeriodes.map(p => ({
     ID: p.id,
     Tahun: p.tahun,
     Semester: p.semester,
-    Status: p.status,
+    Status: p.status, // 👈 Sudah 'Aktif' atau 'Nonaktif'
   }));
 
   const [successMessage, setSuccessMessage] = useState('');
 
-  if (loading) return <p className="p-6">Loading...</p>;
-  if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
+  if (loading) {
+    return (
+      <div className="flex">
+        <main className="w-full h-screen px-6 py-21 bg-gray overflow-y-auto">
+          <div className="bg-white rounded-lg overflow-x-auto w-full p-4 mt-4 mx-4">
+            <div className="flex justify-center items-center h-64">
+              <p className="text-black-600">Loading data dari server...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex">
+        <main className="w-full h-screen px-6 py-21 bg-gray overflow-y-auto">
+          <div className="bg-white rounded-lg overflow-x-auto w-full p-4 mt-4 mx-4">
+            <div className="flex justify-center items-center h-64">
+              <p className="text-red-500">Error: {error}</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const handleAddSubmit = async (formData: { 
     tahun: number; 
@@ -227,7 +257,7 @@ const handleEditSubmit = async (id: number, formData: {
 
   return (
     <div className="flex">
-      <main className="w-full px-11 py-21">
+      <main className="w-full h-screen px-6 py-21 bg-gray overflow-y-auto">
         {showSuccess && (
           <SuccessNotification
             isOpen={showSuccess}
@@ -236,9 +266,9 @@ const handleEditSubmit = async (id: number, formData: {
           />
         )}
 
-        <div className="bg-white rounded-lg overflow-auto w-full">
+        <div className="bg-white rounded-lg overflow-x-auto w-full p-10 mt-4">
           {/* Header */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 relative min-w-max">
             <SearchTable
               value={searchTerm}
               onChange={setSearchTerm}
@@ -254,8 +284,9 @@ const handleEditSubmit = async (id: number, formData: {
 
           {/* Tabel */}
           <TableUpdate
+            key={refreshFlag}
             columns={columns}
-            data={processedData}
+            data={currentPeriodes}
             currentPage={currentPage}
             rowsPerPage={itemsPerPage}
             onEdit={handleEdit}
@@ -306,6 +337,7 @@ const handleEditSubmit = async (id: number, formData: {
           onConfirm={handleAddSubmit}
           title="Tambah Periode Baru"
           header="Tambah Periode"
+          periodes={periodes} // 👈 TAMBAHKAN INI
         />
 
         {/* Modal Edit Periode */}
@@ -319,6 +351,7 @@ const handleEditSubmit = async (id: number, formData: {
           title="Edit Periode"
           header="Edit Periode"
           periode={editingPeriode}
+          periodes={periodes} 
         />
       </main>
     </div>
