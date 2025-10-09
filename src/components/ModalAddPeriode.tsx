@@ -15,6 +15,7 @@ interface ModalAddPeriodeProps {
   }) => void;
   title: string;
   header?: string;
+  periodes: { tahun: number; semester: string }[];
 }
 
 export default function ModalAddPeriode({
@@ -23,36 +24,59 @@ export default function ModalAddPeriode({
   onConfirm,
   title,
   header = "Tambah Periode",
+  periodes,
 }: ModalAddPeriodeProps) {
   const [tahun, setTahun] = useState<string>(''); // 👈 kosong
   const [semester, setSemester] = useState<string>(''); // 👈 kosong
-  const [status, setStatus] = useState<'active' | 'inactive' | ''>(''); // 👈 kosong // 👈 bisa tetap 'active' atau juga kosong
+  const [status, setStatus] = useState<'active' | 'inactive' | ''>(''); 
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validasi tahun: harus 4 digit angka
+
+    // Reset error sebelum validasi
+    setErrorMessage('');
+
+    // Validasi tahun
     if (!/^\d{4}$/.test(tahun)) {
-    alert("Tahun harus 4 digit angka (contoh: 2025)");
-    return;
+      setErrorMessage("Tahun harus 4 digit angka (contoh: 2025)");
+      return;
     }
 
     const yearNum = parseInt(tahun);
     if (yearNum < 2000 || yearNum > 2100) {
-    alert("Tahun harus antara 2000 - 2100");
-    return;
+      setErrorMessage("Tahun harus antara 2000 - 2100");
+      return;
     }
 
-  const validation = validatePeriodeForm({ tahun, semester, status });
-  if (!validation.isValid) {
-    alert(validation.errors[0]); // atau tampilkan semua
-    return;
-  }
+    // Validasi semester
+    if (semester !== 'Ganjil' && semester !== 'Genap') {
+      setErrorMessage("Semester harus 'Ganjil' atau 'Genap'");
+      return;
+    }
 
-  onConfirm({
-    tahun: parseInt(tahun),
-    semester,
-    status: status as 'active' | 'inactive' // aman karena sudah divalidasi
-  });
+    // Validasi status
+    if (status === '') {
+      setErrorMessage("Status harus dipilih");
+      return;
+    }
+
+    // ✅ Cek duplikasi lokal
+    const existing = periodes.find(p => 
+      p.tahun === yearNum && p.semester === semester
+    );
+
+    if (existing) {
+      setErrorMessage(`Periode ${yearNum} Semester ${semester} sudah ada!`);
+      return;
+    }
+
+    // Jika semua valid, submit
+    onConfirm({
+      tahun: yearNum,
+      semester,
+      status: status as 'active' | 'inactive'
+    });
   };
 
   return (
@@ -84,6 +108,7 @@ export default function ModalAddPeriode({
                   const val = e.target.value;
                   if (/^\d{0,4}$/.test(val)) {
                     setTahun(val);
+                    setErrorMessage('');
                   }
                 }}
                 placeholder="Contoh: 2025"
@@ -96,7 +121,10 @@ export default function ModalAddPeriode({
               <label className="block text-sm font-medium text-gray-700">Semester</label>
               <select
                 value={semester}
-                onChange={(e) => setSemester(e.target.value)}
+                onChange={(e) => {
+                  setSemester(e.target.value);
+                  setErrorMessage(''); // 👈 RESET ERROR
+                }}
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
@@ -110,7 +138,10 @@ export default function ModalAddPeriode({
               <label className="block text-sm font-medium text-gray-700">Status</label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
+                onChange={(e) => {
+                  setStatus(e.target.value as 'active' | 'inactive');
+                  setErrorMessage(''); // 👈 RESET ERROR
+                }}
                 required // 👈 tambahkan ini biar wajib dipilih
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
@@ -120,6 +151,13 @@ export default function ModalAddPeriode({
               </select>
             </div>
           </form>
+
+          {/* ✅ PESAN ERROR */}
+          {errorMessage && (
+            <div className="text-red-600 text-sm mt-1">
+              {errorMessage}
+            </div>
+          )}
 
             {/* 🔘 BUTTON */}
             <div className="flex justify-center gap-4 mt-4">
@@ -131,12 +169,13 @@ export default function ModalAddPeriode({
                 Batal
               </Button>
               <Button
-                className="px-10"
-                variant="primary"
-                onClick={() => handleSubmit(new Event('submit') as any)}
-              >
-                Simpan
-              </Button>
+              className={`px-10 ${errorMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
+              variant="primary"
+              onClick={() => handleSubmit(new Event('submit') as any)}
+              disabled={!!errorMessage}
+            >
+              Simpan
+            </Button>
             </div>
           </div>
         </Dialog.Panel>

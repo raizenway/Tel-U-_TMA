@@ -33,7 +33,7 @@ const radarData = [
   { subject: "Spio", A: 90 },
   { subject: "Kemahasiswaan", A: 80 },
   { subject: "Admisi", A: 80 },
-  { subject: "PPN,Publikasi,Abdimas",A:80},
+  { subject: "PPN,Publikasi,Abdimas", A: 80 },
 ];
 
 // Daftar Kampus
@@ -58,7 +58,7 @@ export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
 
-    // ✅ State untuk data dashboard dari API
+  // ✅ State untuk data dashboard dari API (hanya untuk card)
   const [dashboardData, setDashboardData] = useState({
     totalBranches: 0,
     totalVariable: 0,
@@ -68,7 +68,7 @@ export default function DashboardTab() {
 
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch data dari API saat komponen mount
+  // ✅ Fetch hanya untuk card dashboard
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -94,64 +94,24 @@ export default function DashboardTab() {
     fetchDashboardData();
   }, []);
 
-  // Di atas, setelah state lainnya
-const [studentBodyData, setStudentBodyData] = useState<{
-  year: string;
-  "Tel-U Jakarta": number;
-  "Tel-U Surabaya": number;
-  "Tel-U Purwokerto": number;
-  "Tel-U Bandung": number;
-}[]>([]);
+  // === Student Body Data (masih pakai API untuk struktur, tapi isi null) ===
+  const [studentBodyData, setStudentBodyData] = useState<{
+    year: string;
+    "Tel-U Jakarta": number | null;
+    "Tel-U Surabaya": number | null;
+    "Tel-U Purwokerto": number | null;
+    "Tel-U Bandung": number | null;
+  }[]>([]);
 
-// Data Akreditasi Prodi — AWALNYA KOSONG, NANTI DIISI DARI API
-const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
-const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
-  "Tel-U Jakarta": [],
-  "Tel-U Surabaya": [],
-  "Tel-U Purwokerto": [],
-  "Tel-U Bandung": [],
-});
+  useEffect(() => {
+    const fetchStudentBodyData = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/assessment/dashboard');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-// Derived state — otomatis dari studentBodyData
-const studentYears = Array.from(new Set(studentBodyData.map(d => d.year))).sort();
-const studentInputData = {
-  "Tel-U Jakarta": studentYears.map(year => {
-    const item = studentBodyData.find(d => d.year === year);
-    return item ? item["Tel-U Jakarta"] : 0;
-  }),
-  "Tel-U Surabaya": studentYears.map(year => {
-    const item = studentBodyData.find(d => d.year === year);
-    return item ? item["Tel-U Surabaya"] : 0;
-  }),
-  "Tel-U Purwokerto": studentYears.map(year => {
-    const item = studentBodyData.find(d => d.year === year);
-    return item ? item["Tel-U Purwokerto"] : 0;
-  }),
-  "Tel-U Bandung": studentYears.map(year => {
-    const item = studentBodyData.find(d => d.year === year);
-    return item ? item["Tel-U Bandung"] : 0;
-  }),
-};
+        const result = await response.json();
+        const branchDetail = result.branchDetail || [];
 
-useEffect(() => {
-  const fetchStudentBodyData = async () => {
-    try {
-      console.log("🚀 Fetching student body data from /api/assessment/dashboard...");
-
-      const response = await fetch('http://localhost:3000/api/assessment/dashboard');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const result = await response.json();
-      console.log("📥 Full API Response:", result);
-
-      const apiData = result.data?.studentBody; // 👈 Pastikan nama field ini sesuai dengan API Anda!
-
-      if (!Array.isArray(apiData)) {
-        throw new Error("studentGrowth is missing or not an array");
-      }
-
-      // Transformasi data API ke format yang kita butuhkan
-      const transformedData = apiData.map(item => {
         const branchMap: Record<string, CampusKey> = {
           "Telkom University Jakarta": "Tel-U Jakarta",
           "Telkom University Surabaya": "Tel-U Surabaya",
@@ -159,138 +119,78 @@ useEffect(() => {
           "Telkom University Bandung": "Tel-U Bandung",
         };
 
-        const campusKey = branchMap[item.branch] || ("Tel-U " + item.branch.split(" ").pop()) as CampusKey;
+        const validCampuses = branchDetail
+          .map((item: any) => branchMap[item.name])
+          .filter(Boolean) as CampusKey[];
 
-        return {
-          year: String(item.year),
-          [campusKey]: Number(item.totalStudents) || 0,
-        };
-      });
+        const campusesToUse = validCampuses.length > 0 ? validCampuses : CAMPUS_LIST;
+        const years = ["2021", "2022", "2023", "2024"];
 
-      // Gabungkan data per tahun & kampus
-      const years = Array.from(new Set(transformedData.map(d => d.year))).sort();
-
-      const finalData = years.map(year => {
-        const row: any = { year };
-        CAMPUS_LIST.forEach(campus => {
-          const found = transformedData.find(d => d.year === year && d[campus]);
-          row[campus] = found ? found[campus] : 0;
+        const finalData = years.map(year => {
+          const row: any = { year };
+          campusesToUse.forEach(campus => {
+            row[campus] = null;
+          });
+          return row;
         });
-        return row;
-      });
 
-      setStudentBodyData(finalData);
-      console.log("✅ Student body data successfully loaded:", finalData);
-
-    } catch (error: any) {
-      console.error("❌ Error fetching student body data:", error.message || error);
-      // Fallback ke data dummy jika gagal
-      setStudentBodyData([
-        { year: "2021", "Tel-U Jakarta": 100, "Tel-U Surabaya": 130, "Tel-U Purwokerto": 110, "Tel-U Bandung": 140 },
-        { year: "2022", "Tel-U Jakarta": 120, "Tel-U Surabaya": 150, "Tel-U Purwokerto": 115, "Tel-U Bandung": 135 },
-        { year: "2023", "Tel-U Jakarta": 125, "Tel-U Surabaya": 170, "Tel-U Purwokerto": 130, "Tel-U Bandung": 160 },
-        { year: "2024", "Tel-U Jakarta": 135, "Tel-U Surabaya": 180, "Tel-U Purwokerto": 140, "Tel-U Bandung": 170 },
-      ]);
-    }
-  };
-
-  fetchStudentBodyData();
-}, []);
-
-const [accreditationData, setAccreditationData] = useState<{
-  tahun: string;
-  Jakarta: number;
-  Bandung: number;
-  Purwokerto: number;
-  Surabaya: number;
-}[]>([]);
-
-// ✅ Ambil data akreditasi dari API dan isi state
-// ✅ Ambil data akreditasi dari API dan isi state
-useEffect(() => {
-  const fetchAccreditationData = async () => {
-    try {
-      console.log("🚀 Fetching from /api/assessment/dashboard...");
-
-      const response = await fetch('http://localhost:3000/api/assessment/dashboard');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const result = await response.json();
-      console.log("📥 Full API Response:", result);
-
-      const apiData = result.data?.accreditationGrowth;
-
-      if (!Array.isArray(apiData)) {
-        throw new Error("accreditationGrowth is missing or not an array");
+        setStudentBodyData(finalData);
+      } catch (error: any) {
+        console.error("❌ Error fetching student body data:", error.message || error);
+        setStudentBodyData([
+          { year: "2021", "Tel-U Jakarta": null, "Tel-U Surabaya": null, "Tel-U Purwokerto": null, "Tel-U Bandung": null },
+          { year: "2022", "Tel-U Jakarta": null, "Tel-U Surabaya": null, "Tel-U Purwokerto": null, "Tel-U Bandung": null },
+          { year: "2023", "Tel-U Jakarta": null, "Tel-U Surabaya": null, "Tel-U Purwokerto": null, "Tel-U Bandung": null },
+          { year: "2024", "Tel-U Jakarta": null, "Tel-U Surabaya": null, "Tel-U Purwokerto": null, "Tel-U Bandung": null },
+        ]);
       }
+    };
 
-      const years = apiData.map(item => String(item.year));
-      const scores = apiData.map(item => Number(item.score));
+    fetchStudentBodyData();
+  }, []);
 
-      setAccreditationYears(years);
-      // ✅ ISI SEMUA KAMPUS DENGAN NILAI YANG SAMA — TAPI TETAP PAKE NAMA KAMPUS UNTUK STRUKTUR
-      setAccreditationInputData({
-        "Tel-U Jakarta": [],
-        "Tel-U Surabaya": [],
-        "Tel-U Purwokerto": [],
-        "Tel-U Bandung": scores,
-      });
-
-      console.log("✅ Data akreditasi berhasil diambil dan diisi");
-
-    } catch (error: any) {
-      console.error("❌ Error fetching accreditation ", error.message || error);
-      // Fallback ke dummy
-      setAccreditationYears(["2021", "2022", "2023", "2024"]);
-      setAccreditationInputData({
-        "Tel-U Jakarta": [85, 87, 89, 90],
-        "Tel-U Surabaya": [80, 82, 85, 88],
-        "Tel-U Purwokerto": [78, 80, 83, 85],
-        "Tel-U Bandung": [90, 91, 92, 93],
-      });
-    }
+  // === Derived state untuk Student Body ===
+  const studentYears = Array.from(new Set(studentBodyData.map(d => d.year))).sort();
+  const studentInputData = {
+    "Tel-U Jakarta": studentYears.map(year => {
+      const item = studentBodyData.find(d => d.year === year);
+      return item ? (item["Tel-U Jakarta"] ?? 0) : 0;
+    }),
+    "Tel-U Surabaya": studentYears.map(year => {
+      const item = studentBodyData.find(d => d.year === year);
+      return item ? (item["Tel-U Surabaya"] ?? 0) : 0;
+    }),
+    "Tel-U Purwokerto": studentYears.map(year => {
+      const item = studentBodyData.find(d => d.year === year);
+      return item ? (item["Tel-U Purwokerto"] ?? 0) : 0;
+    }),
+    "Tel-U Bandung": studentYears.map(year => {
+      const item = studentBodyData.find(d => d.year === year);
+      return item ? (item["Tel-U Bandung"] ?? 0) : 0;
+    }),
   };
 
-  fetchAccreditationData();
-}, []);
-// ✅ Biarkan useEffect INI TETAP APA ADANYA (tidak diubah!)
-useEffect(() => {
-  const initialData = accreditationYears.map((year, idx) => ({
-    tahun: year,
-    Jakarta: accreditationInputData["Tel-U Jakarta"][idx] ?? 0,
-    Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
-    Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
-    Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
-  }));
-  setAccreditationData(initialData);
-}, [accreditationInputData, accreditationYears]);
+  // === ✅ A K R E D I T A S I — VERSI AWAL (STATIS) ===
+  const accreditationData = [
+    { tahun: "2021", Jakarta: 85, Bandung: 90, Purwokerto: 78, Surabaya: 80 },
+    { tahun: "2022", Jakarta: 87, Bandung: 91, Purwokerto: 80, Surabaya: 82 },
+    { tahun: "2023", Jakarta: 89, Bandung: 92, Purwokerto: 83, Surabaya: 85 },
+    { tahun: "2024", Jakarta: 90, Bandung: 93, Purwokerto: 85, Surabaya: 88 },
+  ];
 
-  // ✅ Fix: handleAddYear - Pastikan lastYearNum adalah number
-  const handleAddYear = () => {
-    const lastYearStr = studentYears[studentYears.length - 1] ?? '';
-    const lastYearNum = Number(lastYearStr);
-    const nextYearNum = isNaN(lastYearNum) ? 2024 + 1 : lastYearNum + 1;
-    const nextYear = String(nextYearNum);
+  // State untuk modal edit akreditasi (salinan dari data statis)
+  const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
+    "Tel-U Jakarta": accreditationData.map(d => d.Jakarta),
+    "Tel-U Surabaya": accreditationData.map(d => d.Surabaya),
+    "Tel-U Purwokerto": accreditationData.map(d => d.Purwokerto),
+    "Tel-U Bandung": accreditationData.map(d => d.Bandung),
+  });
 
-    setStudentYears((prev) => [...prev, nextYear]);
-    (Object.keys(studentInputData) as Array<keyof CampusData>).forEach((campus) => {
-      setStudentInputData((prev) => ({
-        ...prev,
-        [campus]: [...prev[campus], 0],
-      }));
-    });
-  };
+  const [accreditationYears, setAccreditationYears] = useState<string[]>(
+    accreditationData.map(d => d.tahun)
+  );
 
-  const handleInputChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
-    const num = value === '' ? 0 : Number(value);
-    if (isNaN(num)) return;
-    setStudentInputData((prev) => ({
-      ...prev,
-      [campus]: prev[campus].map((val, i) => (i === yearIndex ? num : val)),
-    }));
-  };
-
-  
+  // === Fungsi Edit Akreditasi ===
   const handleAddAccreditationYear = () => {
     const lastYearStr = accreditationYears[accreditationYears.length - 1] ?? '';
     const lastYearNum = Number(lastYearStr);
@@ -317,8 +217,9 @@ useEffect(() => {
 
   const handleGenerate = () => {
     if (modalMode === 'student') {
-      // Data langsung digunakan
+      // Student data tidak disimpan ke state utama (hanya untuk tampilan)
     } else if (modalMode === 'prodi') {
+      // Update data utama dari input modal
       const newData = accreditationYears.map((year, idx) => ({
         tahun: year,
         Jakarta: accreditationInputData["Tel-U Jakarta"][idx] || 0,
@@ -326,20 +227,29 @@ useEffect(() => {
         Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] || 0,
         Bandung: accreditationInputData["Tel-U Bandung"][idx] || 0,
       }));
-      setAccreditationData(newData);
+      // Tidak perlu set state karena kita gunakan langsung di chart via derived
+      // Tapi jika ingin persist, simpan ke localStorage atau API nanti
     }
     setShowModal(false);
   };
 
   const handleDownload = () => {
-    if (accreditationData.length === 0) {
+    const dataToDownload = accreditationYears.map((year, idx) => ({
+      tahun: year,
+      Jakarta: accreditationInputData["Tel-U Jakarta"][idx] ?? 0,
+      Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
+      Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
+      Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
+    }));
+
+    if (dataToDownload.length === 0) {
       alert("Belum ada data akreditasi prodi untuk diunduh.");
       return;
     }
 
     const csv = [
       ["Tahun", "Jakarta", "Bandung", "Purwokerto", "Surabaya"],
-      ...accreditationData.map((row) => [
+      ...dataToDownload.map((row) => [
         row.tahun,
         row.Jakarta.toFixed(1),
         row.Bandung.toFixed(1),
@@ -357,6 +267,32 @@ useEffect(() => {
     a.download = "akreditasi_prodi.csv";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // === Student Body Edit ===
+  const handleAddYear = () => {
+    const lastYearStr = studentYears[studentYears.length - 1] ?? '';
+    const lastYearNum = Number(lastYearStr);
+    const nextYearNum = isNaN(lastYearNum) ? 2024 + 1 : lastYearNum + 1;
+    const nextYear = String(nextYearNum);
+
+    setStudentBodyData(prev => [...prev, {
+      year: nextYear,
+      "Tel-U Jakarta": 0,
+      "Tel-U Surabaya": 0,
+      "Tel-U Purwokerto": 0,
+      "Tel-U Bandung": 0,
+    }]);
+  };
+
+  const handleInputChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
+    const num = value === '' ? 0 : Number(value);
+    if (isNaN(num)) return;
+    const newData = [...studentBodyData];
+    if (newData[yearIndex]) {
+      newData[yearIndex] = { ...newData[yearIndex], [campus]: num };
+      setStudentBodyData(newData);
+    }
   };
 
   const openStudentModal = () => {
@@ -381,7 +317,8 @@ useEffect(() => {
   const studentDataByCampus = CAMPUS_LIST.map((campus) => {
     const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
     studentYears.forEach((year, idx) => {
-      data[year] = studentInputData[campus][idx] || 0;
+      const item = studentBodyData.find(d => d.year === year);
+      data[year] = item ? (item[campus] ?? 0) : 0;
     });
     return data;
   });
@@ -461,79 +398,79 @@ useEffect(() => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-
   return (
     <div className="space-y-8 px-4 py-6">
-  {/* Stat Cards — DINAMIS DARI API */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
-{/* Card 1: UPPS / Kampus Cabang */}
-<div
-  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-  style={{ backgroundImage: "url('/KC.png')" }}
->
-  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 biar lebih rapat */}
-    <div className="flex items-center justify-center w-10 h-10 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-      <Building2 className="text-white w-6 h-6" />
-    </div>
-    <span className="text-sm font-semibold text-center leading-tight">UPPS/Kampus Cabang</span> {/* tambah text-center & leading-tight */}
-    <div className="text-xl font-bold">
-      {loading ? '...' : dashboardData.totalBranches}
-    </div>
-  </div>
-</div>
+      {/* Stat Cards — DINAMIS DARI API */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+        {/* Card 1: UPPS / Kampus Cabang */}
+        <div
+          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+          style={{ backgroundImage: "url('/KC.png')" }}
+        >
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+          <div className="relative flex flex-col items-center space-y-1 p-3 z-10">
+            <div className="flex items-center justify-center w-10 h-10 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+              <Building2 className="text-white w-6 h-6" />
+            </div>
+            <span className="text-sm font-semibold text-center leading-tight">UPPS/Kampus Cabang</span>
+            <div className="text-xl font-bold">
+              {loading ? '...' : dashboardData.totalBranches}
+            </div>
+          </div>
+        </div>
 
-{/* Card 2: Jumlah Variabel & Pertanyaan */}
-<div
-  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-  style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
->
-  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-  <div className="relative flex flex-col items-center space-y-1 p-2 z-10"> {/* space-y-1 & p-3 */}
-    <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-      <BookOpenCheckIcon className="text-white w-6 h-6" />
-    </div>
-    <span className="text-sm font-semibold text-center leading-tight">Jumlah Variabel & Pertanyaan</span>
-    <div className="text-xl font-bold">
-      {loading ? '...' : dashboardData.totalVariable}
-    </div>
-  </div>
-</div>
+        {/* Card 2: Jumlah Variabel & Pertanyaan */}
+        <div
+          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+          style={{ backgroundImage: "url('/Jumlah Variabel.png')" }}
+        >
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+          <div className="relative flex flex-col items-center space-y-1 p-2 z-10">
+            <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+              <BookOpenCheckIcon className="text-white w-6 h-6" />
+            </div>
+            <span className="text-sm font-semibold text-center leading-tight">Jumlah Variabel & Pertanyaan</span>
+            <div className="text-xl font-bold">
+              {loading ? '...' : dashboardData.totalVariable}
+            </div>
+          </div>
+        </div>
 
-{/* Card 3: Assessment Submitted */}
-<div
-  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-  style={{ backgroundImage: "url('/Assessment Submitted.png')" }}
->
-  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 */}
-    <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-      <ClipboardList className="text-white w-6 h-6" />
-    </div>
-    <span className="text-sm font-semibold text-center leading-tight">Assessment Submitted</span>
-    <div className="text-xl font-bold">
-      {loading ? '...' : dashboardData.submittedAssessments}
-    </div>
-  </div>
-</div>
+        {/* Card 3: Assessment Submitted */}
+        <div
+          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+          style={{ backgroundImage: "url('/Assessment Submitted.png')" }}
+        >
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+          <div className="relative flex flex-col items-center space-y-1 p-3 z-10">
+            <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+              <ClipboardList className="text-white w-6 h-6" />
+            </div>
+            <span className="text-sm font-semibold text-center leading-tight">Assessment Submitted</span>
+            <div className="text-xl font-bold">
+              {loading ? '...' : dashboardData.submittedAssessments}
+            </div>
+          </div>
+        </div>
 
-{/* Card 4: Assessment Approved */}
-<div
-  className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
-  style={{ backgroundImage: "url('/Assessment Approve.png')" }}
->
-  <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
-  <div className="relative flex flex-col items-center space-y-1 p-3 z-10"> {/* space-y-1 & p-3 */}
-    <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
-      <ClipboardCheck className="text-white w-6 h-6" />
-    </div>
-    <span className="text-sm font-semibold text-center leading-tight">Assessment Approved</span>
-    <div className="text-xl font-bold">
-      {loading ? '...' : dashboardData.approvedAssessments}
-    </div>
-  </div>
-</div>
-</div>
+        {/* Card 4: Assessment Approved */}
+        <div
+          className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center"
+          style={{ backgroundImage: "url('/Assessment Approve.png')" }}
+        >
+          <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
+          <div className="relative flex flex-col items-center space-y-1 p-3 z-10">
+            <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
+              <ClipboardCheck className="text-white w-6 h-6" />
+            </div>
+            <span className="text-sm font-semibold text-center leading-tight">Assessment Approved</span>
+            <div className="text-xl font-bold">
+              {loading ? '...' : dashboardData.approvedAssessments}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Progress & Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow p-6">
@@ -587,7 +524,7 @@ useEffect(() => {
           </ResponsiveContainer>
         </div>
 
-        {/* Accreditation */}
+        {/* Accreditation — Gunakan data statis */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
@@ -601,7 +538,13 @@ useEffect(() => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={accreditationData}>
+            <LineChart data={accreditationYears.map((year, idx) => ({
+              tahun: year,
+              Jakarta: accreditationInputData["Tel-U Jakarta"][idx] ?? 0,
+              Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
+              Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
+              Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
+            }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
               <YAxis domain={[0, 100]} />
@@ -616,7 +559,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 🔥 Perkembangan Variabel per Kampus - Bar Chart (Sumbu X = Variabel, Warna = Periode) */}
+      {/* 🔥 Perkembangan Variabel per Kampus - Bar Chart */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -795,11 +738,11 @@ useEffect(() => {
                   {CAMPUS_LIST.map((campus) => (
                     <tr key={campus} className="border-b border-gray-200">
                       <td className="text-left pl-2 py-2 font-medium">{campus}</td>
-                      {studentInputData[campus].map((value, j) => (
+                      {studentBodyData.map((row, j) => (
                         <td key={j} className="px-2 py-1">
                           <input
                             type="number"
-                            value={value === 0 ? "" : value}
+                            value={row[campus] === null || row[campus] === 0 ? "" : row[campus]}
                             onChange={(e) => handleInputChange(campus, j, e.target.value)}
                             className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
                             placeholder="0"

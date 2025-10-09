@@ -37,27 +37,32 @@ export function useListPeriode(refreshFlag: number) {
         let transformedData: Periode[] = [];
 
         const normalizeStatus = (rawStatus: any): 'active' | 'inactive' => {
-          if (typeof rawStatus !== 'string') return 'inactive';
-
-          const lower = rawStatus.toLowerCase().trim();
-
-          if (
-            lower === 'active' ||
-            lower === 'aktif' ||
-            lower === '1' ||
-            lower === 'true'
-          ) {
-            return 'active';
-          } else if (
-            lower === 'inactive' ||
-            lower === 'nonaktif' ||
-            lower === '0' ||
-            lower === 'false'
-          ) {
+          // Jika bukan string, langsung return 'inactive'
+          if (typeof rawStatus !== 'string') {
+            console.warn('Status bukan string:', rawStatus);
             return 'inactive';
           }
 
-          return 'inactive'; // fallback
+          // Normalisasi: lowercase + trim
+          const lower = rawStatus.toLowerCase().trim();
+
+          // Daftar nilai yang dianggap 'active'
+          const activeValues = ['active', 'aktif', '1', 'true', 'yes', 'on'];
+
+          // Daftar nilai yang dianggap 'inactive'
+          const inactiveValues = ['inactive', 'nonaktif', '0', 'false', 'no', 'off'];
+
+          if (activeValues.includes(lower)) {
+            return 'active';
+          }
+
+          if (inactiveValues.includes(lower)) {
+            return 'inactive';
+          }
+
+          // Jika tidak match, log peringatan dan return 'inactive'
+          console.warn('Status tidak dikenali, fallback ke inactive:', rawStatus);
+          return 'inactive';
         };
 
         if (Array.isArray(result)) {
