@@ -10,10 +10,11 @@ import { useAssessmentPeriod } from "@/hooks/useAssessmentPeriod";
 import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
 import { useState, useEffect } from "react";
 
+// 🔁 Sesuaikan ID periode sesuai kebutuhan di database
 const campusToPeriodIds: Record<string, number[]> = {
-  "Tel-U Jakarta": [2, 4],
-  "Tel-U Surabaya": [1, 5],
-  "Tel-U Purwokerto": [3, 6],
+  "Tel-U Jakarta": [1,2,3,4],
+  "Tel-U Surabaya": [1,2,3,4],
+  "Tel-U Purwokerto": [1,2,3,4], // ← Ganti ke [11] jika periode Purwokerto sekarang id=11
 };
 
 const campuses = [
@@ -33,40 +34,36 @@ export default function AssessmentPage() {
   const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
   useEffect(() => {
-  const fetchPeriods = async () => {
-    try {
-      const response = await list();
-      
-      // ✅ Deteksi apakah respons punya .data atau langsung array
-      let periods: AssessmentPeriodResponseDto[] = [];
-      
-      if (Array.isArray(response)) {
-        // API return array langsung
-        periods = response;
-      } else if (response && Array.isArray(response.data)) {
-        // API return { data: [...] }
-        periods = response.data;
-      } else {
-        console.warn("Struktur respons API tidak dikenali:", response);
-        periods = [];
+    const fetchPeriods = async () => {
+      try {
+        const response = await list();
+        let periods: AssessmentPeriodResponseDto[] = [];
+
+        if (Array.isArray(response)) {
+          periods = response;
+        } else if (response && Array.isArray(response.data)) {
+          periods = response.data;
+        } else {
+          console.warn("Struktur respons API tidak dikenali:", response);
+          periods = [];
+        }
+
+        setAllPeriods(periods);
+      } catch (err) {
+        console.error("Gagal memuat periode:", err);
+        setAllPeriods([]);
       }
+    };
 
-      setAllPeriods(periods);
-    } catch (err) {
-      console.error("Gagal memuat periode:", err);
-      setAllPeriods([]); // Pastikan state tetap array
-    }
+    fetchPeriods();
+  }, [list]);
+
+  const getPeriodsForCampus = (campus: string) => {
+    const allowedIds = campusToPeriodIds[campus] || [];
+    return allPeriods
+      .filter((p) => allowedIds.includes(p.id))
+      .filter((p) => p.status === 'active');
   };
-
-  fetchPeriods();
-}, [list]);
-
- const getPeriodsForCampus = (campus: string) => {
-  const allowedIds = campusToPeriodIds[campus] || [];
-  return allPeriods
-    .filter((p) => allowedIds.includes(p.id))
-    .filter((p) => p.status === 'active') // 👈 INI SATU-SATUNYA PERUBAHAN
-};
 
   const handleSelectCampus = (campus: string) => {
     setSelectedCampus(campus);
@@ -80,18 +77,27 @@ export default function AssessmentPage() {
     setShowPeriodModal(false);
 
     try {
-      await mutate({
+      // ✅ Panggil API untuk membuat assessment → dapatkan assessmentId
+      const response = await mutate({
         periodId,
         userId: 1,
         submission_date: new Date().toISOString().split("T")[0],
       });
 
+      // ✅ Ambil assessmentId dari respons
+      // Sesuaikan dengan struktur API-mu: response.id atau response.data.id
+   const assessmentId = response?.id;
+      if (!assessmentId) {
+        throw new Error("Respons API tidak mengandung assessmentId");
+      }
+
+      // ✅ Redirect ke halaman form dengan assessmentId
       if (selectedCampus === "Tel-U Purwokerto") {
-        router.push(`/assessment/assessment-form?periodId=${periodId}`);
+        router.push(`/assessment/assessment-form?assessmentId=${assessmentId}`);
       } else if (selectedCampus === "Tel-U Jakarta") {
-        router.push(`/assessment/jakarta?periodId=${periodId}`);
+        router.push(`/assessment/jakarta?assessmentId=${assessmentId}`);
       } else if (selectedCampus === "Tel-U Surabaya") {
-        router.push(`/assessment/Surabaya?periodId=${periodId}`);
+        router.push(`/assessment/Surabaya?assessmentId=${assessmentId}`);
       }
     } catch (err) {
       console.error("Gagal membuat assessment:", err);
