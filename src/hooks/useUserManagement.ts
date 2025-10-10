@@ -62,21 +62,40 @@ export function useUpdateUser() {
   const mutate = async (id: number, body: CreateUserRequest): Promise<User> => {
     setLoading(true);
     setError(null);
+
     try {
+      const formData = new FormData();
+
+      Object.keys(body).forEach(key => {
+        if (key !== 'logo') {
+          formData.append(key, body[key as keyof CreateUserRequest] as string);
+        }
+      });
+
+      if (body.logo) {
+        formData.append('logo', body.logo);
+      }
+
       const res = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: formData,
       });
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Gagal memperbarui user');
+        const errorData = await res.json().catch(() => ({ message: 'Gagal memperbarui user' }));
+        
+        // 👇 Ambil pesan error dari errorData.errors.message jika ada
+        let errorMessage = errorData.message || 'Gagal memperbarui user';
+        if (errorData.errors?.message) {
+          errorMessage = errorData.errors.message; // <-- Ini yang penting!
+        }
+
+        throw new Error(errorMessage);
       }
+
       return res.json();
     } catch (err: any) {
       let userFriendlyMessage = err.message || "Gagal memperbarui user";
-
-      // ✅ Ubah pesan error jadi lebih ramah
       if (userFriendlyMessage.toLowerCase().includes('username')) {
         userFriendlyMessage = 'Username sudah digunakan. Silakan gunakan username lain.';
       } else if (userFriendlyMessage.toLowerCase().includes('email')) {

@@ -2,11 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { X, Save} from "lucide-react";
-import Button  from "@/components/button";
+import { X, Save } from "lucide-react";
+import Button from "@/components/button";
 import { useGetUserById, useUpdateUser } from '@/hooks/useUserManagement';
-import { BRANCHES } from '@/interfaces/branch'; 
-
+import { BRANCHES } from '@/interfaces/branch';
 
 export default function EditUserPage() {
   const router = useRouter();
@@ -15,7 +14,6 @@ export default function EditUserPage() {
   const pathname = usePathname();
 
   const [, setTab] = useState("welcome");
-
 
   const [form, setForm] = useState({
     userId: '',
@@ -27,166 +25,187 @@ export default function EditUserPage() {
     nomorHp: '',
     status: '',
     branchId: '',
-    
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [logoFileName, setLogoFileName] = useState<string>('Cari Lampiran...');
 
- const { data, loading, error } = useGetUserById(Number(userIdFromQuery));
- const { mutate: updateUser, loading: updating } = useUpdateUser();
+  const { data, loading, error } = useGetUserById(Number(userIdFromQuery));
+  const { mutate: updateUser, loading: updating } = useUpdateUser();
 
-useEffect(() => {
-  if (loading || !data?.data) return;
+  // ✅ useEffect hanya untuk load data — TIDAK ADA FUNGSI DI DALAMNYA!
+  useEffect(() => {
+    if (loading || !data?.data) return;
 
-  const user = data.data;
+    const user = data.data;
 
-  // Mapping roleId ke role string
-  const role = user.roleId === 2 ? 'UPPS/KC' : 'Non SSO';
+    setForm({
+      userId: user.id.toString(),
+      username: user.username,
+      password: '',
+      namaUser: user.fullname,
+      namaPIC: user.picName || '',
+      email: user.email,
+      nomorHp: String(user.phoneNumber) || '',
+      status: user.status,
+      branchId: user.branchId.toString(),
+    });
 
-  setForm({
-    userId: user.id.toString(),
-    username: user.username,
-    password: '', // biarkan kosong, artinya "jangan ubah password"
-    namaUser: user.fullname,
-    namaPIC: user.picName || '',
-    email: user.email,
-    nomorHp: String(user.phoneNumber) || '',
-    status: user.status,
-    branchId: user.branchId.toString(),
-  });
+    if (user.logoFile && user.logoFile.path) {
+    // ✅ Gunakan full URL dengan API_URL
+    const logoUrl = `${process.env.NEXT_PUBLIC_API_URL}/${user.logoFile.path}`;
+    setLogoPreview(logoUrl);
+    setLogoFileName(user.logoFile.originalName || 'Logo saat ini');
+    } else {
+      setLogoPreview('');
+      setLogoFileName('Cari Lampiran...');
+    }
+  }, [data, loading]);
 
-}, [data, loading]);
-
+  // ✅ SEMUA FUNGSI DI LUAR useEffect
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    // reset error saat user ketik
     if (errorMessage) {
-    setErrorMessage(null);
-  }
+      setErrorMessage(null);
+    }
 
-  const { name, value } = e.target;
+    const { name, value } = e.target;
 
-  if (name === 'nomorHp') {
-  const numericValue = value.replace(/\D/g, ''); // Hapus non-digit
-  if (numericValue.length <= 13) { // ✅ Batasi maks 13 digit
-    setForm({ ...form, [name]: numericValue });
-  }
-  return;
+    if (name === 'nomorHp') {
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 13) {
+        setForm({ ...form, [name]: numericValue });
+      }
+      return;
+    } else if (name === 'username') {
+      const noSpaceValue = value.replace(/\s/g, '');
+      setForm({ ...form, [name]: noSpaceValue });
+      return;
+    }
+    setForm({ ...form, [name]: value });
+  };
 
-  }  else if (name === 'username') {
-    // ✅ Hapus semua spasi dari username saat diketik
-    const noSpaceValue = value.replace(/\s/g, '');
-    setForm({ ...form, [name]: noSpaceValue });
-    return;
-  }
-  // Untuk semua input lain
-  setForm({ ...form, [name]: value });
-};
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setLogoFile(null);
+      setLogoFileName('Cari Lampiran...');
+      return;
+    }
+
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+    setLogoFileName(file.name);
+  };
 
   const handleCancel = () => {
+    setLogoFile(null);
+    setLogoPreview('');
+    setLogoFileName('Cari Lampiran...');
     router.push('/user-management');
   };
 
-const handleSave = async () => {
-  setErrorMessage(null);
+  const handleSave = async () => {
+    setErrorMessage(null);
 
-  if (!form.userId || !form.username || !form.namaUser || !form.status) {
-    setErrorMessage('Mohon lengkapi field wajib: User ID, Username, Nama User, Status');
-    return;
-  }
+    if (!form.userId || !form.username || !form.namaUser || !form.status) {
+      setErrorMessage('Mohon lengkapi field wajib: User ID, Username, Nama User, Status');
+      return;
+    }
 
-    // ✅ Validasi: username tidak boleh mengandung spasi
-  if (form.username.includes(' ')) {
-    setErrorMessage('Username tidak boleh mengandung spasi.');
-    return;
-  }
+    if (form.username.includes(' ')) {
+      setErrorMessage('Username tidak boleh mengandung spasi.');
+      return;
+    }
 
-    // ✅ Validasi: nomor HP harus 10-13 digit
-  if (form.nomorHp.length < 10 || form.nomorHp.length > 13) {
-    setErrorMessage('Nomor Handphone harus terdiri dari 10 hingga 13 digit.');
-    return;
-  }
+    if (form.nomorHp.length < 10 || form.nomorHp.length > 13) {
+      setErrorMessage('Nomor Handphone harus terdiri dari 10 hingga 13 digit.');
+      return;
+    }
 
-    // ✅ Validasi: email harus valid
-  if (!isValidEmail(form.email)) {
-    setErrorMessage('Email tidak valid. Contoh: nama@domain.com');
-    return;
-  }
+    if (!isValidEmail(form.email)) {
+      setErrorMessage('Email tidak valid. Contoh: nama@domain.com');
+      return;
+    }
 
-  const requestBody = {
-    fullname: form.namaUser,
-    username: form.username,
-    email: form.email,
-    phoneNumber: form.nomorHp,
-    roleId: data.data.roleId,
-    branchId: Number(form.branchId),
-    status: form.status as 'active' | 'inactive',
-    picName: form.namaPIC,
+    const requestBody = {
+      fullname: form.namaUser,
+      username: form.username,
+      email: form.email,
+      phoneNumber: form.nomorHp,
+      roleId: data.data.roleId,
+      branchId: Number(form.branchId),
+      status: form.status as 'active' | 'inactive',
+      picName: form.namaPIC,
+      ...(logoFile && { logo: logoFile }),
+    };
+
+    if (form.password) {
+      (requestBody as any).password = form.password;
+    }
+
+    try {
+      await updateUser(Number(form.userId), requestBody);
+      localStorage.setItem('editDataSuccess', 'true');
+      router.push('/user-management');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Gagal memperbarui user. Silakan coba lagi.');
+    }
   };
 
-   if (form.password) {
-    (requestBody as any).password = form.password; // hanya tambahkan jika ada
-  }
-
-  try {
-  await updateUser(Number(form.userId), requestBody);
-
-  // ✅ SIMPAN FLAG UNTUK NOTIFIKASI
-  localStorage.setItem('editDataSuccess', 'true');
-
-  // ✅ REDIRECT
-  router.push('/user-management');
-} catch (err: any) {
-  setErrorMessage(err.message || 'Gagal memperbarui user. Silakan coba lagi.');
-}
-};
-
-// ✅ Fungsi validasi email
-const isValidEmail = (email: string) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const isFormValid =
-  form.userId &&
-  form.username &&
-  !form.username.includes(' ') &&
-  form.namaUser &&
-  isValidEmail(form.email) && // ✅ email harus valid
-  form.status &&
-  form.branchId !== '' && 
-  form.nomorHp.length >= 10 &&
-  form.nomorHp.length <= 13;
+    form.userId &&
+    form.username &&
+    !form.username.includes(' ') &&
+    form.namaUser &&
+    isValidEmail(form.email) &&
+    form.status &&
+    form.branchId !== '' &&
+    form.nomorHp.length >= 10 &&
+    form.nomorHp.length <= 13;
 
   useEffect(() => {
     const path = pathname?.split("/")[1];
     setTab(path || "welcome");
   }, [pathname]);
 
+  useEffect(() => {
+    return () => {
+      if (logoPreview) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
+
   if (loading) {
-  return (
-    <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 ">
-        <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
-          <p>Loading data user...</p>
-        </div>
-      </main>
-    </div>
-  );
-}
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <main className="min-h-screen w-full p-8 ">
+          <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
+            <p>Loading data user...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
-if (error) {
-  return (
-    <div className="flex min-h-screen bg-gray-100">
-      <main className="min-h-screen w-full p-8 ">
-        <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
-          <p className="text-red-500">Error: {error}</p>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-
+  if (error) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <main className="min-h-screen w-full p-8 ">
+          <div className="bg-white rounded-lg p-8 shadow-sm max-w-7xl w-full mx-auto text-center">
+            <p className="text-red-500">Error: {error}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -199,7 +218,6 @@ if (error) {
             }}
             className="grid grid-cols-2 gap-x-12 gap-y-6"
           >
-            
             <div>
               <label className="block mb-1 text-sm font-medium">Password</label>
               <input
@@ -247,7 +265,7 @@ if (error) {
 
             {data.data?.roleId === 2 && (
               <>
-               <div>
+                <div>
                   <label className="block mb-1 text-sm font-medium">Logo UPPS/KC</label>
                   <div className="relative w-full">
                     <input
@@ -255,12 +273,25 @@ if (error) {
                       id="logo"
                       name="logo"
                       accept="image/*"
-                      disabled
-                      className="absolute inset-0 opacity-0 cursor-not-allowed z-10 w-full h-full"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
                     />
-                    <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-100 px-3 py-2 text-gray-500">
-                      <span className="truncate">Logo tidak bisa diubah sementara</span>
-                      <span className="text-sm font-semibold text-gray-400">-</span>
+                    <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-100 px-3 py-2 text-gray-700">
+                      <span className="truncate">{logoFileName}</span>
+                      <div className="flex items-center gap-2">
+                        {(logoFileName !== 'Cari Lampiran...' || logoFile) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLogoFile(null);
+                              setLogoFileName('Cari Lampiran...');
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -323,7 +354,6 @@ if (error) {
             </div>
           </form>
 
-          {/* ❗️ Peringatan inline */}
           {errorMessage && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-sm text-red-700 font-medium">
@@ -333,27 +363,27 @@ if (error) {
           )}
 
           <div className="flex justify-end mt-8 gap-6">
-              <Button
-                variant="ghost"
-                icon={X}
-                iconColor="text-red-600"
-                iconPosition="left"
-                onClick={handleCancel}
-                className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
-              >
-                Batal
-              </Button>
+            <Button
+              variant="ghost"
+              icon={X}
+              iconColor="text-red-600"
+              iconPosition="left"
+              onClick={handleCancel}
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+            >
+              Batal
+            </Button>
 
-              <Button
-                variant="simpan"
-                icon={Save}
-                iconPosition="left"
-                onClick={handleSave} // ← HANYA INI!
-                disabled={!isFormValid || updating || !!errorMessage} 
-                className="rounded-[12px] px-17 py-2 text-sm font-semibold"
-              >
-                {updating ? 'Menyimpan...' : 'Simpan'}
-              </Button>
+            <Button
+              variant="simpan"
+              icon={Save}
+              iconPosition="left"
+              onClick={handleSave}
+              disabled={!isFormValid || updating || !!errorMessage}
+              className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+            >
+              {updating ? 'Menyimpan...' : 'Simpan'}
+            </Button>
           </div>
         </div>
       </main>

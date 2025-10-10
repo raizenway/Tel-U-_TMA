@@ -30,7 +30,6 @@ export default function AddUserPage() {
   }); 
 
   const [picName, setPicName] = useState('');
-  const [logoFileId, setLogoFileId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
  
   
@@ -91,6 +90,7 @@ const isValidEmail = (email: string) => {
   form.nomorHp.length <= 13 &&
   form.status.trim() !== '' &&
   form.branchId !== ''; 
+  (role !== 'UPPS/KC' || (document.querySelector('#logo') as HTMLInputElement)?.files?.[0]);
 
 const handleSave = async () => {
   if (!isFormValid) return;
@@ -119,11 +119,17 @@ const handleSave = async () => {
     return;
   }
    
-// Validasi hanya untuk PIC
-if (role !== 'Non SSO' && !picName.trim()) {
-  alert('Nama PIC wajib diisi');
-  return;
-}
+  // Validasi hanya untuk PIC
+  if (role !== 'Non SSO' && !picName.trim()) {
+    alert('Nama PIC wajib diisi');
+    return;
+  }
+
+  // ✅ VALIDASI: Jika UPPS/KC, wajib upload logo
+  if (role === 'UPPS/KC' && !(document.querySelector('#logo') as HTMLInputElement)?.files?.[0]) {
+    alert('Logo UPPS/KC wajib diupload.');
+    return;
+  }
 
   // Siapkan data yang akan dikirim ke API
 const body: CreateUserRequest = {
@@ -136,7 +142,7 @@ const body: CreateUserRequest = {
   branchId: Number(form.branchId), // ✅ Konversi string → number
   status: form.status,
   picName: picName,            // 👈 Tambahkan ini
-  //...(logoFileId !== null && { logo_file_id: logoFileId }),
+  ...(logoPreview && { logo: (document.querySelector('#logo') as HTMLInputElement)?.files?.[0] as File }),
   //logo_file_id: logoFileId, // 👈 Tambahkan ini
 };
  try {
@@ -150,10 +156,13 @@ const body: CreateUserRequest = {
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
-  if (file) {
-    setLogoFileName(file.name);
-    // Upload logo dinonaktifkan sementara
-  }
+  if (!file) return;
+
+  setLogoFileName(file.name);
+
+  // ✅ Simpan file di state, jangan upload sekarang
+  // Kita akan kirim bersamaan dengan data user nanti
+  setLogoPreview(URL.createObjectURL(file)); // preview base64
 };
 
   useEffect(() => {
@@ -161,7 +170,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTab(path || "welcome");
   }, [pathname]);
    
-  
+
 
   return (
     <div>

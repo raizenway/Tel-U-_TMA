@@ -21,6 +21,12 @@ export interface User {
   picName: string | null; // ← tambah ini
   pic_name: string | null; 
   role: Role; 
+  logoFile?: {
+    id: number;
+    originalName: string;
+    path: string;
+  }
+  logoUrl?: string;
 }
 
 export interface CreateUserRequest {
@@ -33,8 +39,8 @@ export interface CreateUserRequest {
   branchId: number;  
   status: 'active' | 'inactive';
   picName?: string;  
-  logo_file_id?: number | null; // ← tambah ini
-  
+  logo?: File;
+  logoUrl?: string; 
   
 }
 
