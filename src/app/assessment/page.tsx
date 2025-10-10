@@ -10,14 +10,16 @@ import { useAssessmentPeriod } from "@/hooks/useAssessmentPeriod";
 import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
 import { useState, useEffect } from "react";
 
-// 🔁 Sesuaikan ID periode sesuai kebutuhan di database
-const campusToPeriodIds: Record<string, number[]> = {
-  "Tel-U Jakarta": [1,2,3,4],
-  "Tel-U Surabaya": [1,2,3,4],
-  "Tel-U Purwokerto": [1,2,3,4], // ← Ganti ke [11] jika periode Purwokerto sekarang id=11
+// Mapping kampus ke userId (sesuaikan dengan data di database-mu)
+const campusToUserId: Record<string, number> = {
+  "Tel-U Bandung": 1,
+  "Tel-U Jakarta": 2,
+  "Tel-U Purwokerto": 3,
+  "Tel-U Surabaya": 4,
 };
-
+// Daftar kampus
 const campuses = [
+  { name: "Tel-U Bandung", image: "/image 2.png" },  
   { name: "Tel-U Jakarta", image: "/image 2.png" },
   { name: "Tel-U Surabaya", image: "/image 2.png" },
   { name: "Tel-U Purwokerto", image: "/image 2.png" },
@@ -33,6 +35,7 @@ export default function AssessmentPage() {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
+  // Ambil semua periode dari API
   useEffect(() => {
     const fetchPeriods = async () => {
       try {
@@ -58,11 +61,9 @@ export default function AssessmentPage() {
     fetchPeriods();
   }, [list]);
 
-  const getPeriodsForCampus = (campus: string) => {
-    const allowedIds = campusToPeriodIds[campus] || [];
-    return allPeriods
-      .filter((p) => allowedIds.includes(p.id))
-      .filter((p) => p.status === 'active');
+  // ✅ Diperbarui: Tampilkan SEMUA periode aktif, tanpa batas ID
+  const getActivePeriods = () => {
+    return allPeriods.filter((p) => p.status === "active");
   };
 
   const handleSelectCampus = (campus: string) => {
@@ -71,42 +72,50 @@ export default function AssessmentPage() {
   };
 
   const handleSelectPeriod = async (periodId: number) => {
-    if (!selectedCampus) return;
+  if (!selectedCampus) return;
 
-    setSubmittingCampus(selectedCampus);
-    setShowPeriodModal(false);
+  // ✅ Dapatkan userId sesuai kampus yang dipilih
+  const userId = campusToUserId[selectedCampus];
+  if (!userId) {
+    alert("Kampus tidak dikenali");
+    return;
+  }
 
-    try {
-      // ✅ Panggil API untuk membuat assessment → dapatkan assessmentId
-      const response = await mutate({
-        periodId,
-        userId: 1,
-        submission_date: new Date().toISOString().split("T")[0],
-      });
+  setSubmittingCampus(selectedCampus);
+  setShowPeriodModal(false);
 
-      // ✅ Ambil assessmentId dari respons
-      // Sesuaikan dengan struktur API-mu: response.id atau response.data.id
-   const assessmentId = response?.id;
-      if (!assessmentId) {
-        throw new Error("Respons API tidak mengandung assessmentId");
-      }
+  try {
+    const response = await mutate({
+      periodId,
+      userId, // 👈 GANTI DARI 1 MENJADI userId DINAMIS
+      submission_date: new Date().toISOString().split("T")[0],
+    });
 
-      // ✅ Redirect ke halaman form dengan assessmentId
-      if (selectedCampus === "Tel-U Purwokerto") {
-        router.push(`/assessment/assessment-form?assessmentId=${assessmentId}`);
-      } else if (selectedCampus === "Tel-U Jakarta") {
-        router.push(`/assessment/jakarta?assessmentId=${assessmentId}`);
-      } else if (selectedCampus === "Tel-U Surabaya") {
-        router.push(`/assessment/Surabaya?assessmentId=${assessmentId}`);
-      }
-    } catch (err) {
-      console.error("Gagal membuat assessment:", err);
-      alert("Gagal memulai assessment. Silakan coba lagi.");
-    } finally {
-      setSubmittingCampus(null);
-      setSelectedCampus(null);
+    const assessmentId = response?.id;
+    if (!assessmentId) {
+      throw new Error("Respons API tidak mengandung assessmentId");
     }
-  };
+
+    // Redirect berdasarkan kampus
+    const routeMap: Record<string, string> = {
+      "Tel-U Bandung": `/assessment/Bandung?assessmentId=${assessmentId}`,
+      "Tel-U Jakarta": `/assessment/Jakarta?assessmentId=${assessmentId}`,
+      "Tel-U Surabaya": `/assessment/Surabaya?assessmentId=${assessmentId}`,
+      "Tel-U Purwokerto": `/assessment/assessment-form?assessmentId=${assessmentId}`,
+    };
+
+    const route = routeMap[selectedCampus];
+    if (route) {
+      router.push(route);
+    }
+  } catch (err) {
+    console.error("Gagal membuat assessment:", err);
+    alert("Gagal memulai assessment. Silakan coba lagi.");
+  } finally {
+    setSubmittingCampus(null);
+    setSelectedCampus(null);
+  }
+};
 
   const formatPeriodName = (period: AssessmentPeriodResponseDto) => {
     return `${period.year} - ${period.semester}`;
@@ -143,10 +152,10 @@ export default function AssessmentPage() {
                 iconPosition="right"
                 onClick={() => handleSelectCampus(campus.name)}
                 disabled={isCreating || submittingCampus === campus.name || loadingPeriodsFromHook}
-                className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+                className="rounded-[12px] px-6 py-2 text-sm font-semibold"
               >
                 {loadingPeriodsFromHook
-                  ? "Memuat periode..."
+                  ? "Memuat..."
                   : submittingCampus === campus.name
                   ? "Memuat..."
                   : "Pilih"}
@@ -169,9 +178,9 @@ export default function AssessmentPage() {
                   setShowPeriodModal(false);
                   setSelectedCampus(null);
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 text-xl"
               >
-                ✕
+                &times;
               </button>
             </div>
 
@@ -179,8 +188,8 @@ export default function AssessmentPage() {
               <p className="text-gray-500 text-sm py-4 text-center">Memuat periode...</p>
             ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {getPeriodsForCampus(selectedCampus).length > 0 ? (
-                  getPeriodsForCampus(selectedCampus).map((period) => (
+                {getActivePeriods().length > 0 ? (
+                  getActivePeriods().map((period) => (
                     <button
                       key={period.id}
                       onClick={() => handleSelectPeriod(period.id)}
@@ -192,7 +201,7 @@ export default function AssessmentPage() {
                   ))
                 ) : (
                   <p className="text-gray-500 text-sm py-4 text-center">
-                    Tidak ada periode tersedia.
+                    Tidak ada periode aktif.
                   </p>
                 )}
               </div>

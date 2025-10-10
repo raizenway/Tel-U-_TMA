@@ -1,4 +1,11 @@
 // User dari API
+
+export interface Branch {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export interface User {
   id: number;
   fullname: string;
@@ -11,6 +18,7 @@ export interface User {
   roleId: number;
   logoFileId: number | null;
   branchId: number;
+  branch: Branch;
   createdAt: string;
   updatedAt: string;
 }
