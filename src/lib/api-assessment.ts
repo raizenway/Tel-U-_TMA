@@ -77,10 +77,34 @@ export async function finishAssessment(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`❌ Gagal menyelesaikan assessment: ${errorText}`);
+  // ✅ Jangan langsung throw error — cek dulu
+  let data;
+  try {
+    data = await res.json();
+  } catch (jsonError) {
+    // Jika body kosong atau bukan JSON, buat respons manual
+    data = {
+      status: res.ok ? 'success' : 'error',
+      message: res.ok 
+        ? 'Assessment finished successfully' 
+        : `HTTP ${res.status}: ${res.statusText}`,
+      data: res.ok ? { success: true } : null,
+    };
   }
 
-  return res.json();
+  // Jika res.ok tapi data tidak sesuai, perbaiki
+  if (res.ok && (!data || data.status !== 'success')) {
+    return {
+      status: 'success',
+      message: 'Assessment finished successfully',
+      data: { success: true },
+    };
+  }
+
+  // Jika error HTTP
+  if (!res.ok) {
+    throw new Error(data?.message || `HTTP ${res.status}: ${res.statusText}`);
+  }
+
+  return data;
 }

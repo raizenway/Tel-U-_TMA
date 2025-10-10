@@ -15,8 +15,7 @@ export default function EditUserPage() {
   const pathname = usePathname();
 
   const [, setTab] = useState("welcome");
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
+
 
   const [form, setForm] = useState({
     userId: '',
@@ -28,13 +27,13 @@ export default function EditUserPage() {
     nomorHp: '',
     status: '',
     branchId: '',
-    logoPreview: '', // base64 image
+    
   });
 
-const { data, loading, error } = useGetUserById(Number(userIdFromQuery));
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-const { mutate: updateUser, loading: updating } = useUpdateUser();
-
+ const { data, loading, error } = useGetUserById(Number(userIdFromQuery));
+ const { mutate: updateUser, loading: updating } = useUpdateUser();
 
 useEffect(() => {
   if (loading || !data?.data) return;
@@ -49,20 +48,21 @@ useEffect(() => {
     username: user.username,
     password: '', // biarkan kosong, artinya "jangan ubah password"
     namaUser: user.fullname,
-    namaPIC: user.pic || '',
+    namaPIC: user.picName || '',
     email: user.email,
     nomorHp: String(user.phoneNumber) || '',
     status: user.status,
     branchId: user.branchId.toString(),
-    logoPreview: user.logo_file_id ? `/api/logo/${user.logo_file_id}` : '',
   });
 
-  if (user.logo_file_id) {
-    setLogoFileName(`Logo_${user.id}.png`);
-  }
 }, [data, loading]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    // reset error saat user ketik
+    if (errorMessage) {
+    setErrorMessage(null);
+  }
+
   const { name, value } = e.target;
 
   if (name === 'nomorHp') {
@@ -87,26 +87,28 @@ useEffect(() => {
   };
 
 const handleSave = async () => {
+  setErrorMessage(null);
+
   if (!form.userId || !form.username || !form.namaUser || !form.status) {
-    alert('Mohon lengkapi field wajib: User ID, Username, Nama User, Status');
+    setErrorMessage('Mohon lengkapi field wajib: User ID, Username, Nama User, Status');
     return;
   }
 
     // ✅ Validasi: username tidak boleh mengandung spasi
   if (form.username.includes(' ')) {
-    alert('Username tidak boleh mengandung spasi.');
+    setErrorMessage('Username tidak boleh mengandung spasi.');
     return;
   }
 
     // ✅ Validasi: nomor HP harus 10-13 digit
   if (form.nomorHp.length < 10 || form.nomorHp.length > 13) {
-    alert('Nomor Handphone harus terdiri dari 10 hingga 13 digit.');
+    setErrorMessage('Nomor Handphone harus terdiri dari 10 hingga 13 digit.');
     return;
   }
 
     // ✅ Validasi: email harus valid
   if (!isValidEmail(form.email)) {
-    alert('Email tidak valid. Contoh: nama@domain.com');
+    setErrorMessage('Email tidak valid. Contoh: nama@domain.com');
     return;
   }
 
@@ -118,6 +120,7 @@ const handleSave = async () => {
     roleId: data.data.roleId,
     branchId: Number(form.branchId),
     status: form.status as 'active' | 'inactive',
+    picName: form.namaPIC,
   };
 
    if (form.password) {
@@ -132,8 +135,8 @@ const handleSave = async () => {
 
   // ✅ REDIRECT
   router.push('/user-management');
-} catch (err) {
-  alert('Gagal memperbarui user. Coba lagi.');
+} catch (err: any) {
+  setErrorMessage(err.message || 'Gagal memperbarui user. Silakan coba lagi.');
 }
 };
 
@@ -244,7 +247,7 @@ if (error) {
 
             {data.data?.roleId === 2 && (
               <>
-                <div>
+               <div>
                   <label className="block mb-1 text-sm font-medium">Logo UPPS/KC</label>
                   <div className="relative w-full">
                     <input
@@ -252,43 +255,12 @@ if (error) {
                       id="logo"
                       name="logo"
                       accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            const base64String = reader.result as string;
-                            setForm((prev) => ({
-                              ...prev,
-                              logoPreview: base64String,
-                            }));
-                            setLogoFile(file);
-                            setLogoFileName(file.name);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+                      disabled
+                      className="absolute inset-0 opacity-0 cursor-not-allowed z-10 w-full h-full"
                     />
-                    <div className="flex items-center justify-between border border-gray-300 rounded-md bg-white-200 px-3 py-2 text-gray-700">
-                      <span className="truncate">{logoFileName}</span>
-                      <div className="flex items-center gap-2">
-                        {(logoFile || form.logoPreview) ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLogoFile(null);
-                              setForm((prev) => ({ ...prev, logoPreview: '' }));
-                              setLogoFileName('Cari Lampiran...');
-                            }}
-                            className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
-                          >
-                            ✕
-                          </button>
-                        ) : (
-                          <span className="text-sm font-semibold text-gray-600">Upload</span>
-                        )}
-                      </div>
+                    <div className="flex items-center justify-between border border-gray-300 rounded-md bg-gray-100 px-3 py-2 text-gray-500">
+                      <span className="truncate">Logo tidak bisa diubah sementara</span>
+                      <span className="text-sm font-semibold text-gray-400">-</span>
                     </div>
                   </div>
                 </div>
@@ -351,6 +323,15 @@ if (error) {
             </div>
           </form>
 
+          {/* ❗️ Peringatan inline */}
+          {errorMessage && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-700 font-medium">
+                <span className="font-bold">Peringatan:</span> {errorMessage}
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end mt-8 gap-6">
               <Button
                 variant="ghost"
@@ -367,8 +348,8 @@ if (error) {
                 variant="simpan"
                 icon={Save}
                 iconPosition="left"
-                onClick={handleSave}
-                disabled={updating} // ⬅️ tambah ini
+                onClick={handleSave} // ← HANYA INI!
+                disabled={!isFormValid || updating || !!errorMessage} 
                 className="rounded-[12px] px-17 py-2 text-sm font-semibold"
               >
                 {updating ? 'Menyimpan...' : 'Simpan'}

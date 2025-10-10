@@ -53,11 +53,12 @@ const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!
 
   // Kolom Tabel
   const columns = [
-  { header: 'User ID', key: 'id', width: '140px', sortable: true },
+  { header: 'Nomor', key: 'id', width: '140px', sortable: true },
   { header: 'User Name', key: 'username', width: '160px', sortable: true },
   { header: 'Nama User', key: 'fullname', width: '200px', sortable: true },
   { header: 'Role', key: 'roleId', width: '140px', sortable: true },
   { header: 'Kampus Cabang', key: 'branchId', width: '180px', sortable: true },
+  { header: 'Email', key: 'email', width: '180px', sortable: true },
   { header: 'Status', key: 'status', width: '100px', sortable: true },
   { 
     header: 'Aksi', 
@@ -195,13 +196,10 @@ const handleConfirm = async () => {
 // Siapkan data yang sudah dimodifikasi untuk tabel
 const processedUsers = currentUsers.map(user => ({
   ...user,
-  roleId: user.roleId === 1 ? 'Super User' :
-          user.roleId === 2 ? 'UPPS/KC' :
-          user.roleId === 3 ? 'SSO' :
-          user.roleId === 4 ? 'Non-SSO' :
-          `Role ${user.roleId}`,
+  // Ambil nama role langsung dari objek role yang dikirim API
+  roleId: user.role?.name || 'Role tidak ditemukan',
 
-  // ✅ Tinggal panggil dari konstanta
+  // Untuk branch, tetap gunakan BRANCH_NAMES jika belum ada mapping dari API
   branchId: BRANCH_NAMES[user.branchId] || `Cabang ${user.branchId}`,
 
   password: '••••••',
@@ -211,11 +209,10 @@ const dataForExport = processedUsers.map((user) => ({
   'User ID': user.id,
   'User Name': user.username,
   'Nama User': user.fullname,
-  Role: user.roleId,
+  Role: user.roleId, 
   'Kampus Cabang': branchNames[user.branchId] || user.branchId,
   Status: user.status,
 }));
-
 
 
 // Loading & Error
