@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import PurwokertoTab from "@/components/PurwokertoTab";
+import PurwokertoTab from "@/components/PengsisianAssessment";
 import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 
 export default function AssessmentFormPage() {

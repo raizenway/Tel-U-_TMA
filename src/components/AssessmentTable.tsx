@@ -11,16 +11,7 @@ import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from 'lucide-r
 import { Search, Copy, Printer, Download } from 'lucide-react';
 import { useListAssessment } from '@/hooks/useAssessment'; // ✅ hooks yang sudah dibuat
 
-// Mapping branchId ke nama kampus (sesuaikan dengan backend-mu)
-const getCampusName = (branchId: number): string => {
-  const map: Record<number, string> = {
-    1: 'Tel-U Jakarta',
-    2: 'Tel-U Surabaya',
-    3: 'Tel-U Bandung',
-    4: 'Tel-U Purwokerto',
-  };
-  return map[branchId] || `Kampus ${branchId}`;
-};
+
 
 // Mapping status
 const mapStatusToUI = (approvalStatus: string): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
@@ -62,25 +53,25 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     }
   }, []);
 
-  // Transform data API ke format yang diharapkan oleh tabel
-  const data = apiData.map((item) => {
-    const campusName = getCampusName(item.user.branchId);
-    const { status, aksi } = mapStatusToUI(item.approvalStatus);
-    const { skor, hasil } = calculateScores(item.assessmentDetails);
+ // Transform data API ke format yang diharapkan oleh tabel
+const data = apiData.map((item) => {
+  const campusName = item.user.branch?.name || 'Kampus Tidak Diketahui';
+  const { status, aksi } = mapStatusToUI(item.approvalStatus);
+  const { skor, hasil } = calculateScores(item.assessmentDetails);
 
-    return {
-      id: item.id,
-      logo: <FaSchool className="text-blue-600 text-xl" />,
-      nama: campusName,
-      tanggal: item.submissionDate
-        ? new Date(item.submissionDate).toLocaleDateString('id-ID')
-        : 'On Progress',
-      skor,
-      hasil,
-      status,
-      aksi,
-    };
-  });
+  return {
+    id: item.id,
+    logo: <FaSchool className="text-blue-600 text-xl" />,
+    nama: campusName,
+    tanggal: item.submissionDate
+      ? new Date(item.submissionDate).toLocaleDateString('id-ID')
+      : 'On Progress',
+    skor,
+    hasil,
+    status,
+    aksi,
+  };
+});
 
   // Filter berdasarkan pencarian
   const filteredData = data.filter((item) =>

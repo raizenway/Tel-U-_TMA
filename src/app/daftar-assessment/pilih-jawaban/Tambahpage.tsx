@@ -8,25 +8,6 @@ import { X, Save } from 'lucide-react';
 import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
-// Interface untuk data assessment
-interface AssessmentItem {
-  nomor: number;
-  variable: string;
-  bobot: number;
-  indikator: string;
-  tipeSoal: string;
-  tipePertanyaan: 'pg' | 'short-answer';
-  status: 'Active' | 'Inactive';
-  pertanyaan: string;
-  pertanyaan2?: string;
-  skor: { [key: number]: { min: number; max: number } };
-  deskripsiSkor0: string;
-  deskripsiSkor1: string;
-  deskripsiSkor2: string;
-  deskripsiSkor3: string;
-  deskripsiSkor4: string;
-}
-
 // Type untuk status input (UI)
 type StatusInput = 'Aktif' | 'Non-Aktif';
 
@@ -34,7 +15,6 @@ export default function PilihJawabanPage() {
   const router = useRouter();
 
   // Form state
-  const [namaVariabel, setNamaVariabel] = useState('');
   const [bobot, setBobot] = useState(1);
   const [indikator, setIndikator] = useState('');
   const [pertanyaan1, setPertanyaan1] = useState('');
@@ -43,7 +23,10 @@ export default function PilihJawabanPage() {
   const [jumlahPertanyaan, setJumlahPertanyaan] = useState<'1 Pertanyaan' | '2 Pertanyaan' | ''>('');
   const [tipePertanyaan, setTipePertanyaan] = useState<'pg' | 'short-answer'>('pg');
   const [urutan, setUrutan] = useState<string>('');
-  const { data: transformationVariables = [], loading: variablesLoading } = useTransformationVariableList();  
+  
+  const { data: rawData, loading: variablesLoading } = useTransformationVariableList();
+  const transformationVariables = Array.isArray(rawData) ? rawData : [];
+ 
   const [selectedVariableId, setSelectedVariableId] = useState<number | null>(null);
 
   // Skor dan deskripsi
@@ -73,57 +56,73 @@ export default function PilihJawabanPage() {
   const { mutate: createMutate, loading: createLoading, error: createError } = useCreateQuestion();
   const { mutate: updateMutate, loading: updateLoading, error: updateError } = useUpdateQuestion();
 
-  // Load data dari editData
-  useEffect(() => {
-    const editData = localStorage.getItem('editData');
-    if (!editData) return;
+ useEffect(() => {
+  console.log('🔍 [useEffect] transformationVariables:', transformationVariables);
 
-    try {
-      const data = JSON.parse(editData);
+  // Jika data variabel belum siap, jangan lanjut
+  if (transformationVariables.length === 0) {
+    console.log('⚠️ [useEffect] transformationVariables masih kosong — skip load editData');
+    return;
+  }
 
-      setNamaVariabel(data.variable || '');
-      setBobot(data.bobot || 1);
-      setIndikator(data.indikator || '');
-      setPertanyaan1(data.pertanyaan || '');
-      setPertanyaan2(data.pertanyaan2 || '');
-      setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
-      setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
-      setTipePertanyaan(data.tipePertanyaan || 'pg');
+  const editDataRaw = localStorage.getItem('editData');
+  console.log('📄 [useEffect] Raw editData dari localStorage:', editDataRaw);
 
-      if (data.skor) {
-        const loadedSkor: { [key: number]: { min: string; max: string } } = {};
-        for (let i = 0; i <= 4; i++) {
-          loadedSkor[i] = {
-            min: String(data.skor[i]?.min ?? ''),
-            max: String(data.skor[i]?.max ?? ''),
-          };
-        }
-        setSkor(loadedSkor);
-      }
+  if (!editDataRaw) {
+    console.log('❌ [useEffect] Tidak ada data di localStorage — tidak dalam mode edit');
+    return;
+  }
 
-      if (data.deskripsiSkor0 !== undefined) {
-        setDeskripsiSkor({
-          0: data.deskripsiSkor0,
-          1: data.deskripsiSkor1,
-          2: data.deskripsiSkor2,
-          3: data.deskripsiSkor3,
-          4: data.deskripsiSkor4,
-        });
-      } else if (data.deskripsiSkor) {
-        setDeskripsiSkor(data.deskripsiSkor);
-      }
+  try {
+    const data = JSON.parse(editDataRaw);
+    console.log('✅ [useEffect] Parsed editData:', data);
 
-      if (data.nomor !== undefined && data.nomor !== null && data.nomor !== '') {
-        setEditNomor(data.nomor);
-        setIsEditMode(true);
+    // Set field lain
+    setBobot(data.bobot || 1);
+    setIndikator(data.indikator || '');
+    setPertanyaan1(data.pertanyaan || '');
+    setPertanyaan2(data.pertanyaan2 || '');
+    setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
+    setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
+    setTipePertanyaan(data.tipePertanyaan || 'pg');
+    setUrutan(String(data.order || ''));
+
+    // === LOGIKA UTAMA: SET VARIABLE ID ===
+    console.log('🔍 [useEffect] Mencoba set selectedVariableId...');
+
+    if (data.transformationVariableId !== undefined && data.transformationVariableId !== null) {
+      console.log('✅ [useEffect] transformationVariableId ditemukan di editData:', data.transformationVariableId);
+      setSelectedVariableId(data.transformationVariableId);
+    } else {
+      console.warn('⚠️ [useEffect] transformationVariableId TIDAK ADA di editData!');
+      console.log('🔍 [useEffect] Mencoba fallback ke nama variabel:', data.variable);
+
+      if (data.variable) {
+        const normalizedName = data.variable.trim().toLowerCase();
+        const matched = transformationVariables.find(
+          v => v.name.trim().toLowerCase() === normalizedName
+        );
+        console.log('🔍 [useEffect] Hasil pencarian berdasarkan nama:', matched);
+        setSelectedVariableId(matched?.id || null);
       } else {
-        setEditNomor(null);
-        setIsEditMode(false);
+        console.warn('❌ [useEffect] Tidak ada field `variable` juga — tidak bisa set variabel');
+        setSelectedVariableId(null);
       }
-    } catch (error) {
-      console.error('Gagal parsing editData:', error);
     }
-  }, []);
+
+    // Set mode edit
+    if (data.nomor) {
+      setEditNomor(data.nomor);
+      setIsEditMode(true);
+      console.log('✏️ [useEffect] Mode EDIT diaktifkan, nomor:', data.nomor);
+    } else {
+      console.log('➕ [useEffect] Mode CREATE (tidak ada nomor)');
+    }
+
+  } catch (error) {
+    console.error('💥 [useEffect] Gagal parsing editData:', error);
+  }
+}, [transformationVariables]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -159,18 +158,16 @@ export default function PilihJawabanPage() {
     setShowConfirmModal(true);
   };
 
- const handleConfirmSave = async () => {
-  try {
-    const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+  const handleConfirmSave = async () => {
+    try {
+      const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
 
-    if (!selectedVariableId) {
-      setErrors((prev) => ({ ...prev, namaVariabel: 'Wajib dipilih' }));
-      return;
-    }
+      if (!selectedVariableId) {
+        setErrors((prev) => ({ ...prev, namaVariabel: 'Wajib dipilih' }));
+        return;
+      }
 
-    if (isEditMode && editNomor !== null) {
-      // Mode Edit
-      const payload1 = {
+      const basePayload = {
         transformationVariableId: selectedVariableId,
         type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
         indicator: indikator.trim(),
@@ -184,50 +181,30 @@ export default function PilihJawabanPage() {
         status: finalStatus as 'active' | 'inactive',
       };
 
-      const result1 = await updateMutate(editNomor, payload1);
-      // Jika updateMutate melempar error, maka akan ditangkap di catch
+      if (isEditMode && editNomor !== null) {
+        await updateMutate(editNomor, basePayload);
 
-      if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-        const payload2 = { ...payload1, questionText: pertanyaan2.trim() };
-        await updateMutate(editNomor + 1, payload2);
+        if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
+          const payload2 = { ...basePayload, questionText: pertanyaan2.trim() };
+          await updateMutate(editNomor + 1, payload2);
+        }
+      } else {
+        await createMutate(basePayload);
+
+        if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
+          const payload2 = { ...basePayload, questionText: pertanyaan2.trim() };
+          await createMutate(payload2);
+        }
       }
 
       localStorage.setItem('newDataAdded', 'true');
       router.push('/daftar-assessment');
-    } else {
-      // Mode Create
-      const payload1 = {
-        transformationVariableId: selectedVariableId,
-        type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
-        indicator: indikator.trim(),
-        questionText: pertanyaan1.trim(),
-        scoreDescription0: deskripsiSkor[0].trim(),
-        scoreDescription1: deskripsiSkor[1].trim(),
-        scoreDescription2: deskripsiSkor[2].trim(),
-        scoreDescription3: deskripsiSkor[3].trim(),
-        scoreDescription4: deskripsiSkor[4].trim(),
-        order: parseInt(urutan, 10) || 1,
-        status: finalStatus as 'active' | 'inactive',
-      };
-
-      const result1 = await createMutate(payload1);
-
-      if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-        const payload2 = { ...payload1, questionText: pertanyaan2.trim() };
-        await createMutate(payload2);
-      }
-
-      localStorage.setItem('newDataAdded', 'true');
-      router.push('/daftar-assessment');
+    } catch (error) {
+      console.error('Error saat menyimpan:', error);
+    } finally {
+      setShowConfirmModal(false);
     }
-  } catch (error) {
-    console.error('Error saat menyimpan:', error);
-    // Tidak perlu alert — error akan ditampilkan via createError/updateError
-    // Atau, jika hook tidak menangkap error, tambahkan state error khusus
-  } finally {
-    setShowConfirmModal(false);
-  }
-};
+  };
 
   const handleCancel = () => {
     localStorage.removeItem('editData');
@@ -236,7 +213,6 @@ export default function PilihJawabanPage() {
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
-
     localStorage.removeItem('editData');
     if (selected === 'pilihan-jawaban') {
       router.push('/daftar-assessment/pilih-jawaban');
@@ -255,14 +231,13 @@ export default function PilihJawabanPage() {
   };
 
   const isFormValid = () => {
-    if (!namaVariabel.trim()) return false;
+    if (!selectedVariableId) return false;
     if (!indikator.trim()) return false;
     if (!pertanyaan1.trim()) return false;
     if (!status) return false;
     if (!jumlahPertanyaan) return false;
     if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) return false;
 
-    // Validasi skor
     for (const level of Object.keys(skor)) {
       const min = parseFloat(skor[Number(level)].min);
       const max = parseFloat(skor[Number(level)].max);
@@ -280,15 +255,10 @@ export default function PilihJawabanPage() {
             {isEditMode ? 'Edit Soal: Pilihan Jawaban' : 'Soal Baru: Pilihan Jawaban'}
           </h1>
 
-          {/* Tampilkan error API */}
-          {createError && (
+          {/* Error API */}
+          {(createError || updateError) && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              ❌ {createError}
-            </div>
-          )}
-          {updateError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              ❌ {updateError}
+              ❌ {createError || updateError}
             </div>
           )}
 
@@ -328,12 +298,10 @@ export default function PilihJawabanPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Variabel</label>
               <select
                 className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                value={namaVariabel}
+                value={selectedVariableId || ''}
                 onChange={(e) => {
-                  const selectedName = e.target.value;
-                  const selectedVar = transformationVariables.find(v => v.name === selectedName);
-                  setNamaVariabel(selectedName);
-                  setSelectedVariableId(selectedVar?.id || null); // ✅ UPDATE ID
+                  const id = Number(e.target.value);
+                  setSelectedVariableId(id || null);
                 }}
                 disabled={variablesLoading}
               >
@@ -342,7 +310,7 @@ export default function PilihJawabanPage() {
                   <option>Loading...</option>
                 ) : (
                   transformationVariables.map((varItem) => (
-                    <option key={varItem.id} value={varItem.name}>
+                    <option key={varItem.id} value={varItem.id}>
                       {varItem.name}
                     </option>
                   ))
@@ -373,7 +341,6 @@ export default function PilihJawabanPage() {
               placeholder="Masukkan urutan"
               min="1"
             />
-            {errors.urutan && <p className="text-red-500 text-xs mt-1">{errors.urutan}</p>}
           </div>
 
           {/* Deskripsi Skor */}
@@ -395,9 +362,6 @@ export default function PilihJawabanPage() {
                     className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder={`Deskripsi untuk skor ${level}`}
                   />
-                  {errors[`deskripsiSkor${level}`] && (
-                    <p className="text-red-500 text-xs mt-1">{errors[`deskripsiSkor${level}`]}</p>
-                  )}
                 </div>
               ))}
             </div>
@@ -463,26 +427,47 @@ export default function PilihJawabanPage() {
                 ></textarea>
                 {errors.pertanyaan1 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan1}</p>}
               </div>
-
               {tipePertanyaan === 'pg' && (
                 <div className="mb-6">
                   <table className="w-full border-collapse border border-gray-300">
                     <thead>
                       <tr>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban A</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban B</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban C</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban D</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban E</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban A</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban B</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban C</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban D</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban E</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="0" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="1" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="2" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="3" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue=">3" /></td>
+                        {['A', 'B', 'C', 'D', 'E'].map((label) => (
+                          <td key={label} className="border px-3 py-2">
+                            <textarea
+                              className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
+                              rows={2}
+                              placeholder={`Tulis Jawaban ${label}...`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban A</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban B</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban C</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban D</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban E</th>
+                      </tr>
+                      <tr>
+                        {['0', '1', '2', '3', '>3'].map((nilai, idx) => (
+                          <td key={idx} className="border px-3 py-2">
+                            <input
+                              type="text"
+                              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                              defaultValue={nilai}
+                            />
+                          </td>
+                        ))}
                       </tr>
                     </tbody>
                   </table>
@@ -505,26 +490,47 @@ export default function PilihJawabanPage() {
                 ></textarea>
                 {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
               </div>
-
               {tipePertanyaan === 'pg' && (
                 <div className="mb-6">
                   <table className="w-full border-collapse border border-gray-300">
                     <thead>
                       <tr>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban A</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban B</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban C</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban D</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50">Jawaban E</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban A</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban B</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban C</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban D</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban E</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="0" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="1" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="2" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue="3" /></td>
-                        <td className="border px-3 py-2"><input type="text" className="w-full border border-gray-300 rounded-md p-2" defaultValue=">3" /></td>
+                        {['A', 'B', 'C', 'D', 'E'].map((label) => (
+                          <td key={label} className="border px-3 py-2">
+                            <textarea
+                              className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
+                              rows={2}
+                              placeholder={`Tulis Jawaban ${label}...`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban A</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban B</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban C</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban D</th>
+                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban E</th>
+                      </tr>
+                      <tr>
+                        {['0', '1', '2', '3', '>3'].map((nilai, idx) => (
+                          <td key={idx} className="border px-3 py-2">
+                            <input
+                              type="text"
+                              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                              defaultValue={nilai}
+                            />
+                          </td>
+                        ))}
                       </tr>
                     </tbody>
                   </table>
