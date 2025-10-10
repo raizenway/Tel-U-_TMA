@@ -58,14 +58,17 @@ const data = apiData.map((item) => {
   const campusName = item.user.branch?.name || 'Kampus Tidak Diketahui';
   const { status, aksi } = mapStatusToUI(item.approvalStatus);
   const { skor, hasil } = calculateScores(item.assessmentDetails);
+   // ✅ Bangun periode dari assessmentPeriod
+  const periode = item.assessmentPeriod
+    ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
+    : '–';
 
   return {
     id: item.id,
     logo: <FaSchool className="text-blue-600 text-xl" />,
     nama: campusName,
-    tanggal: item.submissionDate
-      ? new Date(item.submissionDate).toLocaleDateString('id-ID')
-      : 'On Progress',
+   // ✅ Ambil periode langsung dari API
+    periode,
     skor,
     hasil,
     status,
@@ -103,7 +106,7 @@ const data = apiData.map((item) => {
     { header: 'No', key: 'nomor', width: '50px' },
     { header: 'Logo', key: 'logo', width: '60px' },
     { header: 'Nama UPPS/KC', key: 'nama', width: '220px' },
-    { header: 'Tanggal Submit', key: 'tanggal', width: '140px' },
+    { header: 'periode', key: 'periode', width: '140px' },
     { header: 'Skor 1', key: 'skor1', width: '80px' },
     { header: 'Skor 2', key: 'skor2', width: '80px' },
     { header: 'Skor 3', key: 'skor3', width: '80px' },
@@ -135,7 +138,7 @@ const data = apiData.map((item) => {
         )}
       </div>
     ),
-    tanggal: item.tanggal,
+    periode: item.periode,
     skor1: item.skor[0],
     skor2: item.skor[1],
     skor3: item.skor[2],
@@ -207,7 +210,7 @@ const data = apiData.map((item) => {
     const rows = tableData.map((row) => [
       row.nomor,
       typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
-      row.tanggal,
+      row.periode,
       row.skor1,
       row.skor2,
       row.skor3,
@@ -240,7 +243,7 @@ const data = apiData.map((item) => {
                   <td>${row.nomor}</td>
                   <td>🏫</td>
                   <td>${typeof row.nama === 'string' ? row.nama : row.nama.props.children[0]}</td>
-                  <td>${row.tanggal}</td>
+                  <td>${row.periode}</td>
                   <td>${row.skor1}</td>
                   <td>${row.skor2}</td>
                   <td>${row.skor3}</td>
@@ -267,7 +270,7 @@ const data = apiData.map((item) => {
     const rows = tableData.map((row) => [
       row.nomor,
       typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
-      row.tanggal,
+      row.periode,
       row.skor1,
       row.skor2,
       row.skor3,
