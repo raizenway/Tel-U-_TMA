@@ -540,6 +540,7 @@ export default function PilihJawabanPage() {
           )}
 
           {/* Edit Rentang Skor */}
+          {tipePertanyaan !== 'pg' && (
           <div className="mb-6 overflow-x-auto">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Edit Rentang Skor (0-4)</h3>
             <table className="w-full border-collapse border border-gray-300 text-sm">
@@ -592,6 +593,7 @@ export default function PilihJawabanPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* Buttons */}
           <div className="flex justify-end space-x-3 mt-6 gap-2">
