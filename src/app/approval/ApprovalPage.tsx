@@ -11,7 +11,6 @@ import { useSort } from "@/hooks/useSort";
 import SearchTable from "@/components/SearchTable";
 import axios from "axios";
 
-// ✅ Daftar kampus — termasuk opsi "Semua Kampus"
 const BRANCHES = [
   { id: 1, name: "Tel-U Bandung" },
   { id: 2, name: "Tel-U Jakarta" },
@@ -20,7 +19,7 @@ const BRANCHES = [
 ];
 
 const TablePage = () => {
-  const [selectedCampusId, setSelectedCampusId] = useState<number | null>(null); // default: null = semua
+  const [selectedCampusId, setSelectedCampusId] = useState<number>(2);
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<number | null>(null);
   const [periodeOptions, setPeriodeOptions] = useState<{ id: number; label: string }[]>([]);
   const [periodeDropdownOpen, setPeriodeDropdownOpen] = useState(false);
@@ -44,7 +43,6 @@ const TablePage = () => {
     { header: "Jawaban", key: "jawaban", width: "120px", sortable: true },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
     { header: "Tipe Soal", key: "tipeSoal", width: "120px", sortable: true },
-  
   ];
 
   // 🔁 Fetch periode
@@ -80,7 +78,6 @@ const TablePage = () => {
     fetchPeriodeOptions();
   }, []);
 
-  // 🔁 Fetch data approval
   useEffect(() => {
     if (selectedPeriodeId === null) {
       setLoading(false);
@@ -99,24 +96,18 @@ const TablePage = () => {
         setLoading(true);
         setError(null);
 
-        // Bangun params: branchId opsional
-        const params: Record<string, any> = {
-          periodId: selectedPeriodeId,
-        };
-        if (selectedCampusId !== null) {
-          params.branchId = selectedCampusId;
-        }
-
-        const res = await axios.get(`${API_BASE}/assessment/detail`, { params });
+        const res = await axios.get(`${API_BASE}/assessment/detail`, {
+          params: {
+            branchId: selectedCampusId,
+            periodId: selectedPeriodeId,
+          },
+        });
 
         const rawData = res.data.data || [];
 
         const transformedData = rawData.map((item: any, index: number) => {
           const question = item.question || {};
           const assessment = item.assessment || {};
-          const user = assessment.user || {};
-
-          const branchName = BRANCHES.find(b => b.id === user.branchId)?.name || "—";
 
           return {
             nomor: index + 1,
@@ -126,7 +117,7 @@ const TablePage = () => {
             jawaban: item.submissionValue || "-",
             skor: item.score !== undefined ? item.score : "-",
             tipeSoal: question.type || "-",
-            kampus: branchName,
+           
             assessmentId: assessment.id,
             detailId: item.id,
           };
@@ -226,20 +217,20 @@ const TablePage = () => {
                 )}
               </div>
 
-              {/* Dropdown Kampus */}
+              {/* Dropdown Kampus — hanya 4 pilihan */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
                 >
-                  {BRANCHES.find(b => b.id === selectedCampusId)?.name || "Semua Kampus"}
+                  {BRANCHES.find(b => b.id === selectedCampusId)?.name || "Pilih Kampus"}
                   <ChevronDown size={16} />
                 </button>
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border shadow rounded z-10">
                     {BRANCHES.map((branch) => (
                       <div
-                        key={branch.id ?? "all"}
+                        key={branch.id}
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                         onClick={() => {
                           setSelectedCampusId(branch.id);
