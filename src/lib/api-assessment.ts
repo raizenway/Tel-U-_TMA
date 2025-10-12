@@ -40,16 +40,21 @@ export const ListAssessment = async (): Promise<ApiResponse<Assessment[]>> => {
 };
 
 
+// lib/api-assessment.ts
 export async function createAssessment(body: CreateAssessment): Promise<ApiResponse<Assessment>> {
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error("Failed to create user");
-  return res.json();
-}
 
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Gagal membuat assessment: ${errorText}`);
+  }
+
+  return res.json(); // ✅ Sekarang sesuai tipe: ApiResponse<Assessment>
+}
 
 export async function createAssessmentDetail(
   body: CreateAssessmentDetail

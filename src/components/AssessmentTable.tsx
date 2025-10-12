@@ -11,16 +11,7 @@ import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from 'lucide-r
 import { Search, Copy, Printer, Download } from 'lucide-react';
 import { useListAssessment } from '@/hooks/useAssessment'; // ✅ hooks yang sudah dibuat
 
-// Mapping branchId ke nama kampus (sesuaikan dengan backend-mu)
-const getCampusName = (branchId: number): string => {
-  const map: Record<number, string> = {
-    1: 'Tel-U Jakarta',
-    2: 'Tel-U Surabaya',
-    3: 'Tel-U Bandung',
-    4: 'Tel-U Purwokerto',
-  };
-  return map[branchId] || `Kampus ${branchId}`;
-};
+
 
 // Mapping status
 const mapStatusToUI = (approvalStatus: string): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
@@ -62,25 +53,28 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     }
   }, []);
 
-  // Transform data API ke format yang diharapkan oleh tabel
-  const data = apiData.map((item) => {
-    const campusName = getCampusName(item.user.branchId);
-    const { status, aksi } = mapStatusToUI(item.approvalStatus);
-    const { skor, hasil } = calculateScores(item.assessmentDetails);
+ // Transform data API ke format yang diharapkan oleh tabel
+const data = apiData.map((item) => {
+  const campusName = item.user.branch?.name || 'Kampus Tidak Diketahui';
+  const { status, aksi } = mapStatusToUI(item.approvalStatus);
+  const { skor, hasil } = calculateScores(item.assessmentDetails);
+   // ✅ Bangun periode dari assessmentPeriod
+  const periode = item.assessmentPeriod
+    ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
+    : '–';
 
-    return {
-      id: item.id,
-      logo: <FaSchool className="text-blue-600 text-xl" />,
-      nama: campusName,
-      tanggal: item.submissionDate
-        ? new Date(item.submissionDate).toLocaleDateString('id-ID')
-        : 'On Progress',
-      skor,
-      hasil,
-      status,
-      aksi,
-    };
-  });
+  return {
+    id: item.id,
+    logo: <FaSchool className="text-blue-600 text-xl" />,
+    nama: campusName,
+   // ✅ Ambil periode langsung dari API
+    periode,
+    skor,
+    hasil,
+    status,
+    aksi,
+  };
+});
 
   // Filter berdasarkan pencarian
   const filteredData = data.filter((item) =>
@@ -112,7 +106,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     { header: 'No', key: 'nomor', width: '50px' },
     { header: 'Logo', key: 'logo', width: '60px' },
     { header: 'Nama UPPS/KC', key: 'nama', width: '220px' },
-    { header: 'Tanggal Submit', key: 'tanggal', width: '140px' },
+    { header: 'periode', key: 'periode', width: '140px' },
     { header: 'Skor 1', key: 'skor1', width: '80px' },
     { header: 'Skor 2', key: 'skor2', width: '80px' },
     { header: 'Skor 3', key: 'skor3', width: '80px' },
@@ -144,7 +138,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         )}
       </div>
     ),
-    tanggal: item.tanggal,
+    periode: item.periode,
     skor1: item.skor[0],
     skor2: item.skor[1],
     skor3: item.skor[2],
@@ -216,7 +210,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     const rows = tableData.map((row) => [
       row.nomor,
       typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
-      row.tanggal,
+      row.periode,
       row.skor1,
       row.skor2,
       row.skor3,
@@ -249,7 +243,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
                   <td>${row.nomor}</td>
                   <td>🏫</td>
                   <td>${typeof row.nama === 'string' ? row.nama : row.nama.props.children[0]}</td>
-                  <td>${row.tanggal}</td>
+                  <td>${row.periode}</td>
                   <td>${row.skor1}</td>
                   <td>${row.skor2}</td>
                   <td>${row.skor3}</td>
@@ -276,7 +270,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     const rows = tableData.map((row) => [
       row.nomor,
       typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
-      row.tanggal,
+      row.periode,
       row.skor1,
       row.skor2,
       row.skor3,
