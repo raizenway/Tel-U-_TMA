@@ -10,12 +10,12 @@ import { useAssessmentPeriod } from "@/hooks/useAssessmentPeriod";
 import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
 import { useState, useEffect } from "react";
 
-// Mapping kampus ke userId (sesuaikan dengan data di database-mu)
-const campusToUserId: Record<string, number> = {
-  "Tel-U Bandung": 1,
-  "Tel-U Jakarta": 2,
-  "Tel-U Purwokerto": 3,
-  "Tel-U Surabaya": 4,
+// Tambahkan branchId sesuai user
+const campusToUserConfig: Record<string, { userId: number; branchId: number }> = {
+  "Tel-U Bandung": { userId: 2, branchId: 1 },
+  "Tel-U Jakarta": { userId: 3, branchId: 2 },
+  "Tel-U Surabaya": { userId: 4, branchId: 3 },
+  "Tel-U Purwokerto": { userId: 5, branchId: 4 },
 };
 // Daftar kampus
 const campuses = [
@@ -71,12 +71,17 @@ export default function AssessmentPage() {
     setShowPeriodModal(true);
   };
 
-  const handleSelectPeriod = async (periodId: number) => {
+ const handleSelectPeriod = async (periodId: number) => {
   if (!selectedCampus) return;
 
-  // ✅ Dapatkan userId sesuai kampus yang dipilih
-  const userId = campusToUserId[selectedCampus];
-  if (!userId) {
+  
+  const config = campusToUserConfig[selectedCampus];
+if (!config) {
+  alert("Kampus tidak dikenali");
+  return;
+}
+const { userId, branchId } = config;
+  if (!userId || !branchId) {
     alert("Kampus tidak dikenali");
     return;
   }
@@ -87,16 +92,16 @@ export default function AssessmentPage() {
   try {
     const response = await mutate({
       periodId,
-      userId, // 👈 GANTI DARI 1 MENJADI userId DINAMIS
+      userId,
+      branchId, // ✅ Kirim branchId ke backend
       submission_date: new Date().toISOString().split("T")[0],
     });
 
-    const assessmentId = response?.id;
-    if (!assessmentId) {
-      throw new Error("Respons API tidak mengandung assessmentId");
-    }
+  const assessmentId = response.id;
+  if (!assessmentId) {
+    throw new Error("Respons API tidak mengandung assessmentId");
+  }
 
-    // Redirect berdasarkan kampus
     const routeMap: Record<string, string> = {
       "Tel-U Bandung": `/assessment/Bandung?assessmentId=${assessmentId}`,
       "Tel-U Jakarta": `/assessment/Jakarta?assessmentId=${assessmentId}`,

@@ -29,6 +29,10 @@ export default function PilihJawabanPage() {
  
   const [selectedVariableId, setSelectedVariableId] = useState<number | null>(null);
 
+  // Nilai jawaban untuk Pilihan Ganda (A-E)
+  const [pgAnswers1, setPgAnswers1] = useState<string[]>(['0', '1', '2', '3', '>3']);
+  const [pgAnswers2, setPgAnswers2] = useState<string[]>(['0', '1', '2', '3', '>3']);
+
   // Skor dan deskripsi
   const [skor, setSkor] = useState<{ [key: number]: { min: string; max: string } }>({
     0: { min: '0', max: '1.9' },
@@ -56,73 +60,67 @@ export default function PilihJawabanPage() {
   const { mutate: createMutate, loading: createLoading, error: createError } = useCreateQuestion();
   const { mutate: updateMutate, loading: updateLoading, error: updateError } = useUpdateQuestion();
 
- useEffect(() => {
-  console.log('🔍 [useEffect] transformationVariables:', transformationVariables);
+  useEffect(() => {
+    console.log('🔍 [useEffect] transformationVariables:', transformationVariables);
 
-  // Jika data variabel belum siap, jangan lanjut
-  if (transformationVariables.length === 0) {
-    console.log('⚠️ [useEffect] transformationVariables masih kosong — skip load editData');
-    return;
-  }
+    if (transformationVariables.length === 0) {
+      console.log('⚠️ [useEffect] transformationVariables masih kosong — skip load editData');
+      return;
+    }
 
-  const editDataRaw = localStorage.getItem('editData');
-  console.log('📄 [useEffect] Raw editData dari localStorage:', editDataRaw);
+    const editDataRaw = localStorage.getItem('editData');
+    console.log('📄 [useEffect] Raw editData dari localStorage:', editDataRaw);
 
-  if (!editDataRaw) {
-    console.log('❌ [useEffect] Tidak ada data di localStorage — tidak dalam mode edit');
-    return;
-  }
+    if (!editDataRaw) {
+      console.log('❌ [useEffect] Tidak ada data di localStorage — tidak dalam mode edit');
+      return;
+    }
 
-  try {
-    const data = JSON.parse(editDataRaw);
-    console.log('✅ [useEffect] Parsed editData:', data);
+    try {
+      const data = JSON.parse(editDataRaw);
+      console.log('✅ [useEffect] Parsed editData:', data);
 
-    // Set field lain
-    setBobot(data.bobot || 1);
-    setIndikator(data.indikator || '');
-    setPertanyaan1(data.pertanyaan || '');
-    setPertanyaan2(data.pertanyaan2 || '');
-    setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
-    setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
-    setTipePertanyaan(data.tipePertanyaan || 'pg');
-    setUrutan(String(data.order || ''));
+      setBobot(data.bobot || 1);
+      setIndikator(data.indikator || '');
+      setPertanyaan1(data.pertanyaan || '');
+      setPertanyaan2(data.pertanyaan2 || '');
+      
+      // Load nilai jawaban jika ada
+      if (data.pgAnswers1) setPgAnswers1(data.pgAnswers1);
+      if (data.pgAnswers2) setPgAnswers2(data.pgAnswers2);
 
-    // === LOGIKA UTAMA: SET VARIABLE ID ===
-    console.log('🔍 [useEffect] Mencoba set selectedVariableId...');
+      setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
+      setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
+      setTipePertanyaan(data.tipePertanyaan || 'pg');
+      setUrutan(String(data.order || ''));
 
-    if (data.transformationVariableId !== undefined && data.transformationVariableId !== null) {
-      console.log('✅ [useEffect] transformationVariableId ditemukan di editData:', data.transformationVariableId);
-      setSelectedVariableId(data.transformationVariableId);
-    } else {
-      console.warn('⚠️ [useEffect] transformationVariableId TIDAK ADA di editData!');
-      console.log('🔍 [useEffect] Mencoba fallback ke nama variabel:', data.variable);
-
-      if (data.variable) {
+      if (data.transformationVariableId !== undefined && data.transformationVariableId !== null) {
+        setSelectedVariableId(data.transformationVariableId);
+      } else if (data.variable) {
         const normalizedName = data.variable.trim().toLowerCase();
         const matched = transformationVariables.find(
           v => v.name.trim().toLowerCase() === normalizedName
         );
-        console.log('🔍 [useEffect] Hasil pencarian berdasarkan nama:', matched);
         setSelectedVariableId(matched?.id || null);
       } else {
-        console.warn('❌ [useEffect] Tidak ada field `variable` juga — tidak bisa set variabel');
         setSelectedVariableId(null);
       }
-    }
 
-    // Set mode edit
-    if (data.nomor) {
-      setEditNomor(data.nomor);
-      setIsEditMode(true);
-      console.log('✏️ [useEffect] Mode EDIT diaktifkan, nomor:', data.nomor);
-    } else {
-      console.log('➕ [useEffect] Mode CREATE (tidak ada nomor)');
+      if (data.nomor) {
+        setEditNomor(data.nomor);
+        setIsEditMode(true);
+      }
+    } catch (error) {
+      console.error('💥 [useEffect] Gagal parsing editData:', error);
     }
+  }, [transformationVariables]);
 
-  } catch (error) {
-    console.error('💥 [useEffect] Gagal parsing editData:', error);
-  }
-}, [transformationVariables]);
+  // ✅ Pastikan jumlahPertanyaan konsisten dengan tipePertanyaan
+  useEffect(() => {
+    if (tipePertanyaan === 'pg') {
+      setJumlahPertanyaan('1 Pertanyaan');
+    }
+  }, [tipePertanyaan]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -167,11 +165,16 @@ export default function PilihJawabanPage() {
         return;
       }
 
-      const basePayload = {
-        transformationVariableId: selectedVariableId,
+      const basePayload1 = {
+       transformationVariable: { connect: { id: selectedVariableId } },
         type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
         indicator: indikator.trim(),
         questionText: pertanyaan1.trim(),
+        answerText: tipePertanyaan === 'pg' ? pgAnswers1[0] : "",
+        answerText2: tipePertanyaan === 'pg' ? pgAnswers1[1] : "",
+        answerText3: tipePertanyaan === 'pg' ? pgAnswers1[2] : "",
+        answerText4: tipePertanyaan === 'pg' ? pgAnswers1[3] : "",
+        answerText5: tipePertanyaan === 'pg' ? pgAnswers1[4] : "",
         scoreDescription0: deskripsiSkor[0].trim(),
         scoreDescription1: deskripsiSkor[1].trim(),
         scoreDescription2: deskripsiSkor[2].trim(),
@@ -182,17 +185,33 @@ export default function PilihJawabanPage() {
       };
 
       if (isEditMode && editNomor !== null) {
-        await updateMutate(editNomor, basePayload);
+        await updateMutate(editNomor, basePayload1);
 
         if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = { ...basePayload, questionText: pertanyaan2.trim() };
+          const payload2 = {
+            ...basePayload1,
+            questionText: pertanyaan2.trim(),
+            answerText: pgAnswers2[0],
+            answerText2: pgAnswers2[1],
+            answerText3: pgAnswers2[2],
+            answerText4: pgAnswers2[3],
+            answerText5: pgAnswers2[4],
+          };
           await updateMutate(editNomor + 1, payload2);
         }
       } else {
-        await createMutate(basePayload);
+        await createMutate(basePayload1);
 
         if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = { ...basePayload, questionText: pertanyaan2.trim() };
+          const payload2 = {
+            ...basePayload1,
+            questionText: pertanyaan2.trim(),
+            answerText: pgAnswers2[0],
+            answerText2: pgAnswers2[1],
+            answerText3: pgAnswers2[2],
+            answerText4: pgAnswers2[3],
+            answerText5: pgAnswers2[4],
+          };
           await createMutate(payload2);
         }
       }
@@ -224,10 +243,11 @@ export default function PilihJawabanPage() {
   };
 
   const handleRadioClick = (value: '1 Pertanyaan' | '2 Pertanyaan') => {
-    setJumlahPertanyaan((prev) => (prev === value ? '' : value));
-    if (jumlahPertanyaan !== value) {
-      setTipePertanyaan('pg');
+    // Hanya izinkan "2 Pertanyaan" jika bukan pilihan ganda
+    if (value === '2 Pertanyaan' && tipePertanyaan === 'pg') {
+      return; // Blokir
     }
+    setJumlahPertanyaan(value);
   };
 
   const isFormValid = () => {
@@ -371,20 +391,34 @@ export default function PilihJawabanPage() {
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pertanyaan</label>
             <div className="flex space-x-6">
-              {(['1 Pertanyaan', '2 Pertanyaan'] as const).map((value) => (
-                <label key={value} className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
+              <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
+                <input
+                  type="radio"
+                  name="jumlahPertanyaan"
+                  value="1 Pertanyaan"
+                  checked={jumlahPertanyaan === '1 Pertanyaan'}
+                  onClick={() => handleRadioClick('1 Pertanyaan')}
+                  readOnly
+                  className="text-blue-600 focus:ring-blue-500"
+                />
+                <span>1 Pertanyaan</span>
+              </label>
+              
+              {/* Hanya tampilkan "2 Pertanyaan" jika bukan pilihan ganda */}
+              {tipePertanyaan !== 'pg' && (
+                <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
                   <input
                     type="radio"
                     name="jumlahPertanyaan"
-                    value={value}
-                    checked={jumlahPertanyaan === value}
-                    onClick={() => handleRadioClick(value)}
+                    value="2 Pertanyaan"
+                    checked={jumlahPertanyaan === '2 Pertanyaan'}
+                    onClick={() => handleRadioClick('2 Pertanyaan')}
                     readOnly
                     className="text-blue-600 focus:ring-blue-500"
                   />
-                  <span>{value}</span>
+                  <span>2 Pertanyaan</span>
                 </label>
-              ))}
+              )}
             </div>
           </div>
 
@@ -403,7 +437,14 @@ export default function PilihJawabanPage() {
                       name="tipePertanyaan"
                       value={option.value}
                       checked={tipePertanyaan === option.value}
-                      onChange={() => setTipePertanyaan(option.value)}
+                      onChange={(e) => {
+                        const newType = e.target.value as 'pg' | 'short-answer';
+                        setTipePertanyaan(newType);
+                        // Jika pilih "Pilihan Ganda", pastikan hanya 1 pertanyaan
+                        if (newType === 'pg') {
+                          setJumlahPertanyaan('1 Pertanyaan');
+                        }
+                      }}
                       className="text-blue-600 focus:ring-blue-500"
                     />
                     <span>{option.label}</span>
@@ -459,12 +500,17 @@ export default function PilihJawabanPage() {
                         <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban E</th>
                       </tr>
                       <tr>
-                        {['0', '1', '2', '3', '>3'].map((nilai, idx) => (
+                        {['0', '1', '2', '3', '>3'].map((_, idx) => (
                           <td key={idx} className="border px-3 py-2">
                             <input
                               type="text"
                               className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                              defaultValue={nilai}
+                              value={pgAnswers1[idx]}
+                              onChange={(e) => {
+                                const newAnswers = [...pgAnswers1];
+                                newAnswers[idx] = e.target.value;
+                                setPgAnswers1(newAnswers);
+                              }}
                             />
                           </td>
                         ))}
@@ -522,12 +568,17 @@ export default function PilihJawabanPage() {
                         <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban E</th>
                       </tr>
                       <tr>
-                        {['0', '1', '2', '3', '>3'].map((nilai, idx) => (
+                        {['0', '1', '2', '3', '>3'].map((_, idx) => (
                           <td key={idx} className="border px-3 py-2">
                             <input
                               type="text"
                               className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                              defaultValue={nilai}
+                              value={pgAnswers2[idx]}
+                              onChange={(e) => {
+                                const newAnswers = [...pgAnswers2];
+                                newAnswers[idx] = e.target.value;
+                                setPgAnswers2(newAnswers);
+                              }}
                             />
                           </td>
                         ))}
@@ -541,58 +592,58 @@ export default function PilihJawabanPage() {
 
           {/* Edit Rentang Skor */}
           {tipePertanyaan !== 'pg' && (
-          <div className="mb-6 overflow-x-auto">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Edit Rentang Skor (0-4)</h3>
-            <table className="w-full border-collapse border border-gray-300 text-sm">
-              <thead>
-                <tr>
-                  {[0, 1, 2, 3, 4].map((level) => (
-                    <th key={level} className="border border-gray-300 px-3 py-2 bg-gray-100 text-center font-medium">
-                      Skor {level}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {[0, 1, 2, 3, 4].map((level) => (
-                    <td key={level} className="border border-gray-300 px-0 py-2 text-center">
-                      <div className="flex items-center justify-center">
-                        <input
-                          type="number"
-                          step="0.1"
-                          className={`w-16 border ${errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-1 text-sm text-center`}
-                          value={skor[level].min}
-                          onChange={(e) =>
-                            setSkor((prev) => ({
-                              ...prev,
-                              [level]: { ...prev[level], min: e.target.value },
-                            }))
-                          }
-                        />
-                        <div className="w-px bg-gray-300 h-6 mx-1"></div>
-                        <input
-                          type="number"
-                          step="0.1"
-                          className={`w-16 border ${errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-1 text-sm text-center`}
-                          value={skor[level].max}
-                          onChange={(e) =>
-                            setSkor((prev) => ({
-                              ...prev,
-                              [level]: { ...prev[level], max: e.target.value },
-                            }))
-                          }
-                        />
-                      </div>
-                      {errors[`skor${level}`] && (
-                        <p className="text-red-500 text-xs mt-1">{errors[`skor${level}`]}</p>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+            <div className="mb-6 overflow-x-auto">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Edit Rentang Skor (0-4)</h3>
+              <table className="w-full border-collapse border border-gray-300 text-sm">
+                <thead>
+                  <tr>
+                    {[0, 1, 2, 3, 4].map((level) => (
+                      <th key={level} className="border border-gray-300 px-3 py-2 bg-gray-100 text-center font-medium">
+                        Skor {level}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {[0, 1, 2, 3, 4].map((level) => (
+                      <td key={level} className="border border-gray-300 px-0 py-2 text-center">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="number"
+                            step="0.1"
+                            className={`w-16 border ${errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-1 text-sm text-center`}
+                            value={skor[level].min}
+                            onChange={(e) =>
+                              setSkor((prev) => ({
+                                ...prev,
+                                [level]: { ...prev[level], min: e.target.value },
+                              }))
+                            }
+                          />
+                          <div className="w-px bg-gray-300 h-6 mx-1"></div>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className={`w-16 border ${errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-1 text-sm text-center`}
+                            value={skor[level].max}
+                            onChange={(e) =>
+                              setSkor((prev) => ({
+                                ...prev,
+                                [level]: { ...prev[level], max: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                        {errors[`skor${level}`] && (
+                          <p className="text-red-500 text-xs mt-1">{errors[`skor${level}`]}</p>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           )}
 
           {/* Buttons */}
