@@ -60,6 +60,7 @@ export interface Assessment {
 // Payload untuk create (tetap seperti punyamu)
 export interface CreateAssessment {
   periodId: number;
+  branchId: number;
   userId: number;
   submission_date: string;
 }
