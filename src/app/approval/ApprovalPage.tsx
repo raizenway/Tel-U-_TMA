@@ -11,16 +11,16 @@ import { useSort } from "@/hooks/useSort";
 import SearchTable from "@/components/SearchTable";
 import axios from "axios";
 
-// ✅ Mapping branchId dari database
-const BRANCH_ID_TO_CAMPUS: Record<number, string> = {
-  1: "Tel-U Bandung",
-  2: "Tel-U Jakarta",
-  3: "Tel-U Purwokerto",
-  4: "Tel-U Surabaya",
-};
+// ✅ Daftar kampus — termasuk opsi "Semua Kampus"
+const BRANCHES = [
+  { id: 1, name: "Tel-U Bandung" },
+  { id: 2, name: "Tel-U Jakarta" },
+  { id: 3, name: "Tel-U Surabaya" },
+  { id: 4, name: "Tel-U Purwokerto" },
+];
 
 const TablePage = () => {
-  const [selectedCampus, setSelectedCampus] = useState("Tel-U Jakarta");
+  const [selectedCampusId, setSelectedCampusId] = useState<number | null>(null); // default: null = semua
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<number | null>(null);
   const [periodeOptions, setPeriodeOptions] = useState<{ id: number; label: string }[]>([]);
   const [periodeDropdownOpen, setPeriodeDropdownOpen] = useState(false);
@@ -32,27 +32,22 @@ const TablePage = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const rowsPerPage = 10;
 
-  const campusOptions = [
-    "Tel-U Bandung",
-    "Tel-U Jakarta",
-    "Tel-U Surabaya",
-    "Tel-U Purwokerto",
-  ];
-
   const columns = [
-    { header: "Nomor", key: "nomor", width: "100px", sortable: true },
+    { header: "Nomor", key: "nomor", width: "80px", sortable: true },
     { header: "Nama Variable", key: "variable", width: "160px", sortable: true },
-    { header: "Indikator", key: "indikator", width: "319px" },
-    { header: "Pertanyaan", key: "pertanyaan", width: "319px" },
+    { header: "Indikator", key: "indikator", width: "250px" },
+    { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
     { header: "Jawaban", key: "jawaban", width: "120px", sortable: true },
-    { header: "Skor", key: "skor", width: "100px", sortable: true },
+    { header: "Skor", key: "skor", width: "80px", sortable: true },
     { header: "Tipe Soal", key: "tipeSoal", width: "120px", sortable: true },
+  
   ];
 
-  // 🔁 Fetch daftar periode
+  // 🔁 Fetch periode
   useEffect(() => {
     const fetchPeriodeOptions = async () => {
       try {
@@ -68,7 +63,6 @@ const TablePage = () => {
         }));
 
         setPeriodeOptions(options);
-
         if (options.length > 0 && selectedPeriodeId === null) {
           setSelectedPeriodeId(options[0].id);
         }
@@ -77,8 +71,6 @@ const TablePage = () => {
         const fallback = [
           { id: 1, label: "2025 Ganjil" },
           { id: 2, label: "2024 Genap" },
-          { id: 3, label: "2025 Ganjil" },
-          { id: 4, label: "2025 Genap" },
         ];
         setPeriodeOptions(fallback);
         if (selectedPeriodeId === null) setSelectedPeriodeId(1);
@@ -88,13 +80,16 @@ const TablePage = () => {
     fetchPeriodeOptions();
   }, []);
 
-  // 🔁 Fetch data approval berdasarkan kampus & periode
+  // 🔁 Fetch data approval
   useEffect(() => {
-    if (selectedPeriodeId === null) return;
+    if (selectedPeriodeId === null) {
+      setLoading(false);
+      return;
+    }
 
     const API_BASE = process.env.NEXT_PUBLIC_API_URL;
     if (!API_BASE) {
-      console.error("NEXT_PUBLIC_API_URL belum di-set di .env.local");
+      setError("NEXT_PUBLIC_API_URL belum di-set di .env.local");
       setLoading(false);
       return;
     }
@@ -102,77 +97,56 @@ const TablePage = () => {
     const fetchApprovalData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        const assessmentRes = await axios.get(`${API_BASE}/assessment`, {
-          params: {
-            approvalStatus: "submitted",
-            periode_id: selectedPeriodeId,
-          },
-        });
-        const assessments = assessmentRes.data.data || [];
-
-        if (assessments.length === 0) {
-          setTableData([]);
-          return;
+        // Bangun params: branchId opsional
+        const params: Record<string, any> = {
+          periodId: selectedPeriodeId,
+        };
+        if (selectedCampusId !== null) {
+          params.branchId = selectedCampusId;
         }
 
-        const questionIds = Array.from(
-          new Set(
-            assessments.flatMap((assessment: any) =>
-              (assessment.assessmentDetails || []).map((detail: any) => detail.questionId)
-            )
-          )
-        );
+        const res = await axios.get(`${API_BASE}/assessment/detail`, { params });
 
-        const questionPromises = questionIds.map((id: number) =>
-          axios.get(`${API_BASE}/question/${id}`).catch((err) => {
-            console.warn(`Gagal ambil question ID ${id}:`, err.message);
-            return null;
-          })
-        );
+        const rawData = res.data.data || [];
 
-        const questionResponses = await Promise.all(questionPromises);
-        const questionMap: Record<number, any> = {};
+        const transformedData = rawData.map((item: any, index: number) => {
+          const question = item.question || {};
+          const assessment = item.assessment || {};
+          const user = assessment.user || {};
 
-        questionResponses.forEach((res, index) => {
-          if (res?.data?.data) {
-            questionMap[questionIds[index]] = res.data.data;
-          }
+          const branchName = BRANCHES.find(b => b.id === user.branchId)?.name || "—";
+
+          return {
+            nomor: index + 1,
+            variable: question.transformationVariable?.name || "-",
+            indikator: question.indicator || "-",
+            pertanyaan: question.questionText || "-",
+            jawaban: item.submissionValue || "-",
+            skor: item.score !== undefined ? item.score : "-",
+            tipeSoal: question.type || "-",
+            kampus: branchName,
+            assessmentId: assessment.id,
+            detailId: item.id,
+          };
         });
 
-        const flattenedData = assessments.flatMap((assessment: any) =>
-          (assessment.assessmentDetails || []).map((detail: any, idx: number) => {
-            const question = questionMap[detail.questionId] || {};
-            return {
-              nomor: idx + 1,
-              variable: question.transformationVariable?.name || 
-                       question.transformationVariableId?.toString() || "-",
-              indikator: question.indicator || "-",
-              pertanyaan: question.questionText || "-",
-              jawaban: detail.submissionValue || "-",
-              skor: detail.score !== undefined ? detail.score : "-",
-              tipeSoal: question.type || "-",
-              assessmentId: assessment.id,
-              detailId: detail.id,
-            };
-          })
-        );
-
-        // ✅ Filter berdasarkan kampus
-        const filteredByCampus = flattenedData.filter((row) => {
-          const assessment = assessments.find((a: any) => a.id === row.assessmentId);
-          const userBranchId = assessment?.user?.branchId;
-          const campusName = BRANCH_ID_TO_CAMPUS[userBranchId] || "UNKNOWN";
-          return campusName === selectedCampus;
-        });
-
-        setTableData(filteredByCampus);
+        setTableData(transformedData);
       } catch (error: any) {
         console.error("Gagal memuat data approval:", error);
+
+        let errorMsg = "Gagal memuat data approval.";
         if (error.response) {
-          console.error("Status:", error.response.status);
-          console.error("Response:", error.response.data);
+          errorMsg += ` Status: ${error.response.status}`;
+          if (error.response.data?.message) {
+            errorMsg += ` - ${error.response.data.message}`;
+          }
+        } else if (error.message) {
+          errorMsg += ` - ${error.message}`;
         }
+
+        setError(errorMsg);
         setTableData([]);
       } finally {
         setLoading(false);
@@ -180,7 +154,7 @@ const TablePage = () => {
     };
 
     fetchApprovalData();
-  }, [selectedCampus, selectedPeriodeId]); // 🔁 Re-fetch jika kampus atau periode berubah
+  }, [selectedCampusId, selectedPeriodeId]);
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
@@ -212,7 +186,6 @@ const TablePage = () => {
     <div className="flex">
       {tab === "approval-assessment" && (
         <div className="bg-white rounded-xl w-full">
-          {/* 🔧 Bagian header dengan dropdown */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
               <SearchTable
@@ -225,7 +198,7 @@ const TablePage = () => {
             <div className="flex items-center gap-2">
               <TableButton data={tableData} />
 
-              {/* 🔽 Dropdown Periode (kiri) */}
+              {/* Dropdown Periode */}
               <div className="relative">
                 <button
                   onClick={() => setPeriodeDropdownOpen(!periodeDropdownOpen)}
@@ -253,27 +226,27 @@ const TablePage = () => {
                 )}
               </div>
 
-              {/* 🔽 Dropdown Kampus (kanan) */}
+              {/* Dropdown Kampus */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
                 >
-                  {selectedCampus}
+                  {BRANCHES.find(b => b.id === selectedCampusId)?.name || "Semua Kampus"}
                   <ChevronDown size={16} />
                 </button>
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border shadow rounded z-10">
-                    {campusOptions.map((campus) => (
+                    {BRANCHES.map((branch) => (
                       <div
-                        key={campus}
+                        key={branch.id ?? "all"}
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                         onClick={() => {
-                          setSelectedCampus(campus);
+                          setSelectedCampusId(branch.id);
                           setDropdownOpen(false);
                         }}
                       >
-                        {campus}
+                        {branch.name}
                       </div>
                     ))}
                   </div>
@@ -282,9 +255,13 @@ const TablePage = () => {
             </div>
           </div>
 
-          {/* 📊 Tabel */}
+          {/* Tabel */}
           {loading ? (
             <div className="p-6 text-center">Memuat data approval...</div>
+          ) : error ? (
+            <div className="p-6 text-center text-red-500">❌ {error}</div>
+          ) : tableData.length === 0 ? (
+            <div className="p-6 text-center">Tidak ada data untuk kampus dan periode ini.</div>
           ) : (
             <TableUpdate
               columns={columns}
@@ -296,7 +273,7 @@ const TablePage = () => {
             />
           )}
 
-          {/* 📄 Pagination & Tombol */}
+          {/* Pagination & Tombol */}
           <div className="flex items-center justify-between mt-4">
             <div className="h-10 flex items-center">
               <Pagination
@@ -332,7 +309,7 @@ const TablePage = () => {
             </div>
           </div>
 
-          {/* 🪟 Modal Konfirmasi */}
+          {/* Modal */}
           <ModalConfirm
             isOpen={showModal}
             onCancel={() => {
