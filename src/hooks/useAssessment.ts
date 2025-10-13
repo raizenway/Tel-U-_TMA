@@ -31,19 +31,19 @@ export function useCreateAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = async (body: CreateAssessment): Promise<Assessment> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await createAssessment(body); // panggil API
-      return res.data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+ const mutate = async (body: CreateAssessment): Promise<Assessment> => {
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await createAssessment(body); // ← ini return ApiResponse<Assessment>
+    return response.data; // ✅ BENAR — ambil data dari response
+  } catch (err: any) {
+    setError(err.message);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   return { mutate, loading, error };
 }

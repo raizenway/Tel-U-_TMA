@@ -20,33 +20,34 @@ export async function getUserById(id: number): Promise<ApiResponse<User>> {
   return res.json();
 }
 
-// Fungsi createUser untuk fetch API Create User dengan menggunakan interface CreateUserRequest
 
 export async function createUser(body: CreateUserRequest): Promise<ApiResponse<User>> {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+  const formData = new FormData();
+
+  // Tambahkan semua field biasa (kecuali 'logo')
+  Object.keys(body).forEach(key => {
+    if (key !== 'logo') {
+      formData.append(key, body[key as keyof CreateUserRequest] as string);
+    }
   });
 
-  // ❗️ Jika gagal, ambil pesan error dari body response
-if (!res.ok) {
-  let errorMessage = "Gagal membuat user";
-
-  try {
-    const errorData = await res.json();
-
-    // ✅ Ambil pesan dari errors.message jika ada
-  if (errorData.errors?.message) {
-      errorMessage = errorData.errors.message;
-    } else if (errorData.message) {
-      // Jika tidak ada errors.message, pakai message utama
-      errorMessage = errorData.message;
-    }
-  } catch (e) {
-    errorMessage = res.statusText || "Gagal membuat user";
+  // Jika ada file logo, tambahkan ke formData dengan key 'logo'
+  if (body.logo) {
+    formData.append('logo', body.logo); // key 'logo' harus sesuai dengan backend
   }
 
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: formData,
+    // ❗ JANGAN set Content-Type — biarkan browser atur otomatis
+  });
+
+  if (!res.ok) {
+    let errorMessage = "Gagal membuat user";
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData.errors?.message || errorData.message || res.statusText;
+    } catch {}
     throw new Error(errorMessage);
   }
 

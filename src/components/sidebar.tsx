@@ -135,6 +135,11 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
           path: "transformation-variable",
           icon: <BookOpen size={18} />,
         },
+        {
+          name: "Assessment Period",
+          path: "periode",
+          icon: <BookOpen size={18} />,
+        },
       ],
     },
     {

@@ -18,6 +18,7 @@ interface PurwokertoTabProps {
 }
 
 export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps) {
+  // Perbarui tipe untuk menyertakan answerText*
   const [rawQuestions, setRawQuestions] = useState<Array<{
     id: number;
     section: string;
@@ -76,13 +77,34 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
             result.data.indicator
           ) {
             const section = `V${Math.floor(i / 5) + 1}`;
+            
+            // ✅ Ambil teks pilihan dari answerText*
+            const options = [];
+            if (result.data.answerText1) options.push(result.data.answerText1);
+            if (result.data.answerText2) options.push(result.data.answerText2);
+            if (result.data.answerText3) options.push(result.data.answerText3);
+            if (result.data.answerText4) options.push(result.data.answerText4);
+            if (result.data.answerText5) options.push(result.data.answerText5);
+            
+            // Jika tidak ada answerText*, fallback ke angka
+            const finalOptions = options.length > 0 
+              ? options 
+              : (id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"]);
+
             tempQuestions.push({
               id,
               section,
               number: id,
-              question: result.data.questionText,
+              question: [
+                result.data.questionText,
+                result.data.questionText2,
+                result.data.questionText3,
+                result.data.questionText4
+              ]
+                .filter(part => part && typeof part === 'string' && part.trim() !== '')
+                .join(' | '),
               indicator: result.data.indicator,
-              options: id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"],
+              options: finalOptions,
               transformationVariableId: result.data.transformationVariableId 
                 ? Number(result.data.transformationVariableId) 
                 : undefined,
@@ -123,8 +145,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
     }
   }, [saveError]);
 
-  
-
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [showModal, setShowModal] = useState(false);
@@ -141,7 +161,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
   const router = useRouter();
   const searchParams = useSearchParams();
   const assessmentIdFromUrl = searchParams.get('assessmentId');
-const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
+  const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
 
   useEffect(() => {
     if (selectedAssessmentId === null || isNaN(selectedAssessmentId) || selectedAssessmentId <= 0) {
@@ -176,9 +196,21 @@ const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl,
         const jawaban = row?.[3];
         if (id !== undefined && jawaban !== undefined && jawaban !== "") {
           const idStr = String(id).trim();
-          const jawabanStr = String(jawaban).trim() === "4" ? "Lebih dari 3" : String(jawaban).trim();
-          updatedAnswers[idStr] = jawabanStr;
+          // Cari teks pilihan yang sesuai
           const questionItem = questions.find((q) => q.id.toString() === idStr);
+          let jawabanStr = String(jawaban).trim();
+          
+          // Jika jawaban adalah angka, cari teksnya di options
+          if (!isNaN(Number(jawabanStr))) {
+            const optionIndex = parseInt(jawabanStr);
+            if (questionItem && questionItem.options[optionIndex]) {
+              jawabanStr = questionItem.options[optionIndex];
+            } else if (jawabanStr === "4") {
+              jawabanStr = "Lebih dari 3";
+            }
+          }
+
+          updatedAnswers[idStr] = jawabanStr;
           modalDataArray.push({
             no: idStr,
             kode: questionItem?.section,
@@ -222,6 +254,7 @@ const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl,
           textAnswer5: "0",
         };
 
+        // Cari indeks berdasarkan teks pilihan
         const optionIndex = q.options.findIndex(opt => opt === userAnswer);
         if (optionIndex === 0) answerData.textAnswer1 = "1";
         else if (optionIndex === 1) answerData.textAnswer2 = "1";
@@ -246,17 +279,16 @@ const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl,
         alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
       }
 
-    // ✅ Selesaikan assessment — HENTIKAN jika gagal
-try {
-  console.log("📤 Mengirim request finishAssessment dengan ID:", selectedAssessmentId);
-  const finishResult = await finishAssessment({ assessmentId: selectedAssessmentId });
-  console.log("✅ Finish assessment berhasil:", finishResult);
-} catch (err) {
-  console.error("❌ Gagal menyelesaikan assessment:", err);
-  const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan tak dikenal";
-  alert(`Gagal menyelesaikan assessment: ${errorMessage}`);
-  return; // ⛔️ JANGAN LANJUT KE LANGKAH BERIKUTNYA
-}
+      try {
+        console.log("📤 Mengirim request finishAssessment dengan ID:", selectedAssessmentId);
+        const finishResult = await finishAssessment({ assessmentId: selectedAssessmentId });
+        console.log("✅ Finish assessment berhasil:", finishResult);
+      } catch (err) {
+        console.error("❌ Gagal menyelesaikan assessment:", err);
+        const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan tak dikenal";
+        alert(`Gagal menyelesaikan assessment: ${errorMessage}`);
+        return;
+      }
 
       const resultData = questions.map((q) => ({
         no: q.id,
@@ -316,7 +348,7 @@ try {
   if (selectedAssessmentId === null) {
     return (
       <div className="max-w-2xl mx-auto p-10 text-center">
-        <p className="text-red-6  00">Periode penilaian tidak valid.</p>
+        <p className="text-red-600">Periode penilaian tidak valid.</p>
         <Button onClick={() => router.push("/assessment")} className="mt-4">
           Kembali ke Halaman Utama
         </Button>
@@ -346,45 +378,41 @@ try {
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
 
-          {current.id === 1 && (
-  <div className="space-y-4">
-    {/* Bagian 1: Terakreditasi */}
-    <div>
-      <label className="block text-sm text-gray-800 mb-1">
-        {current.question.split('|')[0]?.trim() || "Pertanyaan bagian 1 tidak tersedia"}
-      </label>
-      <input
-        type="number"
-        className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-        value={answers["1"] || ""}
-        onChange={(e) => {
-          setAnswers((prev) => ({ ...prev, "1": e.target.value }));
-          setIsFormDirty(true);
-          setFormBelumDisimpan(true);
-        }}
-        placeholder="Masukkan angka"
-      />
-    </div>
+            {current.id === 1 && (
+              <div className="space-y-4">
+                {current.question
+                  .split('|')
+                  .map((part, index) => {
+                    const text = part.trim();
+                    if (!text) return null;
 
-    {/* Bagian 2: Total */}
-    <div>
-      <label className="block text-sm text-gray-800 mb-1">
-        {current.question.split('|')[1]?.trim() || "Pertanyaan bagian 2 tidak tersedia"}
-      </label>
-      <input
-        type="number"
-        className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-        value={answers["1b"] || ""}
-        onChange={(e) => {
-          setAnswers((prev) => ({ ...prev, "1b": e.target.value }));
-          setIsFormDirty(true);
-          setFormBelumDisimpan(true);
-        }}
-        placeholder="Masukkan angka"
-      />
-    </div>
-  </div>
-)}
+                    const answerKey = index === 0 ? "1" : `1${String.fromCharCode(97 + index - 1)}`;
+
+                    return (
+                      <div key={index}>
+                        <label className="block text-sm text-gray-800 mb-1">
+                          {text}
+                        </label>
+                        <input
+                          type="number"
+                          className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+                          value={answers[answerKey] ?? ""}
+                          onChange={(e) => {
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [answerKey]: e.target.value,
+                            }));
+                            setIsFormDirty(true);
+                            setFormBelumDisimpan(true);
+                          }}
+                          placeholder="Masukkan angka"
+                        />
+                      </div>
+                    );
+                  })
+                  .filter(Boolean)}
+              </div>
+            )}
 
             {isLast && (
               <>
