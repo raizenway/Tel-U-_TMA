@@ -24,11 +24,6 @@ export default function AddMaturityLevelPage() {
     minScore: "",
     maxScore: "",
     description: "",
-    scoreDescription0: "",
-    scoreDescription1: "",
-    scoreDescription2: "",
-    scoreDescription3: "",
-    scoreDescription4: "",
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
@@ -51,40 +46,11 @@ export default function AddMaturityLevelPage() {
           minScore: String(parsed.minScore ?? ""),
           maxScore: String(parsed.maxScore ?? ""),
           description: parsed.description || "",
-          scoreDescription0: parsed.scoreDescription0 || "",
-          scoreDescription1: parsed.scoreDescription1 || "",
-          scoreDescription2: parsed.scoreDescription2 || "",
-          scoreDescription3: parsed.scoreDescription3 || "",
-          scoreDescription4: parsed.scoreDescription4 || "",
         });
       }
     } catch (e) {
       console.warn("Gagal parse maturityTempForm:", e);
     }
-  }, []);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      const tempForm = localStorage.getItem("maturityTempForm");
-      if (!tempForm) return;
-
-      try {
-        const tempData = JSON.parse(tempForm);
-        setFormData((prev) => ({
-          ...prev,
-          scoreDescription0: tempData.scoreDescription0 || prev.scoreDescription0,
-          scoreDescription1: tempData.scoreDescription1 || prev.scoreDescription1,
-          scoreDescription2: tempData.scoreDescription2 || prev.scoreDescription2,
-          scoreDescription3: tempData.scoreDescription3 || prev.scoreDescription3,
-          scoreDescription4: tempData.scoreDescription4 || prev.scoreDescription4,
-        }));
-      } catch (e) {
-        console.warn("Gagal muat deskripsi dari localStorage:", e);
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   const handleChange = (
@@ -126,11 +92,6 @@ export default function AddMaturityLevelPage() {
         minScore: String(parsedMin),
         maxScore: String(parsedMax),
         description: formData.description.trim(),
-        scoreDescription0: formData.scoreDescription0.trim(),
-        scoreDescription1: formData.scoreDescription1.trim(),
-        scoreDescription2: formData.scoreDescription2.trim(),
-        scoreDescription3: formData.scoreDescription3.trim(),
-        scoreDescription4: formData.scoreDescription4.trim(),
       };
 
       await mutate(payload);
@@ -142,11 +103,6 @@ export default function AddMaturityLevelPage() {
         minScore: "",
         maxScore: "",
         description: "",
-        scoreDescription0: "",
-        scoreDescription1: "",
-        scoreDescription2: "",
-        scoreDescription3: "",
-        scoreDescription4: "",
       });
 
       setErrorMessage(null);
@@ -234,28 +190,6 @@ export default function AddMaturityLevelPage() {
               className="w-full border rounded-md px-3 py-2 h-[90px]"
               required
             />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Deskripsi per Variabel
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                localStorage.setItem(
-                  "maturityTempForm",
-                  JSON.stringify({ ...formData, fromAdd: true })
-                );
-                router.push(`/maturity-level/deskripsi-per-variabel?mode=add`);
-              }}
-              className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
-            >
-              {Object.values(formData)
-                .slice(5)
-                .some((d) => d.trim() !== "")
-                ? "Lihat Deskripsi"
-                : "+ Tambah Deskripsi"}
-            </button>
           </div>
         </div>
 
