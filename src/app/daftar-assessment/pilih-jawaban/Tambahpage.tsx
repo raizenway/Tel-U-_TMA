@@ -8,13 +8,11 @@ import { X, Save } from 'lucide-react';
 import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
-// Type untuk status input (UI)
 type StatusInput = 'Aktif' | 'Non-Aktif';
 
 export default function PilihJawabanPage() {
   const router = useRouter();
 
-  // Form state
   const [bobot, setBobot] = useState(1);
   const [indikator, setIndikator] = useState('');
   const [pertanyaan1, setPertanyaan1] = useState('');
@@ -26,14 +24,11 @@ export default function PilihJawabanPage() {
   
   const { data: rawData, loading: variablesLoading } = useTransformationVariableList();
   const transformationVariables = Array.isArray(rawData) ? rawData : [];
- 
   const [selectedVariableId, setSelectedVariableId] = useState<number | null>(null);
 
-  // Nilai jawaban untuk Pilihan Ganda (A-E)
   const [pgAnswers1, setPgAnswers1] = useState<string[]>(['0', '1', '2', '3', '>3']);
   const [pgAnswers2, setPgAnswers2] = useState<string[]>(['0', '1', '2', '3', '>3']);
 
-  // Skor dan deskripsi
   const [skor, setSkor] = useState<{ [key: number]: { min: string; max: string } }>({
     0: { min: '0', max: '1.9' },
     1: { min: '2', max: '4.9' },
@@ -51,71 +46,40 @@ export default function PilihJawabanPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Mode edit
   const [isEditMode, setIsEditMode] = useState(false);
   const [editNomor, setEditNomor] = useState<number | null>(null);
 
-  // Hook create & update
   const { mutate: createMutate, loading: createLoading, error: createError } = useCreateQuestion();
   const { mutate: updateMutate, loading: updateLoading, error: updateError } = useUpdateQuestion();
 
   useEffect(() => {
-    console.log('🔍 [useEffect] transformationVariables:', transformationVariables);
-
-    if (transformationVariables.length === 0) {
-      console.log('⚠️ [useEffect] transformationVariables masih kosong — skip load editData');
-      return;
-    }
-
+    if (transformationVariables.length === 0) return;
     const editDataRaw = localStorage.getItem('editData');
-    console.log('📄 [useEffect] Raw editData dari localStorage:', editDataRaw);
-
-    if (!editDataRaw) {
-      console.log('❌ [useEffect] Tidak ada data di localStorage — tidak dalam mode edit');
-      return;
-    }
+    if (!editDataRaw) return;
 
     try {
       const data = JSON.parse(editDataRaw);
-      console.log('✅ [useEffect] Parsed editData:', data);
-
       setBobot(data.bobot || 1);
       setIndikator(data.indikator || '');
       setPertanyaan1(data.pertanyaan || '');
       setPertanyaan2(data.pertanyaan2 || '');
-      
-      // Load nilai jawaban jika ada
       if (data.pgAnswers1) setPgAnswers1(data.pgAnswers1);
       if (data.pgAnswers2) setPgAnswers2(data.pgAnswers2);
-
       setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
       setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
       setTipePertanyaan(data.tipePertanyaan || 'pg');
       setUrutan(String(data.order || ''));
-
-      if (data.transformationVariableId !== undefined && data.transformationVariableId !== null) {
-        setSelectedVariableId(data.transformationVariableId);
-      } else if (data.variable) {
-        const normalizedName = data.variable.trim().toLowerCase();
-        const matched = transformationVariables.find(
-          v => v.name.trim().toLowerCase() === normalizedName
-        );
-        setSelectedVariableId(matched?.id || null);
-      } else {
-        setSelectedVariableId(null);
-      }
-
+      setSelectedVariableId(data.transformationVariableId ?? null);
       if (data.nomor) {
         setEditNomor(data.nomor);
         setIsEditMode(true);
       }
     } catch (error) {
-      console.error('💥 [useEffect] Gagal parsing editData:', error);
+      console.error('Gagal parsing editData:', error);
     }
   }, [transformationVariables]);
 
-  // ✅ Pastikan jumlahPertanyaan konsisten dengan tipePertanyaan
+  // Jika pilih pilihan ganda, otomatis jadi 1 pertanyaan
   useEffect(() => {
     if (tipePertanyaan === 'pg') {
       setJumlahPertanyaan('1 Pertanyaan');
@@ -124,7 +88,6 @@ export default function PilihJawabanPage() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-
     if (!selectedVariableId) newErrors.namaVariabel = 'Wajib dipilih';
     if (!indikator.trim()) newErrors.indikator = 'Wajib diisi';
     if (!pertanyaan1.trim()) newErrors.pertanyaan1 = 'Wajib diisi';
@@ -134,16 +97,18 @@ export default function PilihJawabanPage() {
     if (!status) newErrors.status = 'Wajib dipilih';
     if (!jumlahPertanyaan) newErrors.jumlahPertanyaan = 'Wajib dipilih';
 
-    Object.keys(skor).forEach((level) => {
-      const numLevel = Number(level);
-      const min = parseFloat(skor[numLevel].min);
-      const max = parseFloat(skor[numLevel].max);
-      if (isNaN(min) || isNaN(max)) {
-        newErrors[`skor${numLevel}`] = 'Wajib diisi';
-      } else if (min >= max) {
-        newErrors[`skor${numLevel}`] = 'Max harus lebih besar dari min';
-      }
-    });
+    if (tipePertanyaan === 'short-answer') {
+      Object.keys(skor).forEach((level) => {
+        const numLevel = Number(level);
+        const min = parseFloat(skor[numLevel].min);
+        const max = parseFloat(skor[numLevel].max);
+        if (isNaN(min) || isNaN(max)) {
+          newErrors[`skor${numLevel}`] = 'Wajib diisi';
+        } else if (min >= max) {
+          newErrors[`skor${numLevel}`] = 'Max harus lebih besar dari min';
+        }
+      });
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -159,18 +124,18 @@ export default function PilihJawabanPage() {
   const handleConfirmSave = async () => {
     try {
       const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
-
       if (!selectedVariableId) {
-        setErrors((prev) => ({ ...prev, namaVariabel: 'Wajib dipilih' }));
+        setErrors({ namaVariabel: 'Wajib dipilih' });
         return;
       }
 
+      const questionType: 'multitext' | 'text' = tipePertanyaan === 'pg' ? 'multitext' : 'text';
       const basePayload1 = {
-       transformationVariable: { connect: { id: selectedVariableId } },
-        type: tipePertanyaan === 'pg' ? 'multitext' : 'text',
+        transformationVariable: { connect: { id: selectedVariableId } },
+        type: questionType,
         indicator: indikator.trim(),
         questionText: pertanyaan1.trim(),
-        answerText: tipePertanyaan === 'pg' ? pgAnswers1[0] : "",
+        answerText1: tipePertanyaan === 'pg' ? pgAnswers1[0] : "",
         answerText2: tipePertanyaan === 'pg' ? pgAnswers1[1] : "",
         answerText3: tipePertanyaan === 'pg' ? pgAnswers1[2] : "",
         answerText4: tipePertanyaan === 'pg' ? pgAnswers1[3] : "",
@@ -186,32 +151,14 @@ export default function PilihJawabanPage() {
 
       if (isEditMode && editNomor !== null) {
         await updateMutate(editNomor, basePayload1);
-
         if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = {
-            ...basePayload1,
-            questionText: pertanyaan2.trim(),
-            answerText: pgAnswers2[0],
-            answerText2: pgAnswers2[1],
-            answerText3: pgAnswers2[2],
-            answerText4: pgAnswers2[3],
-            answerText5: pgAnswers2[4],
-          };
+          const payload2 = { ...basePayload1, questionText: pertanyaan2.trim() };
           await updateMutate(editNomor + 1, payload2);
         }
       } else {
         await createMutate(basePayload1);
-
         if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = {
-            ...basePayload1,
-            questionText: pertanyaan2.trim(),
-            answerText: pgAnswers2[0],
-            answerText2: pgAnswers2[1],
-            answerText3: pgAnswers2[2],
-            answerText4: pgAnswers2[3],
-            answerText5: pgAnswers2[4],
-          };
+          const payload2 = { ...basePayload1, questionText: pertanyaan2.trim() };
           await createMutate(payload2);
         }
       }
@@ -231,39 +178,28 @@ export default function PilihJawabanPage() {
   };
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = e.target.value;
     localStorage.removeItem('editData');
-    if (selected === 'pilihan-jawaban') {
-      router.push('/daftar-assessment/pilih-jawaban');
-    } else if (selected === 'api-igracias') {
-      router.push('/daftar-assessment/api-igracias');
-    } else if (selected === 'submit-excel') {
-      router.push('/daftar-assessment/submit-excel');
-    }
+    const selected = e.target.value;
+    if (selected === 'pilihan-jawaban') router.push('/daftar-assessment/pilih-jawaban');
+    else if (selected === 'api-igracias') router.push('/daftar-assessment/api-igracias');
+    else if (selected === 'submit-excel') router.push('/daftar-assessment/submit-excel');
   };
 
   const handleRadioClick = (value: '1 Pertanyaan' | '2 Pertanyaan') => {
-    // Hanya izinkan "2 Pertanyaan" jika bukan pilihan ganda
-    if (value === '2 Pertanyaan' && tipePertanyaan === 'pg') {
-      return; // Blokir
-    }
+    if (value === '2 Pertanyaan' && tipePertanyaan === 'pg') return;
     setJumlahPertanyaan(value);
   };
 
   const isFormValid = () => {
-    if (!selectedVariableId) return false;
-    if (!indikator.trim()) return false;
-    if (!pertanyaan1.trim()) return false;
-    if (!status) return false;
-    if (!jumlahPertanyaan) return false;
+    if (!selectedVariableId || !indikator.trim() || !pertanyaan1.trim() || !status || !jumlahPertanyaan) return false;
     if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) return false;
-
-    for (const level of Object.keys(skor)) {
-      const min = parseFloat(skor[Number(level)].min);
-      const max = parseFloat(skor[Number(level)].max);
-      if (isNaN(min) || isNaN(max) || min >= max) return false;
+    if (tipePertanyaan === 'short-answer') {
+      for (const level of Object.keys(skor)) {
+        const min = parseFloat(skor[Number(level)].min);
+        const max = parseFloat(skor[Number(level)].max);
+        if (isNaN(min) || isNaN(max) || min >= max) return false;
+      }
     }
-
     return true;
   };
 
@@ -275,7 +211,6 @@ export default function PilihJawabanPage() {
             {isEditMode ? 'Edit Soal: Pilihan Jawaban' : 'Soal Baru: Pilihan Jawaban'}
           </h1>
 
-          {/* Error API */}
           {(createError || updateError) && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               ❌ {createError || updateError}
@@ -351,7 +286,7 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
-          <div className="flex flex-col space-y-2">
+          <div className="flex flex-col space-y-2 mb-4">
             <label className="block text-sm font-medium text-gray-700">Urutan</label>
             <input
               type="number"
@@ -379,7 +314,7 @@ export default function PilihJawabanPage() {
                       }))
                     }
                     rows={3}
-                    className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
                     placeholder={`Deskripsi untuk skor ${level}`}
                   />
                 </div>
@@ -387,25 +322,50 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
-          {/* Jumlah Pertanyaan */}
+          {/* ✅ Tipe Pertanyaan — DITEMPATKAN DI ATAS */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pertanyaan</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Pertanyaan</label>
             <div className="flex space-x-6">
-              <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
-                <input
-                  type="radio"
-                  name="jumlahPertanyaan"
-                  value="1 Pertanyaan"
-                  checked={jumlahPertanyaan === '1 Pertanyaan'}
-                  onClick={() => handleRadioClick('1 Pertanyaan')}
-                  readOnly
-                  className="text-blue-600 focus:ring-blue-500"
-                />
-                <span>1 Pertanyaan</span>
-              </label>
-              
-              {/* Hanya tampilkan "2 Pertanyaan" jika bukan pilihan ganda */}
-              {tipePertanyaan !== 'pg' && (
+              {[
+                { value: 'pg' as const, label: 'Pilihan Ganda' },
+                { value: 'short-answer' as const, label: 'Jawaban Singkat' },
+              ].map((option) => (
+                <label key={option.value} className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
+                  <input
+                    type="radio"
+                    name="tipePertanyaan"
+                    value={option.value}
+                    checked={tipePertanyaan === option.value}
+                    onChange={(e) => {
+                      const newType = e.target.value as 'pg' | 'short-answer';
+                      setTipePertanyaan(newType);
+                      if (newType === 'pg') setJumlahPertanyaan('1 Pertanyaan');
+                    }}
+                    className="text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* ✅ Jumlah Pertanyaan — DITEMPATKAN DI BAWAH, hanya muncul jika short-answer */}
+          {tipePertanyaan === 'short-answer' && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pertanyaan</label>
+              <div className="flex space-x-6">
+                <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
+                  <input
+                    type="radio"
+                    name="jumlahPertanyaan"
+                    value="1 Pertanyaan"
+                    checked={jumlahPertanyaan === '1 Pertanyaan'}
+                    onClick={() => handleRadioClick('1 Pertanyaan')}
+                    readOnly
+                    className="text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>1 Pertanyaan</span>
+                </label>
                 <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
                   <input
                     type="radio"
@@ -418,38 +378,6 @@ export default function PilihJawabanPage() {
                   />
                   <span>2 Pertanyaan</span>
                 </label>
-              )}
-            </div>
-          </div>
-
-          {/* Tipe Pertanyaan */}
-          {jumlahPertanyaan && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Pertanyaan</label>
-              <div className="flex space-x-6">
-                {[
-                  { value: 'pg' as const, label: 'Pilihan Ganda' },
-                  { value: 'short-answer' as const, label: 'Jawaban Singkat' },
-                ].map((option) => (
-                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
-                    <input
-                      type="radio"
-                      name="tipePertanyaan"
-                      value={option.value}
-                      checked={tipePertanyaan === option.value}
-                      onChange={(e) => {
-                        const newType = e.target.value as 'pg' | 'short-answer';
-                        setTipePertanyaan(newType);
-                        // Jika pilih "Pilihan Ganda", pastikan hanya 1 pertanyaan
-                        if (newType === 'pg') {
-                          setJumlahPertanyaan('1 Pertanyaan');
-                        }
-                      }}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
               </div>
             </div>
           )}
@@ -473,11 +401,11 @@ export default function PilihJawabanPage() {
                   <table className="w-full border-collapse border border-gray-300">
                     <thead>
                       <tr>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban A</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban B</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban C</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban D</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban E</th>
+                        {['A', 'B', 'C', 'D', 'E'].map((label) => (
+                          <th key={label} className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">
+                            Jawaban {label}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -493,11 +421,11 @@ export default function PilihJawabanPage() {
                         ))}
                       </tr>
                       <tr>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban A</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban B</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban C</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban D</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban E</th>
+                        {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
+                          <th key={idx} className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">
+                            Nilai Jawaban {['A', 'B', 'C', 'D', 'E'][idx]}
+                          </th>
+                        ))}
                       </tr>
                       <tr>
                         {['0', '1', '2', '3', '>3'].map((_, idx) => (
@@ -524,74 +452,21 @@ export default function PilihJawabanPage() {
 
           {/* Pertanyaan 2 */}
           {jumlahPertanyaan === '2 Pertanyaan' && (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 2</label>
-                <textarea
-                  className={`w-full border ${errors.pertanyaan2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                  value={pertanyaan2}
-                  onChange={(e) => setPertanyaan2(e.target.value)}
-                  placeholder="Masukkan pertanyaan..."
-                  rows={2}
-                ></textarea>
-                {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
-              </div>
-              {tipePertanyaan === 'pg' && (
-                <div className="mb-6">
-                  <table className="w-full border-collapse border border-gray-300">
-                    <thead>
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban A</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban B</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban C</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban D</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Jawaban E</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {['A', 'B', 'C', 'D', 'E'].map((label) => (
-                          <td key={label} className="border px-3 py-2">
-                            <textarea
-                              className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
-                              rows={2}
-                              placeholder={`Tulis Jawaban ${label}...`}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban A</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban B</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban C</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban D</th>
-                        <th className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">Nilai Jawaban E</th>
-                      </tr>
-                      <tr>
-                        {['0', '1', '2', '3', '>3'].map((_, idx) => (
-                          <td key={idx} className="border px-3 py-2">
-                            <input
-                              type="text"
-                              className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                              value={pgAnswers2[idx]}
-                              onChange={(e) => {
-                                const newAnswers = [...pgAnswers2];
-                                newAnswers[idx] = e.target.value;
-                                setPgAnswers2(newAnswers);
-                              }}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 2</label>
+              <textarea
+                className={`w-full border ${errors.pertanyaan2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                value={pertanyaan2}
+                onChange={(e) => setPertanyaan2(e.target.value)}
+                placeholder="Masukkan pertanyaan..."
+                rows={2}
+              ></textarea>
+              {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
+            </div>
           )}
 
-          {/* Edit Rentang Skor */}
-          {tipePertanyaan !== 'pg' && (
+          {/* Edit Rentang Skor — hanya untuk short-answer */}
+          {tipePertanyaan === 'short-answer' && (
             <div className="mb-6 overflow-x-auto">
               <h3 className="text-sm font-medium text-gray-700 mb-2">Edit Rentang Skor (0-4)</h3>
               <table className="w-full border-collapse border border-gray-300 text-sm">
@@ -666,17 +541,7 @@ export default function PilihJawabanPage() {
               onClick={handleSave}
               className="rounded-[12px] px-25 py-2 text-sm font-semibold"
             >
-              {(createLoading || updateLoading) ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Menyimpan...
-                </>
-              ) : (
-                'Simpan'
-              )}
+              {(createLoading || updateLoading) ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </div>
         </div>
