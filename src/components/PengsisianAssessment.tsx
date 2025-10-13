@@ -17,18 +17,20 @@ interface PurwokertoTabProps {
   setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps) {
-  // Perbarui tipe untuk menyertakan answerText*
-  const [rawQuestions, setRawQuestions] = useState<Array<{
-    id: number;
-    section: string;
-    number: number;
-    question: string;
-    indicator?: string;
-    options: string[];
-    transformationVariableId?: number;
-  }>>([]);
+// ✅ Tambahkan type ke interface
+interface QuestionItem {
+  id: number;
+  section: string;
+  number: number;
+  question: string;
+  indicator?: string;
+  options: string[];
+  transformationVariableId?: number;
+  type: 'text' | 'multitext'; // ✅
+}
 
+export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps) {
+  const [rawQuestions, setRawQuestions] = useState<QuestionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const hookResult = useTransformationVariableList();
   const transformationVariables = hookResult.data;
@@ -59,37 +61,27 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
 
   useEffect(() => {
     const fetchAllQuestions = async () => {
-      const tempQuestions = [];
+      const tempQuestions: QuestionItem[] = [];
       for (let i = 0; i < 30; i++) {
         const id = i + 1;
         try {
           const response = await fetch(`http://localhost:3000/api/question/${id}`);
-          if (!response.ok) {
-            console.warn(`⚠️ Question ${id} not found`);
-            continue;
-          }
+          if (!response.ok) continue;
           const result = await response.json();
-          if (
-            (result.status === 'success' || result.status === 200) &&
-            result.data && 
-            typeof result.data === 'object' &&
-            result.data.questionText &&
-            result.data.indicator
-          ) {
+          if (result.data && result.data.questionText && result.data.indicator) {
             const section = `V${Math.floor(i / 5) + 1}`;
-            
-            // ✅ Ambil teks pilihan dari answerText*
             const options = [];
             if (result.data.answerText1) options.push(result.data.answerText1);
             if (result.data.answerText2) options.push(result.data.answerText2);
             if (result.data.answerText3) options.push(result.data.answerText3);
             if (result.data.answerText4) options.push(result.data.answerText4);
             if (result.data.answerText5) options.push(result.data.answerText5);
-            
-            // Jika tidak ada answerText*, fallback ke angka
             const finalOptions = options.length > 0 
               ? options 
               : (id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"]);
+
+            // ✅ Ambil type dari API
+            const type = result.data.type === 'text' ? 'text' : 'multitext';
 
             tempQuestions.push({
               id,
@@ -108,9 +100,8 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               transformationVariableId: result.data.transformationVariableId 
                 ? Number(result.data.transformationVariableId) 
                 : undefined,
+              type, // ✅
             });
-          } else {
-            console.warn(`⚠️ Question ${id} has no data or invalid format`, result);
           }
         } catch (err) {
           console.error(`❌ Error fetching question ${id}:`, err);
@@ -165,7 +156,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
 
   useEffect(() => {
     if (selectedAssessmentId === null || isNaN(selectedAssessmentId) || selectedAssessmentId <= 0) {
-      alert("Periode tidak valid. Silakan kembali ke halaman pemilihan.");
+      alert("Periode tidak valid.");
       router.push("/assessment");
     }
   }, [selectedAssessmentId, router]);
@@ -196,11 +187,8 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
         const jawaban = row?.[3];
         if (id !== undefined && jawaban !== undefined && jawaban !== "") {
           const idStr = String(id).trim();
-          // Cari teks pilihan yang sesuai
           const questionItem = questions.find((q) => q.id.toString() === idStr);
           let jawabanStr = String(jawaban).trim();
-          
-          // Jika jawaban adalah angka, cari teksnya di options
           if (!isNaN(Number(jawabanStr))) {
             const optionIndex = parseInt(jawabanStr);
             if (questionItem && questionItem.options[optionIndex]) {
@@ -209,7 +197,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               jawabanStr = "Lebih dari 3";
             }
           }
-
           updatedAnswers[idStr] = jawabanStr;
           modalDataArray.push({
             no: idStr,
@@ -243,7 +230,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
         if (userAnswer == null) continue;
 
         totalCount++;
-        
         const answerData = {
           assessmentId: selectedAssessmentId,
           questionId: q.id,
@@ -254,7 +240,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
           textAnswer5: "0",
         };
 
-        // Cari indeks berdasarkan teks pilihan
         const optionIndex = q.options.findIndex(opt => opt === userAnswer);
         if (optionIndex === 0) answerData.textAnswer1 = "1";
         else if (optionIndex === 1) answerData.textAnswer2 = "1";
@@ -271,7 +256,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
       }
 
       if (successCount === 0 && totalCount > 0) {
-        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\n\nSilakan coba lagi.");
+        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!");
         return;
       }
 
@@ -280,13 +265,10 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
       }
 
       try {
-        console.log("📤 Mengirim request finishAssessment dengan ID:", selectedAssessmentId);
-        const finishResult = await finishAssessment({ assessmentId: selectedAssessmentId });
-        console.log("✅ Finish assessment berhasil:", finishResult);
+        await finishAssessment({ assessmentId: selectedAssessmentId });
       } catch (err) {
         console.error("❌ Gagal menyelesaikan assessment:", err);
-        const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan tak dikenal";
-        alert(`Gagal menyelesaikan assessment: ${errorMessage}`);
+        alert(`Gagal menyelesaikan assessment: ${err instanceof Error ? err.message : "Error tidak dikenal"}`);
         return;
       }
 
@@ -308,12 +290,8 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
         resultData,
       };
       localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
-
-      setShowModal(false);
-      setShowSuccess(true);
       localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
-      setTimeout(() => router.push("/assessment/assessmenttable"), 1500);
-
+      router.push("/assessment/assessmenttable");
     } catch (err) {
       console.error("❌ Gagal menyimpan jawaban ke API:", err);
       alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
@@ -331,13 +309,21 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [formBelumDisimpan]);
 
+  // ✅ Validasi dinamis berdasarkan type
   const allAnswered = questions.slice(0, -1).every((q) => {
-    if (q.id === 1) {
-      const val = answers["1"];
-      return val != null && val !== "" && !isNaN(Number(val)) && Number(val) >= 0;
-    } else {
-      return answers[q.id] != null && answers[q.id] !== "";
+    if (q.type === 'text') {
+      const baseKey = String(q.id);
+      const parts = q.question.split('|').length;
+      for (let i = 0; i < parts; i++) {
+        const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
+        const val = answers[key];
+        if (val == null || val === "" || isNaN(Number(val)) || Number(val) < 0) {
+          return false;
+        }
+      }
+      return true;
     }
+    return answers[q.id] != null && answers[q.id] !== "";
   });
 
   const isLoading = variablesLoading || rawQuestions.length === 0;
@@ -378,34 +364,29 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
 
-            {current.id === 1 && (
+            {/* ✅ Render berdasarkan type */}
+            {current.type === 'text' && (
               <div className="space-y-4">
                 {current.question
                   .split('|')
                   .map((part, index) => {
                     const text = part.trim();
                     if (!text) return null;
-
-                    const answerKey = index === 0 ? "1" : `1${String.fromCharCode(97 + index - 1)}`;
-
+                    const answerKey = index === 0 ? String(current.id) : `${current.id}${String.fromCharCode(97 + index - 1)}`;
                     return (
                       <div key={index}>
-                        <label className="block text-sm text-gray-800 mb-1">
-                          {text}
-                        </label>
+                        <label className="block text-sm text-gray-800 mb-1">{text}</label>
                         <input
                           type="number"
                           className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
                           value={answers[answerKey] ?? ""}
                           onChange={(e) => {
-                            setAnswers((prev) => ({
-                              ...prev,
-                              [answerKey]: e.target.value,
-                            }));
+                            setAnswers(prev => ({ ...prev, [answerKey]: e.target.value }));
                             setIsFormDirty(true);
                             setFormBelumDisimpan(true);
                           }}
                           placeholder="Masukkan angka"
+                          min="0"
                         />
                       </div>
                     );
@@ -414,44 +395,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               </div>
             )}
 
-            {isLast && (
-              <>
-                <ul className="text-sm text-gray-800 list-decimal list-inside space-y-2">
-                  <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Guru Besar</li>
-                  <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Lektor Kepala</li>
-                  <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Lektor</li>
-                  <li>Jumlah dosen tetap TUNC</li>
-                </ul>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                  <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
-                    <p className="text-sm text-gray-600">Klik tombol di bawah untuk mendownload template jawaban</p>
-                    <Button
-                      type="link"
-                      variant="primary"
-                      href="/files/template_jawaban_tunch.xlsx"
-                      download
-                      icon={Download}
-                      iconPosition="left"
-                    >
-                      Download di sini
-                    </Button>
-                  </div>
-                  <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
-                    <p className="text-sm text-gray-600">Tarik & tahan lampiran untuk mengupload</p>
-                    <Button
-                      type="button"
-                      onClick={handleBrowseClick}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm"
-                    >
-                      Browse File
-                    </Button>
-                    <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {!isLast && current.id !== 1 && (
+            {current.type === 'multitext' && !isLast && (
               <div className="space-y-3">
                 {current.options.map((option, index) => (
                   <label key={index} className="flex items-center space-x-3">
@@ -461,7 +405,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
                       value={option}
                       checked={answers[current.id] === option}
                       onChange={() => {
-                        setAnswers((prev) => ({ ...prev, [current.id]: option }));
+                        setAnswers(prev => ({ ...prev, [current.id]: option }));
                         setIsFormDirty(true);
                         setFormBelumDisimpan(true);
                       }}
@@ -472,7 +416,46 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
                 ))}
               </div>
             )}
-
+             
+            {/* 
+                    {isLast && (
+                      <>
+                        <ul className="text-sm text-gray-800 list-decimal list-inside space-y-2">
+                          <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Guru Besar</li>
+                          <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Lektor Kepala</li>
+                          <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Lektor</li>
+                          <li>Jumlah dosen tetap TUNC</li>
+                        </ul>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                          <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
+                            <p className="text-sm text-gray-600">Download template jawaban</p>
+                            <Button
+                              type="link"
+                              variant="primary"
+                              href="/files/template_jawaban_tunch.xlsx"
+                              download
+                              icon={Download}
+                              iconPosition="left"
+                            >
+                              Download di sini
+                            </Button>
+                          </div>
+                          <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
+                            <p className="text-sm text-gray-600">Upload file Excel</p>
+                            <Button
+                              type="button"
+                              onClick={handleBrowseClick}
+                              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm"
+                            >
+                              Browse File
+                            </Button>
+                            <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    */}
+            
             {current.id && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-800 mb-1">Link Evidence</label>
@@ -482,7 +465,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
                   className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
                   value={answers[`evidence-${current.id}`] || ""}
                   onChange={(e) => {
-                    setAnswers((prev) => ({
+                    setAnswers(prev => ({
                       ...prev,
                       [`evidence-${current.id}`]: e.target.value,
                     }));
@@ -492,6 +475,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
                 />
               </div>
             )}
+
 
             <div className="flex justify-end items-center gap-3 pt-4">
               <Button
@@ -506,7 +490,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               >
                 Batal
               </Button>
-
               {currentIndex > 0 && (
                 <Button
                   variant="outline"
@@ -708,7 +691,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
         }
       >
         <div className="text-sm text-gray-700">
-          Jawaban untuk soal <strong>nomor {resetQuestionId}</strong> akan dihapus dan Anda dapat mengisinya kembali nanti.
+          Jawaban untuk soal <strong>nomor {resetQuestionId}</strong> akan dihapus.
         </div>
       </ModalConfirm>
 

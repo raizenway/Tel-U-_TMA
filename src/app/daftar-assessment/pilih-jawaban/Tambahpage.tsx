@@ -15,19 +15,24 @@ export default function PilihJawabanPage() {
 
   const [bobot, setBobot] = useState(1);
   const [indikator, setIndikator] = useState('');
+  const [keyIndicator, setKeyIndicator] = useState(''); // ✅ Nama disesuaikan dengan Prisma
+  const [reference, setReference] = useState('');
+  const [dataSource, setDataSource] = useState('');
+
   const [pertanyaan1, setPertanyaan1] = useState('');
   const [pertanyaan2, setPertanyaan2] = useState('');
+  const [pertanyaan3, setPertanyaan3] = useState('');
+  const [pertanyaan4, setPertanyaan4] = useState('');
   const [status, setStatus] = useState<StatusInput | ''>('');
-  const [jumlahPertanyaan, setJumlahPertanyaan] = useState<'1 Pertanyaan' | '2 Pertanyaan' | ''>('');
+  const [jumlahPertanyaan, setJumlahPertanyaan] = useState<1 | 2 | 3 | 4>(1);
   const [tipePertanyaan, setTipePertanyaan] = useState<'pg' | 'short-answer'>('pg');
   const [urutan, setUrutan] = useState<string>('');
-  
+
   const { data: rawData, loading: variablesLoading } = useTransformationVariableList();
   const transformationVariables = Array.isArray(rawData) ? rawData : [];
   const [selectedVariableId, setSelectedVariableId] = useState<number | null>(null);
 
   const [pgAnswers1, setPgAnswers1] = useState<string[]>(['0', '1', '2', '3', '>3']);
-  const [pgAnswers2, setPgAnswers2] = useState<string[]>(['0', '1', '2', '3', '>3']);
 
   const [skor, setSkor] = useState<{ [key: number]: { min: string; max: string } }>({
     0: { min: '0', max: '1.9' },
@@ -52,6 +57,7 @@ export default function PilihJawabanPage() {
   const { mutate: createMutate, loading: createLoading, error: createError } = useCreateQuestion();
   const { mutate: updateMutate, loading: updateLoading, error: updateError } = useUpdateQuestion();
 
+  // Load data saat edit
   useEffect(() => {
     if (transformationVariables.length === 0) return;
     const editDataRaw = localStorage.getItem('editData');
@@ -61,12 +67,22 @@ export default function PilihJawabanPage() {
       const data = JSON.parse(editDataRaw);
       setBobot(data.bobot || 1);
       setIndikator(data.indikator || '');
-      setPertanyaan1(data.pertanyaan || '');
-      setPertanyaan2(data.pertanyaan2 || '');
-      if (data.pgAnswers1) setPgAnswers1(data.pgAnswers1);
-      if (data.pgAnswers2) setPgAnswers2(data.pgAnswers2);
+      setKeyIndicator(data.keyIndicator || ''); // ✅ Sesuaikan nama field
+      setReference(data.reference || '');
+      setDataSource(data.dataSource || '');
+
+      setPertanyaan1(data.questionText || data.pertanyaan || '');
+      setPertanyaan2(data.questionText2 || data.pertanyaan2 || '');
+      setPertanyaan3(data.questionText3 || data.pertanyaan3 || '');
+      setPertanyaan4(data.questionText4 || data.pertanyaan4 || '');
+
+      let count = 1;
+      if ((data.questionText2 || data.pertanyaan2)?.trim()) count++;
+      if ((data.questionText3 || data.pertanyaan3)?.trim()) count++;
+      if ((data.questionText4 || data.pertanyaan4)?.trim()) count++;
+      setJumlahPertanyaan(Math.min(count, 4) as 1 | 2 | 3 | 4);
+
       setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
-      setJumlahPertanyaan(data.pertanyaan2 ? '2 Pertanyaan' : '1 Pertanyaan');
       setTipePertanyaan(data.tipePertanyaan || 'pg');
       setUrutan(String(data.order || ''));
       setSelectedVariableId(data.transformationVariableId ?? null);
@@ -79,10 +95,9 @@ export default function PilihJawabanPage() {
     }
   }, [transformationVariables]);
 
-  // Jika pilih pilihan ganda, otomatis jadi 1 pertanyaan
   useEffect(() => {
     if (tipePertanyaan === 'pg') {
-      setJumlahPertanyaan('1 Pertanyaan');
+      setJumlahPertanyaan(1);
     }
   }, [tipePertanyaan]);
 
@@ -90,12 +105,13 @@ export default function PilihJawabanPage() {
     const newErrors: Record<string, string> = {};
     if (!selectedVariableId) newErrors.namaVariabel = 'Wajib dipilih';
     if (!indikator.trim()) newErrors.indikator = 'Wajib diisi';
+    if (!keyIndicator.trim()) newErrors.keyIndicator = 'Wajib diisi'; // ✅ Gunakan keyIndicator
     if (!pertanyaan1.trim()) newErrors.pertanyaan1 = 'Wajib diisi';
-    if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) {
-      newErrors.pertanyaan2 = 'Wajib diisi';
-    }
     if (!status) newErrors.status = 'Wajib dipilih';
-    if (!jumlahPertanyaan) newErrors.jumlahPertanyaan = 'Wajib dipilih';
+
+    if (jumlahPertanyaan >= 2 && !pertanyaan2.trim()) newErrors.pertanyaan2 = 'Wajib diisi';
+    if (jumlahPertanyaan >= 3 && !pertanyaan3.trim()) newErrors.pertanyaan3 = 'Wajib diisi';
+    if (jumlahPertanyaan >= 4 && !pertanyaan4.trim()) newErrors.pertanyaan4 = 'Wajib diisi';
 
     if (tipePertanyaan === 'short-answer') {
       Object.keys(skor).forEach((level) => {
@@ -130,11 +146,17 @@ export default function PilihJawabanPage() {
       }
 
       const questionType: 'multitext' | 'text' = tipePertanyaan === 'pg' ? 'multitext' : 'text';
-      const basePayload1 = {
+      const payload = {
         transformationVariable: { connect: { id: selectedVariableId } },
         type: questionType,
         indicator: indikator.trim(),
+        keyIndicator: keyIndicator.trim(),   // ✅ Nama field sesuai Prisma
+        reference: reference.trim(),
+        dataSource: dataSource.trim(),
         questionText: pertanyaan1.trim(),
+        questionText2: jumlahPertanyaan >= 2 ? pertanyaan2.trim() : '',
+        questionText3: jumlahPertanyaan >= 3 ? pertanyaan3.trim() : '',
+        questionText4: jumlahPertanyaan >= 4 ? pertanyaan4.trim() : '',
         answerText1: tipePertanyaan === 'pg' ? pgAnswers1[0] : "",
         answerText2: tipePertanyaan === 'pg' ? pgAnswers1[1] : "",
         answerText3: tipePertanyaan === 'pg' ? pgAnswers1[2] : "",
@@ -150,17 +172,9 @@ export default function PilihJawabanPage() {
       };
 
       if (isEditMode && editNomor !== null) {
-        await updateMutate(editNomor, basePayload1);
-        if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = { ...basePayload1, questionText: pertanyaan2.trim() };
-          await updateMutate(editNomor + 1, payload2);
-        }
+        await updateMutate(editNomor, payload);
       } else {
-        await createMutate(basePayload1);
-        if (jumlahPertanyaan === '2 Pertanyaan' && pertanyaan2?.trim()) {
-          const payload2 = { ...basePayload1, questionText: pertanyaan2.trim() };
-          await createMutate(payload2);
-        }
+        await createMutate(payload);
       }
 
       localStorage.setItem('newDataAdded', 'true');
@@ -185,14 +199,12 @@ export default function PilihJawabanPage() {
     else if (selected === 'submit-excel') router.push('/daftar-assessment/submit-excel');
   };
 
-  const handleRadioClick = (value: '1 Pertanyaan' | '2 Pertanyaan') => {
-    if (value === '2 Pertanyaan' && tipePertanyaan === 'pg') return;
-    setJumlahPertanyaan(value);
-  };
-
   const isFormValid = () => {
-    if (!selectedVariableId || !indikator.trim() || !pertanyaan1.trim() || !status || !jumlahPertanyaan) return false;
-    if (jumlahPertanyaan === '2 Pertanyaan' && (!pertanyaan2 || !pertanyaan2.trim())) return false;
+    if (!selectedVariableId || !indikator.trim() || !keyIndicator.trim() || !pertanyaan1.trim() || !status) return false;
+    if (jumlahPertanyaan >= 2 && !pertanyaan2.trim()) return false;
+    if (jumlahPertanyaan >= 3 && !pertanyaan3.trim()) return false;
+    if (jumlahPertanyaan >= 4 && !pertanyaan4.trim()) return false;
+
     if (tipePertanyaan === 'short-answer') {
       for (const level of Object.keys(skor)) {
         const min = parseFloat(skor[Number(level)].min);
@@ -217,72 +229,90 @@ export default function PilihJawabanPage() {
             </div>
           )}
 
-          {/* Type Soal & Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type Soal</label>
-              <select
-                className="w-full border border-gray-300 rounded-md p-2"
-                onChange={handleTypeChange}
-                defaultValue="pilihan-jawaban"
-              >
-                <option value="">Pilih Type Soal</option>
-                <option value="pilihan-jawaban">Pilihan Jawaban</option>
-                <option value="api-igracias">API dari iGracias</option>
-                <option value="submit-excel">Submit Jawaban Excel</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                className={`w-full border ${errors.status ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                value={status}
-                onChange={(e) => setStatus(e.target.value as StatusInput)}
-              >
-                <option value="">Pilih Status</option>
-                <option value="Aktif">Active</option>
-                <option value="Non-Aktif">Inactive</option>
-              </select>
-              {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
-            </div>
+          {/* Type Soal */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type Soal</label>
+            <select
+              className="w-full border border-gray-300 rounded-md p-2"
+              onChange={handleTypeChange}
+              defaultValue="pilihan-jawaban"
+            >
+              <option value="">Pilih Type Soal</option>
+              <option value="pilihan-jawaban">Pilihan Jawaban</option>
+              <option value="api-igracias">API dari iGracias</option>
+              <option value="submit-excel">Submit Jawaban Excel</option>
+            </select>
           </div>
 
-          {/* Nama Variabel & Indikator */}
+          {/* Nama Variabel + Indikator (Kiri) | Key Indicator + Status (Kanan) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nama Variabel</label>
-              <select
-                className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                value={selectedVariableId || ''}
-                onChange={(e) => {
-                  const id = Number(e.target.value);
-                  setSelectedVariableId(id || null);
-                }}
-                disabled={variablesLoading}
-              >
-                <option value="">Pilih Nama Variabel</option>
-                {variablesLoading ? (
-                  <option>Loading...</option>
-                ) : (
-                  transformationVariables.map((varItem) => (
-                    <option key={varItem.id} value={varItem.id}>
-                      {varItem.name}
-                    </option>
-                  ))
-                )}
-              </select>
-              {errors.namaVariabel && <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>}
+            {/* Kolom Kiri */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Variabel</label>
+                <select
+                  className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                  value={selectedVariableId || ''}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    setSelectedVariableId(id || null);
+                  }}
+                  disabled={variablesLoading}
+                >
+                  <option value="">Pilih Nama Variabel</option>
+                  {variablesLoading ? (
+                    <option>Loading...</option>
+                  ) : (
+                    transformationVariables.map((varItem) => (
+                      <option key={varItem.id} value={varItem.id}>
+                        {varItem.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {errors.namaVariabel && <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Indikator</label>
+                <textarea
+                  className={`w-full border ${errors.indikator ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                  value={indikator}
+                  onChange={(e) => setIndikator(e.target.value)}
+                  placeholder="Masukkan Indikator"
+                  rows={2}
+                ></textarea>
+                {errors.indikator && <p className="text-red-500 text-xs mt-1">{errors.indikator}</p>}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Indikator</label>
-              <textarea
-                className={`w-full border ${errors.indikator ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                value={indikator}
-                onChange={(e) => setIndikator(e.target.value)}
-                placeholder="Masukkan Indikator"
-                rows={2}
-              ></textarea>
-              {errors.indikator && <p className="text-red-500 text-xs mt-1">{errors.indikator}</p>}
+
+            {/* Kolom Kanan */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Key Indicator</label>
+                <input
+                  type="text"
+                  className={`w-full border ${errors.keyIndicator ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                  value={keyIndicator}
+                  onChange={(e) => setKeyIndicator(e.target.value)}
+                  placeholder="Masukkan Key Indicator"
+                />
+                {errors.keyIndicator && <p className="text-red-500 text-xs mt-1">{errors.keyIndicator}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  className={`w-full border ${errors.status ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as StatusInput)}
+                >
+                  <option value="">Pilih Status</option>
+                  <option value="Aktif">Active</option>
+                  <option value="Non-Aktif">Inactive</option>
+                </select>
+                {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
+              </div>
             </div>
           </div>
 
@@ -322,7 +352,31 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
-          {/* ✅ Tipe Pertanyaan — DITEMPATKAN DI ATAS */}
+          {/* Reference & Data Source */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
+              <textarea
+                className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="Masukkan referensi (opsional)"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Source</label>
+              <textarea
+                className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
+                value={dataSource}
+                onChange={(e) => setDataSource(e.target.value)}
+                placeholder="Masukkan sumber data (opsional)"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          {/* Tipe Pertanyaan */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Pertanyaan</label>
             <div className="flex space-x-6">
@@ -330,7 +384,10 @@ export default function PilihJawabanPage() {
                 { value: 'pg' as const, label: 'Pilihan Ganda' },
                 { value: 'short-answer' as const, label: 'Jawaban Singkat' },
               ].map((option) => (
-                <label key={option.value} className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
+                <label
+                  key={option.value}
+                  className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700"
+                >
                   <input
                     type="radio"
                     name="tipePertanyaan"
@@ -339,7 +396,7 @@ export default function PilihJawabanPage() {
                     onChange={(e) => {
                       const newType = e.target.value as 'pg' | 'short-answer';
                       setTipePertanyaan(newType);
-                      if (newType === 'pg') setJumlahPertanyaan('1 Pertanyaan');
+                      if (newType === 'pg') setJumlahPertanyaan(1);
                     }}
                     className="text-blue-600 focus:ring-blue-500"
                   />
@@ -349,119 +406,122 @@ export default function PilihJawabanPage() {
             </div>
           </div>
 
-          {/* ✅ Jumlah Pertanyaan — DITEMPATKAN DI BAWAH, hanya muncul jika short-answer */}
+          {/* Jumlah Pertanyaan — hanya untuk short-answer */}
           {tipePertanyaan === 'short-answer' && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pertanyaan</label>
-              <div className="flex space-x-6">
-                <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
-                  <input
-                    type="radio"
-                    name="jumlahPertanyaan"
-                    value="1 Pertanyaan"
-                    checked={jumlahPertanyaan === '1 Pertanyaan'}
-                    onClick={() => handleRadioClick('1 Pertanyaan')}
-                    readOnly
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>1 Pertanyaan</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700">
-                  <input
-                    type="radio"
-                    name="jumlahPertanyaan"
-                    value="2 Pertanyaan"
-                    checked={jumlahPertanyaan === '2 Pertanyaan'}
-                    onClick={() => handleRadioClick('2 Pertanyaan')}
-                    readOnly
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>2 Pertanyaan</span>
-                </label>
+              <div className="flex flex-wrap gap-4">
+                {[1, 2, 3, 4].map((num) => (
+                  <label
+                    key={num}
+                    className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 hover:text-blue-700"
+                  >
+                    <input
+                      type="radio"
+                      name="jumlahPertanyaan"
+                      value={num}
+                      checked={jumlahPertanyaan === num}
+                      onChange={(e) => setJumlahPertanyaan(Number(e.target.value) as 1 | 2 | 3 | 4)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>{num} Pertanyaan</span>
+                  </label>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Pertanyaan 1 */}
-          {jumlahPertanyaan && (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 1</label>
-                <textarea
-                  className={`w-full border ${errors.pertanyaan1 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                  value={pertanyaan1}
-                  onChange={(e) => setPertanyaan1(e.target.value)}
-                  placeholder="Masukkan pertanyaan..."
-                  rows={2}
-                ></textarea>
-                {errors.pertanyaan1 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan1}</p>}
-              </div>
-              {tipePertanyaan === 'pg' && (
-                <div className="mb-6">
-                  <table className="w-full border-collapse border border-gray-300">
-                    <thead>
-                      <tr>
-                        {['A', 'B', 'C', 'D', 'E'].map((label) => (
-                          <th key={label} className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">
-                            Jawaban {label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {['A', 'B', 'C', 'D', 'E'].map((label) => (
-                          <td key={label} className="border px-3 py-2">
-                            <textarea
-                              className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
-                              rows={2}
-                              placeholder={`Tulis Jawaban ${label}...`}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
-                          <th key={idx} className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center">
-                            Nilai Jawaban {['A', 'B', 'C', 'D', 'E'][idx]}
-                          </th>
-                        ))}
-                      </tr>
-                      <tr>
-                        {['0', '1', '2', '3', '>3'].map((_, idx) => (
-                          <td key={idx} className="border px-3 py-2">
-                            <input
-                              type="text"
-                              className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                              value={pgAnswers1[idx]}
-                              onChange={(e) => {
-                                const newAnswers = [...pgAnswers1];
-                                newAnswers[idx] = e.target.value;
-                                setPgAnswers1(newAnswers);
-                              }}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
+          {/* Render Pertanyaan Dinamis */}
+          {[1, 2, 3, 4].map((num) => {
+            if (num > jumlahPertanyaan) return null;
 
-          {/* Pertanyaan 2 */}
-          {jumlahPertanyaan === '2 Pertanyaan' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan 2</label>
-              <textarea
-                className={`w-full border ${errors.pertanyaan2 ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
-                value={pertanyaan2}
-                onChange={(e) => setPertanyaan2(e.target.value)}
-                placeholder="Masukkan pertanyaan..."
-                rows={2}
-              ></textarea>
-              {errors.pertanyaan2 && <p className="text-red-500 text-xs mt-1">{errors.pertanyaan2}</p>}
+            const value =
+              num === 1 ? pertanyaan1 :
+              num === 2 ? pertanyaan2 :
+              num === 3 ? pertanyaan3 :
+              pertanyaan4;
+
+            const error = errors[`pertanyaan${num}`];
+            const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+              if (num === 1) setPertanyaan1(e.target.value);
+              else if (num === 2) setPertanyaan2(e.target.value);
+              else if (num === 3) setPertanyaan3(e.target.value);
+              else if (num === 4) setPertanyaan4(e.target.value);
+            };
+
+            return (
+              <div key={num} className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Pertanyaan {num}
+                </label>
+                <textarea
+                  className={`w-full border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
+                  value={value}
+                  onChange={handleChange}
+                  placeholder={`Masukkan pertanyaan ${num}...`}
+                  rows={2}
+                />
+                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+              </div>
+            );
+          })}
+
+          {/* Tabel Pilihan Ganda */}
+          {tipePertanyaan === 'pg' && (
+            <div className="mb-6">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr>
+                    {['A', 'B', 'C', 'D', 'E'].map((label) => (
+                      <th
+                        key={label}
+                        className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center"
+                      >
+                        Jawaban {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {['A', 'B', 'C', 'D', 'E'].map((label) => (
+                      <td key={label} className="border px-3 py-2">
+                        <textarea
+                          className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
+                          rows={2}
+                          placeholder={`Tulis Jawaban ${label}...`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
+                      <th
+                        key={idx}
+                        className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center"
+                      >
+                        Nilai Jawaban {['A', 'B', 'C', 'D', 'E'][idx]}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr>
+                    {['0', '1', '2', '3', '>3'].map((_, idx) => (
+                      <td key={idx} className="border px-3 py-2">
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                          value={pgAnswers1[idx]}
+                          onChange={(e) => {
+                            const newAnswers = [...pgAnswers1];
+                            newAnswers[idx] = e.target.value;
+                            setPgAnswers1(newAnswers);
+                          }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -473,7 +533,10 @@ export default function PilihJawabanPage() {
                 <thead>
                   <tr>
                     {[0, 1, 2, 3, 4].map((level) => (
-                      <th key={level} className="border border-gray-300 px-3 py-2 bg-gray-100 text-center font-medium">
+                      <th
+                        key={level}
+                        className="border border-gray-300 px-3 py-2 bg-gray-100 text-center font-medium"
+                      >
                         Skor {level}
                       </th>
                     ))}
@@ -487,7 +550,9 @@ export default function PilihJawabanPage() {
                           <input
                             type="number"
                             step="0.1"
-                            className={`w-16 border ${errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-1 text-sm text-center`}
+                            className={`w-16 border ${
+                              errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'
+                            } rounded-md p-1 text-sm text-center`}
                             value={skor[level].min}
                             onChange={(e) =>
                               setSkor((prev) => ({
@@ -500,7 +565,9 @@ export default function PilihJawabanPage() {
                           <input
                             type="number"
                             step="0.1"
-                            className={`w-16 border ${errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-1 text-sm text-center`}
+                            className={`w-16 border ${
+                              errors[`skor${level}`] ? 'border-red-500' : 'border-gray-300'
+                            } rounded-md p-1 text-sm text-center`}
                             value={skor[level].max}
                             onChange={(e) =>
                               setSkor((prev) => ({
@@ -560,7 +627,7 @@ export default function PilihJawabanPage() {
         >
           <p className="text-gray-700">
             Anda akan {isEditMode ? 'memperbarui' : 'menambahkan'}{' '}
-            <strong>{jumlahPertanyaan === '2 Pertanyaan' ? '2' : '1'}</strong> soal.
+            <strong>{jumlahPertanyaan}</strong> soal.
           </p>
           <p className="text-sm text-gray-600 mt-1">
             Status: <strong>{status}</strong>
