@@ -34,11 +34,6 @@ export default function EditMaturityPage() {
     minScore: "",
     maxScore: "",
     description: "",
-    scoreDescription0: "",
-    scoreDescription1: "",
-    scoreDescription2: "",
-    scoreDescription3: "",
-    scoreDescription4: "",
     created_at: "",
     updated_at: "",
   });
@@ -58,20 +53,6 @@ export default function EditMaturityPage() {
       } catch (err) {
         console.error("Error parsing localStorage:", err);
       }
-    }
-
-    if (maturityDetail) {
-      setFormData({
-        ...maturityDetail,
-        scoreDescription0: maturityDetail.scoreDescription0 || "",
-        scoreDescription1: maturityDetail.scoreDescription1 || "",
-        scoreDescription2: maturityDetail.scoreDescription2 || "",
-        scoreDescription3: maturityDetail.scoreDescription3 || "",
-        scoreDescription4: maturityDetail.scoreDescription4 || "",
-        description: maturityDetail.description || "",
-        minScore: String(maturityDetail.minScore ?? ""),
-        maxScore: String(maturityDetail.maxScore ?? ""),
-      });
     }
   }, [maturityDetail, realId]);
 
@@ -97,11 +78,6 @@ export default function EditMaturityPage() {
         minScore: payload.minScore?.trim() || "",
         maxScore: payload.maxScore?.trim() || "",
         description: payload.description?.trim() || "",
-        scoreDescription0: payload.scoreDescription0?.trim() || "",
-        scoreDescription1: payload.scoreDescription1?.trim() || "",
-        scoreDescription2: payload.scoreDescription2?.trim() || "",
-        scoreDescription3: payload.scoreDescription3?.trim() || "",
-        scoreDescription4: payload.scoreDescription4?.trim() || "",
       };
 
       console.log("Payload update:", safePayload);
@@ -120,13 +96,6 @@ export default function EditMaturityPage() {
     }
   };
 
-  const filledDescriptions = [
-    formData.scoreDescription0,
-    formData.scoreDescription1,
-    formData.scoreDescription2,
-    formData.scoreDescription3,
-    formData.scoreDescription4,
-  ].filter((desc) => typeof desc === "string" && desc.trim() !== "").length;
 
   const handleEditDeskripsi = () => {
     localStorage.setItem(
@@ -204,20 +173,6 @@ export default function EditMaturityPage() {
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2 h-[100px]"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Deskripsi per Variabel
-            </label>
-            <button
-              type="button"
-              onClick={handleEditDeskripsi}
-              className="w-full border rounded-lg p-2 font-medium text-blue-700 border-blue-700 hover:bg-blue-50"
-            >
-              {filledDescriptions > 0
-                ? `Lihat Deskripsi (${filledDescriptions}/5)`
-                : "+ Tambah Deskripsi"}
-            </button>
           </div>
         </div>
 

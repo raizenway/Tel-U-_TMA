@@ -6,6 +6,8 @@ import { FiChevronDown } from 'react-icons/fi';
 import Button from '@/components/button';
 import { getPeriodeLabel } from '@/utils/periode';
 import { getAssessmentResult } from '@/lib/api-assessment-result';
+import { useListPeriode } from '@/hooks/usePeriode';
+import { BRANCHES } from '@/interfaces/branch';
 
 /* === Chart.js === */
 import {
@@ -62,17 +64,6 @@ interface FilterUPPSPopoverProps {
   periodeOptions: string[];
 }
 
-// Radar labels
-const radarLabels = [
-  'Mutu',
-  'Akademik',
-  'SDM',
-  'SPIO', 
-  'Kemahasiswaan',
-  'Admisi',
-  'PPN, Publikasi, Abdimas', 
-];
-
 // Palette
 const palette = [
   { header: 'bg-red-50', border: 'border-red-300', legend: 'bg-red-500', hex: '#EF4444' },
@@ -90,26 +81,28 @@ function hexWithAlpha(hex: string, alpha: number) {
   return `${hex}${a}`;
 }
 
-// Radar Chart
 function RadarChart({
   selectedIds,
   radarDataByUPPS,
   assessments,
+  radarLabels,
 }: {
   selectedIds: string[];
   radarDataByUPPS: Record<string, number[]>;
   assessments: Assessment[];
+  radarLabels: string[];
 }) {
   const datasets = selectedIds.map((id, i) => {
     const pal = getPalette(i);
     return {
       label: assessments.find((x) => x.id === id)?.name || id,
-      data: radarDataByUPPS[id] || new Array(radarLabels.length).fill(0),
+       data: radarDataByUPPS[id] || new Array(radarLabels.length).fill(0),
       backgroundColor: hexWithAlpha(pal.hex, 0.15),
       borderColor: pal.hex,
       borderWidth: 2,
       pointBackgroundColor: pal.hex,
       pointBorderColor: '#fff',
+      tension: 0,
     };
   });
 
@@ -128,7 +121,19 @@ function RadarChart({
             beginAtZero: true,
             max: 100,
             ticks: { stepSize: 20 },
-            grid: { circular: true },
+            grid: {
+              circular: false,
+            },
+            angleLines: {
+              display: true,
+              color: '#ccc',
+            },
+            pointLabels: {
+              font: {
+                size: 12,
+                weight: 'bold',
+              },
+            },
           },
         },
       }}
@@ -137,7 +142,6 @@ function RadarChart({
   );
 }
 
-// Filter Popover
 function FilterUPPSPopover({
   open,
   onClose,
@@ -242,124 +246,191 @@ function FilterUPPSPopover({
   );
 }
 
-// Main Page
 export default function AssessmentResultPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
 
-  // Data state
+  // State untuk menyimpan data assessment
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [reportsByUPPS, setReportsByUPPS] = useState<Record<string, VariableReport[]>>({});
   const [radarDataByUPPS, setRadarDataByUPPS] = useState<Record<string, number[]>>({});
-  const [tmiDataByUPPS, setTmiDataByUPPS] = useState<Record<string, { name: string; value: number }[]>>({});
-  const [maturityLevelsByUPPS, setMaturityLevelsByUPPS] = useState<Record<string, any>>({});
-
-  // Daftar branch & periode (akan diisi dari data pertama)
   const [allBranches, setAllBranches] = useState<Option[]>([]);
-  const [allPeriods, setAllPeriods] = useState<string[]>([]);
 
-  // Fungsi untuk fetch data assessment per branch
-const fetchAssessmentData = async (branchId: number, periodId: number) => {
-  try {
-    const res = await getAssessmentResult(branchId, periodId);
+  // State untuk menyimpan periode aktif dan ID periode yang dipilih
+  const [activePeriods, setActivePeriods] = useState<string[]>([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
 
-    const branch = res.data.branch;
-    const periode = `${res.data.period.semester} ${res.data.period.year}`;
+  // ✅ Ambil daftar branch ID dari constants
+  const allBranchIds = useMemo(() => BRANCHES.map(b => b.id), []);
 
-    // Mapping nama dari backend ke urutan radarLabels
-    const radarLabelMap: Record<string, string> = {
-      'Mutu': 'Mutu',
-      'Akademik': 'Akademik',
-      'SDM': 'SDM',
-      'SPIO': 'SPIO',
-      'Kemahasiswaan': 'Kemahasiswaan',
-      'Admisi': 'Admisi',
-      'PPM, Publikasi, Abdimas': 'PPN, Publikasi, Abdimas', // disesuaikan dengan label di chart
-    };
+  const { data: periodeData, loading: periodeLoading, error: periodeError } = useListPeriode(0);
 
-    // Urutan label yang benar
-    const expectedLabels = [
-      'Mutu',
-      'Akademik',
-      'SDM',
-      'SPIO',
-      'Kemahasiswaan',
-      'Admisi',
-      'PPN, Publikasi, Abdimas',
-    ];
-
-    // Ambil data transformationMaturityIndex
-    const tmiData = res.data.transformationMaturityIndex || [];
-
-    // Buat array 6 nilai sesuai urutan
-    const radarData = expectedLabels.map(label => {
-      const found = tmiData.find(item => radarLabelMap[item.name] === label);
-      return found ? parseFloat(found.value.toFixed(2)) : 0; // default 0 jika tidak ditemukan
-    });
-
-    const assessment: Assessment = {
-      id: `branch-${branch.id}`,
-      name: branch.name,
-      submitPeriode: periode,
-      email: branch.email,
-      studentBody: branch.studentBody,
-      jumlahProdi: branch.totalProdi,
-      jumlahProdiUnggul: branch.totalProdiUnggul,
-      maturityLevel: res.data.maturityLevel?.name || "Unknown Maturity",
-    };
-
-const reports = tmiData.map((item: any) => {
-  const { name, value } = item;
-  const maturityLevelGlobal = res.data.maturityLevel || {};
-  return {
-    code: "", // atau item.code jika ada
-    name: name,
-    point: parseFloat(value.toFixed(2)),
-    maturityLevel: maturityLevelGlobal.name || "Unknown",
-    desc: maturityLevelGlobal.description || "",
-  };
-});
-
-return { assessment, reports, radarData, periode };
-  } catch (err) {
-    console.error(`Failed to fetch data for branch ${branchId}, period ${periodId}:`, err);
-    return null;
-  }
-  
-};
-
-  // Inisialisasi: ambil data branch pertama sebagai default
   useEffect(() => {
+    if (periodeData?.data) {
+      const activePeriodes = periodeData.data
+        .filter((p) => p.status === 'active')
+        .map((p) => ({ label: `${p.semester} ${p.tahun}`, id: p.id }));
+
+      setActivePeriods(activePeriodes.map(p => p.label));
+
+      if (activePeriodes.length > 0) {
+        setSelectedPeriodId(activePeriodes[0].id);
+        setFilterPeriode(activePeriodes[0].label);
+      }
+    }
+  }, [periodeData]);
+
+  const getPeriodIdByLabel = (label: string): number | null => {
+    if (!periodeData?.data) return null;
+    const [semester, tahunStr] = label.split(' ');
+    const tahun = parseInt(tahunStr, 10);
+    const period = periodeData.data.find(p => p.semester === semester && p.tahun === tahun);
+    return period ? period.id : null;
+  };
+
+  const fetchAssessmentData = async (branchId: number, periodId: number) => {
+    try {
+      const res = await getAssessmentResult(branchId, periodId);
+
+      const branch = res.data.branch;
+      const period = res.data.period;
+      const submitPeriode = `${period.semester} ${period.year}`;
+
+      // Ambil data TMI dari API → dinamis!
+      const tmiData = res.data.transformationMaturityIndex || [];
+
+      // Ekstrak label radar dari API (misal: 6 item → segi-6)
+      const radarLabelsFromAPI = tmiData.map(item => item.name);
+
+      // Hitung radar data sesuai urutan dari API
+      const radarData = tmiData.map(item => parseFloat(item.value.toFixed(2)));
+
+      const assessment: Assessment = {
+        id: String(branch.id), // Gunakan ID asli sebagai string
+        name: branch.name,
+        submitPeriode: submitPeriode,
+        email: branch.email,
+        studentBody: branch.studentBody,
+        jumlahProdi: branch.totalProdi,
+        jumlahProdiUnggul: branch.totalProdiUnggul,
+        maturityLevel: res.data.maturityLevel?.name || "Unknown Maturity",
+      };
+
+      const reports = tmiData.map((item: any) => {
+        const { name, value } = item;
+        const maturityLevelGlobal = res.data.maturityLevel || {};
+        return {
+          code: "",
+          name: name,
+          point: parseFloat(value.toFixed(2)),
+          maturityLevel: maturityLevelGlobal.name || "Unknown",
+          desc: maturityLevelGlobal.description || "",
+        };
+      });
+
+      return { assessment, reports, radarData, submitPeriode, radarLabels: radarLabelsFromAPI };
+    } catch (err) {
+      console.error(`Failed to fetch data for branch ${branchId}, period ${periodId}:`, err);
+      return null;
+    }
+  };
+
+  // State untuk menyimpan label radar (dinamis)
+  const [radarLabels, setRadarLabels] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selectedPeriodId) return;
+
     async function init() {
       try {
-        const data = await fetchAssessmentData(1, 1);
-        if (!data) return;
+        const allDataPromises = allBranchIds.map((branchId) =>
+          fetchAssessmentData(branchId, selectedPeriodId)
+        );
 
-        const { assessment, reports, radarData, periode } = data;
+        const results = await Promise.all(allDataPromises);
+        const validResults = results.filter((result): result is NonNullable<typeof result> => result !== null);
 
-        setAssessments([assessment]);
-        setReportsByUPPS({ [assessment.id]: reports });
-        setRadarDataByUPPS({ [assessment.id]: radarData });
-        setFilterIds([assessment.id]);
-        setFilterPeriode(periode);
+        if (validResults.length === 0) return;
 
-        // Simpan ke daftar global (bisa ditambahkan branch lain nanti)
-        setAllBranches([{ id: assessment.id, name: assessment.name }]);
-        setAllPeriods([periode]);
+        // Ambil radarLabels dari hasil pertama (asumsi semua UPPS punya struktur TMI sama)
+        setRadarLabels(validResults[0].radarLabels);
+
+        const newAssessments = validResults.map((r) => r.assessment);
+        const newReportsByUPPS = validResults.reduce(
+          (acc, r) => ({ ...acc, [r.assessment.id]: r.reports }),
+          {}
+        );
+        const newRadarDataByUPPS = validResults.reduce(
+          (acc, r) => ({ ...acc, [r.assessment.id]: r.radarData }),
+          {}
+        );
+        const newBranchOptions = validResults.map((r) => ({
+          id: r.assessment.id,
+          name: r.assessment.name,
+        }));
+
+        setAssessments(newAssessments);
+        setReportsByUPPS(newReportsByUPPS);
+        setRadarDataByUPPS(newRadarDataByUPPS);
+        setAllBranches(newBranchOptions);
+
+        const allIds = newBranchOptions.map(b => b.id);
+        setFilterIds(allIds);
       } catch (err) {
         console.error("Init failed:", err);
       }
     }
 
     init();
-  }, []);
+  }, [selectedPeriodId, allBranchIds]); // ✅ Tambahkan allBranchIds sebagai dependency
 
-  // Memoized options for filter
-  const campusOptions = useMemo<Option[]>(() => allBranches, [allBranches]);
-  const periodeOptions = useMemo<string[]>(() => allPeriods, [allPeriods]);
+  const handleApplyFilter = async ({ periode, ids }: FilterPayload) => {
+    setFilterPeriode(periode);
+    setFilterIds(ids);
 
-  // Filter columns berdasarkan pilihan
+    const periodId = getPeriodIdByLabel(periode);
+    if (!periodId) {
+      console.warn(`Tidak ditemukan periodId untuk periode: ${periode}`);
+      return;
+    }
+
+    setSelectedPeriodId(periodId);
+
+    for (const id of ids) {
+      if (!assessments.some(a => a.id === id)) {
+        const branchId = parseInt(id, 10);
+        // ✅ Pastikan branchId valid
+        const allBranchIds = useMemo(() => BRANCHES.map(b => b.id), []) as number[];
+
+        const data = await fetchAssessmentData(branchId, periodId);
+        if (data) {
+          setAssessments(prev => [...prev, data.assessment]);
+          setReportsByUPPS(prev => ({ ...prev, [id]: data.reports }));
+          setRadarDataByUPPS(prev => ({ ...prev, [id]: data.radarData }));
+
+          // Jika radarLabels belum di-set, ambil dari data ini
+          if (radarLabels.length === 0) {
+            setRadarLabels(data.radarLabels);
+          }
+
+          if (!allBranches.some(b => b.id === id)) {
+            setAllBranches(prev => [...prev, { id, name: data.assessment.name }]);
+          }
+        }
+      }
+    }
+  };
+
+  // ✅ Gunakan BRANCHES untuk opsi awal
+  const campusOptions = useMemo<Option[]>(() => {
+    // Jika allBranches belum diisi, gunakan dari constants
+    if (allBranches.length > 0) return allBranches;
+    return BRANCHES.map(b => ({ id: String(b.id), name: b.name }));
+  }, [allBranches]);
+
+  const periodeOptions = useMemo<string[]>(() => [...new Set(activePeriods)], [activePeriods]);
+
   const columns = useMemo<Assessment[]>(() => {
     if (filterIds.length === 0) return [];
     return assessments.filter(
@@ -369,7 +440,6 @@ return { assessment, reports, radarData, periode };
     );
   }, [filterIds, filterPeriode, assessments]);
 
-  // Label filter
   const filterLabel = useMemo(() => {
     const count = filterIds.length;
     const isAll = count === assessments.length;
@@ -379,33 +449,6 @@ return { assessment, reports, radarData, periode };
     if (isAll) return `Semua UPPS${periodePart}`;
     return `${count} UPPS${periodePart}`;
   }, [filterIds, filterPeriode, assessments]);
-
-  // Handle apply filter
-  const handleApplyFilter = async ({ periode, ids }: FilterPayload) => {
-    setFilterPeriode(periode);
-    setFilterIds(ids);
-
-    // Fetch data untuk setiap ID yang belum ada
-    for (const id of ids) {
-      if (!assessments.some(a => a.id === id)) {
-        const branchId = parseInt(id.replace('branch-', ''), 10);
-        const data = await fetchAssessmentData(branchId, 1); // periodId = 1 hardcoded
-        if (data) {
-          setAssessments(prev => [...prev, data.assessment]);
-          setReportsByUPPS(prev => ({ ...prev, [id]: data.reports }));
-          setRadarDataByUPPS(prev => ({ ...prev, [id]: data.radarData }));
-
-          // Tambahkan ke daftar jika belum ada
-          if (!allBranches.some(b => b.id === id)) {
-            setAllBranches(prev => [...prev, { id, name: data.assessment.name }]);
-          }
-          if (data.periode && !allPeriods.includes(data.periode)) {
-            setAllPeriods(prev => [...prev, data.periode]);
-          }
-        }
-      }
-    }
-  };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -419,7 +462,6 @@ return { assessment, reports, radarData, periode };
               </p>
             </div>
 
-            {/* Filter Trigger */}
             <div className="relative inline-block">
               <button
                 onClick={() => setFilterOpen((v) => !v)}
@@ -446,14 +488,12 @@ return { assessment, reports, radarData, periode };
               />
             </div>
 
-            {/* Content */}
             {columns.length === 0 ? (
               <p className="text-sm text-gray-500 italic">
                 Belum ada UPPS/KC yang dipilih. Silakan pilih pada filter di atas.
               </p>
             ) : (
               <>
-                {/* Table Data */}
                 <div className="overflow-x-auto border rounded mt-6">
                   <table className="w-full table-fixed text-sm">
                     <thead>
@@ -514,7 +554,6 @@ return { assessment, reports, radarData, periode };
                         </tr>
                       ))}
 
-                      {/* Radar Chart */}
                       <tr className="border-t">
                         <th className="px-4 py-2 bg-[#12263A]/90 text-white align-top text-left">
                           Transformation Maturity Index
@@ -528,6 +567,7 @@ return { assessment, reports, radarData, periode };
                               selectedIds={columns.map((c) => c.id)}
                               radarDataByUPPS={radarDataByUPPS}
                               assessments={assessments}
+                              radarLabels={radarLabels} // ✅ Dinamis dari API
                             />
                           </div>
                         </td>
@@ -536,154 +576,190 @@ return { assessment, reports, radarData, periode };
                   </table>
                 </div>
 
-                {/* Report Table */}
-                <div className="overflow-x-auto border rounded mt-6">
-                  <table className="w-full table-fixed text-sm">
-                    <thead className="bg-[#12263A]/90 text-white">
-                      <tr>
-                        <th className="p-3 w-64 text-left">Report</th>
-                        {columns.map((c, i) => {
-                          const pal = getPalette(i);
-                          return (
-                            <th
-                              key={c.id}
-                              className={`px-4 py-3 text-left font-semibold min-w-[220px] text-black border-l-2 ${pal.header} ${pal.border}`}
-                            >
-                              {c.name}
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="odd:bg-white even:bg-gray-50">
-                        <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>
-                        {columns.map((c, i) => {
-                          const data = (reportsByUPPS[c.id] || [])[0];
-                          const pal = getPalette(i);
-                          return (
-                            <td
-                              key={c.id}
-                              className={`p-3 text-center border-l-2 h-full align-top ${pal.border}`}
-                            >
-                              {data ? `${data.code} (${data.name})` : '-'}
-                            </td>
-                          );
-                        })}
-                      </tr>
+                {/* --- TABEL LAPORAN VARIABEL PER UPPS --- */}
+                {columns.length > 0 && (
+                  <div className="overflow-x-auto border rounded mt-6">
+                    <table className="w-full table-fixed text-sm">
+                      <thead className="bg-[#12263A]/90 text-white">
+                        <tr>
+                          <th className="p-3 w-64 text-left">Report</th>
+                          {columns.map((c, i) => {
+                            const pal = getPalette(i);
+                            return (
+                              <th
+                                key={c.id}
+                                className={`px-4 py-3 text-left font-semibold min-w-[220px] text-black border-l-2 ${pal.header} ${pal.border}`}
+                              >
+                                {c.name}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const allVariableData = columns.map(c => {
+                            const reports = reportsByUPPS[c.id] || [];
+                            return reports.map(r => ({
+                              name: r.name,
+                              code: r.code,
+                              point: r.point,
+                              desc: r.desc,
+                            }));
+                          });
 
-                      <tr className="odd:bg-white even:bg-gray-50">
-                        <td className="p-3 font-semibold bg-gray-100 text-left">Point</td>
-                        {columns.map((c, i) => {
-                          const data = (reportsByUPPS[c.id] || [])[0];
-                          const pal = getPalette(i);
-                          return (
-                            <td
-                              key={c.id}
-                              className={`p-3 text-center border-l-2 h-full ${pal.border}`}
-                            >
-                              {data ? data.point : '-'}
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      <tr className="odd:bg-white even:bg-gray-50">
-                        <td className="p-3 font-semibold bg-gray-100 text-left">Maturity Level</td>
-                        {columns.map((c, i) => {
-                          const data = (reportsByUPPS[c.id] || [])[0];
-                          const pal = getPalette(i);
-                          return (
-                            <td
-                              key={c.id}
-                              className={`p-3 text-center border-l-2 h-full ${pal.border}`}
-                            >
-                              {data ? data.maturityLevel : '-'}
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      <tr className="odd:bg-white even:bg-gray-50">
-                        <td className="p-3 font-semibold bg-gray-100 text-left">
-                          Deskripsi per Variabel
-                        </td>
-                        {columns.map((c, i) => {
-                          const data = (reportsByUPPS[c.id] || [])[0];
-                          const pal = getPalette(i);
-                          return (
-                            <td
-                              key={c.id}
-                              className={`p-3 text-justify border-l-2 align-top h-full ${pal.border}`}
-                            >
-                              {data ? data.desc : '-'}
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      <tr className="odd:bg-white even:bg-gray-50">
-                        <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
-                        {columns.map((c, i) => {
-                          const pal = getPalette(i);
-                          const handleDownload = () => {
-                            import('xlsx').then(XLSX => {
-                              import('file-saver').then(FileSaver => {
-                                const assessment = assessments.find(a => a.id === c.id);
-                                if (!assessment) return;
-
-                                const metadata = [
-                                  ['Nama UPPS/KC', assessment.name],
-                                  ['Periode Submit Assessment', getPeriodeLabel(assessment.submitPeriode)],
-                                  ['Email', assessment.email],
-                                  ['Student Body', assessment.studentBody],
-                                  ['Jumlah Prodi', assessment.jumlahProdi],
-                                  ['Jumlah Prodi Terakreditasi Unggul', assessment.jumlahProdiUnggul],
-                                  ['Maturity Level (Institusi)', assessment.maturityLevel],
-                                  ['Transformation Maturity Index (TMI)', radarDataByUPPS[c.id]?.length
-                                    ? (radarDataByUPPS[c.id].reduce((a, b) => a + b, 0) / radarDataByUPPS[c.id].length).toFixed(2)
-                                    : 'N/A'
-                                  ],
-                                ];
-
-                                const metadataSheet = XLSX.utils.aoa_to_sheet(metadata);
-
-                                const detailData = (reportsByUPPS[c.id] || []).map(item => ({
-                                  'Kode Variabel': item.code,
-                                  'Nama Variabel': item.name,
-                                  'Point': item.point,
-                                  'Maturity Level': item.maturityLevel,
-                                  'Deskripsi': item.desc,
-                                }));
-
-                                const detailSheet = XLSX.utils.json_to_sheet(detailData);
-
-                                const workbook = XLSX.utils.book_new();
-                                XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Metadata');
-                                XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail Variabel');
-
-                                const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-                                const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                                FileSaver.saveAs(blob, `${c.name.replace(/\s+/g, '_')}-report.xlsx`);
-                              });
-                            });
-                          };
+                          const maxVars = Math.max(...allVariableData.map(d => d.length));
 
                           return (
-                            <td
-                              key={c.id}
-                              className={`p-3 text-center border-l-2 h-full ${pal.border}`}
-                            >
-                              <Button variant="primary" onClick={handleDownload}>
-                                Download
-                              </Button>
-                            </td>
+                            <>
+                              {[...Array(maxVars)].map((_, varIdx) => {
+                                const variableData = columns.map((c, i) => {
+                                  const reports = allVariableData[i];
+                                  const report = reports[varIdx];
+                                  return {
+                                    name: report?.name ?? '',
+                                    code: report?.code ?? '',
+                                    point: report?.point ?? 0,
+                                    desc: report?.desc ?? '-',
+                                  };
+                                });
+
+                                return (
+                                  <React.Fragment key={`var-${varIdx}`}>
+                                    <tr className={varIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                      <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>
+                                      {columns.map((c, i) => {
+                                        const pal = getPalette(i);
+                                        const data = variableData[i];
+                                        return (
+                                          <td
+                                            key={`${c.id}-name-${varIdx}`}
+                                            className={`p-3 text-center border-l-2 ${pal.border}`}
+                                          >
+                                            {data.code ? `${data.code} (${data.name})` : data.name}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+
+                                    <tr className={varIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                      <td className="p-3 font-semibold bg-gray-100 text-left">Point</td>
+                                      {columns.map((c, i) => {
+                                        const pal = getPalette(i);
+                                        const data = variableData[i];
+                                        return (
+                                          <td
+                                            key={`${c.id}-point-${varIdx}`}
+                                            className={`p-3 text-center border-l-2 ${pal.border}`}
+                                          >
+                                            {data.point.toFixed(2)}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  </React.Fragment>
+                                );
+                              })}
+
+                              <tr className="bg-gray-50">
+                                <td className="p-3 font-semibold bg-gray-100 text-left">Maturity Level</td>
+                                {columns.map((c, i) => {
+                                  const pal = getPalette(i);
+                                  const assessment = assessments.find(a => a.id === c.id);
+                                  return (
+                                    <td
+                                      key={`${c.id}-ml`}
+                                      className={`p-3 text-center border-l-2 ${pal.border}`}
+                                    >
+                                      {assessment?.maturityLevel || 'Unknown'}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+
+                              <tr className="bg-white">
+                                <td className="p-3 font-semibold bg-gray-100 text-left">Deskripsi per Variabel</td>
+                                {columns.map((c, i) => {
+                                  const pal = getPalette(i);
+                                  const reports = reportsByUPPS[c.id] || [];
+                                  const desc = reports[0]?.desc || '-';
+                                  return (
+                                    <td
+                                      key={`${c.id}-desc`}
+                                      className={`p-3 text-center border-l-2 ${pal.border}`}
+                                    >
+                                      {desc}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+
+                              <tr className="bg-gray-50">
+                                <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
+                                {columns.map((c, i) => {
+                                  const pal = getPalette(i);
+                                  return (
+                                    <td
+                                      key={`${c.id}-action`}
+                                      className={`p-3 text-center border-l-2 ${pal.border}`}
+                                    >
+                                      <Button
+                                        variant="primary"
+                                        onClick={() => {
+                                          import('xlsx').then(XLSX => {
+                                            import('file-saver').then(FileSaver => {
+                                              const assessment = assessments.find(a => a.id === c.id);
+                                              if (!assessment) return;
+
+                                              const metadata = [
+                                                ['Nama UPPS/KC', assessment.name],
+                                                ['Periode Submit Assessment', getPeriodeLabel(assessment.submitPeriode)],
+                                                ['Email', assessment.email],
+                                                ['Student Body', assessment.studentBody],
+                                                ['Jumlah Prodi', assessment.jumlahProdi],
+                                                ['Jumlah Prodi Terakreditasi Unggul', assessment.jumlahProdiUnggul],
+                                                ['Maturity Level (Institusi)', assessment.maturityLevel],
+                                                ['Transformation Maturity Index (TMI)', radarDataByUPPS[c.id]?.length
+                                                  ? (radarDataByUPPS[c.id].reduce((a, b) => a + b, 0) / radarDataByUPPS[c.id].length).toFixed(2)
+                                                  : 'N/A'
+                                                ],
+                                              ];
+
+                                              const metadataSheet = XLSX.utils.aoa_to_sheet(metadata);
+                                              const detailData = reportsByUPPS[c.id]?.map(item => ({
+                                                'Kode Variabel': item.code,
+                                                'Nama Variabel': item.name,
+                                                'Point': item.point,
+                                                'Maturity Level': item.maturityLevel,
+                                                'Deskripsi': item.desc,
+                                              })) || [];
+
+                                              const detailSheet = XLSX.utils.json_to_sheet(detailData);
+
+                                              const workbook = XLSX.utils.book_new();
+                                              XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Metadata');
+                                              XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail Variabel');
+
+                                              const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                                              const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                                              FileSaver.saveAs(blob, `${c.name.replace(/\s+/g, '_')}-report.xlsx`);
+                                            });
+                                          });
+                                        }}
+                                      >
+                                        Download
+                                      </Button>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            </>
                           );
-                        })}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -691,4 +767,4 @@ return { assessment, reports, radarData, periode };
       </main>
     </div>
   );
-}
+}  
