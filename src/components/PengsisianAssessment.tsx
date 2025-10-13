@@ -12,12 +12,12 @@ import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList'; 
 import { useCreateAssessmentDetail, useFinishAssessment } from '@/hooks/useAssessment';
+import {  CreateAssessmentDetail } from '@/interfaces/assessment'
 
 interface PurwokertoTabProps {
   setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-// ✅ Tambahkan type ke interface
 interface QuestionItem {
   id: number;
   section: string;
@@ -26,7 +26,7 @@ interface QuestionItem {
   indicator?: string;
   options: string[];
   transformationVariableId?: number;
-  type: 'text' | 'multitext'; // ✅
+  type: 'text' | 'multitext';
 }
 
 export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps) {
@@ -80,7 +80,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               ? options 
               : (id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"]);
 
-            // ✅ Ambil type dari API
             const type = result.data.type === 'text' ? 'text' : 'multitext';
 
             tempQuestions.push({
@@ -100,7 +99,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               transformationVariableId: result.data.transformationVariableId 
                 ? Number(result.data.transformationVariableId) 
                 : undefined,
-              type, // ✅
+              type,
             });
           }
         } catch (err) {
@@ -216,87 +215,133 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
   };
 
   const handleConfirm = async () => {
-    if (selectedAssessmentId === null) {
-      alert("Periode tidak valid.");
-      return;
-    }
+  if (selectedAssessmentId === null) {
+    alert("Periode tidak valid.");
+    return;
+  }
 
-    try {
-      let successCount = 0;
-      let totalCount = 0;
-      
-      for (const q of questions) {
-        const userAnswer = answers[q.id];
-        if (userAnswer == null) continue;
+  try {
+    let successCount = 0;
+    let totalCount = 0;
 
-        totalCount++;
-        const answerData = {
-          assessmentId: selectedAssessmentId,
-          questionId: q.id,
-          textAnswer1: "0",
-          textAnswer2: "0", 
-          textAnswer3: "0",
-          textAnswer4: "0",
-          textAnswer5: "0",
-        };
+    for (const q of questions) {
+      const baseKey = String(q.id);
+      const parts = q.question.split('|').filter(p => p.trim() !== '');
 
-        const optionIndex = q.options.findIndex(opt => opt === userAnswer);
-        if (optionIndex === 0) answerData.textAnswer1 = "1";
-        else if (optionIndex === 1) answerData.textAnswer2 = "1";
-        else if (optionIndex === 2) answerData.textAnswer3 = "1";
-        else if (optionIndex === 3) answerData.textAnswer4 = "1";
-        else if (optionIndex === 4) answerData.textAnswer5 = "1";
+      // ✅ Gunakan tipe eksplisit
+      const answerData: CreateAssessmentDetail = {
+        assessmentId: selectedAssessmentId,
+        questionId: q.id,
+        textAnswer1: "0",
+        textAnswer2: "0",
+        textAnswer3: "0",
+        textAnswer4: "0",
+        textAnswer5: "0",
+      };
 
-        try {
-          await saveAssessmentDetail(answerData);
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
+      let hasValidAnswer = false;
+
+      if (q.type === 'multitext') {
+        const userAnswer = answers[baseKey];
+        if (userAnswer != null) {
+          const optionIndex = q.options.findIndex(opt => opt === userAnswer);
+          if (optionIndex >= 0 && optionIndex < 5) {
+            // ✅ Set jawaban berdasarkan indeks (aman, eksplisit)
+            if (optionIndex === 0) answerData.textAnswer1 = "1";
+            else if (optionIndex === 1) answerData.textAnswer2 = "1";
+            else if (optionIndex === 2) answerData.textAnswer3 = "1";
+            else if (optionIndex === 3) answerData.textAnswer4 = "1";
+            else if (optionIndex === 4) answerData.textAnswer5 = "1";
+            hasValidAnswer = true;
+          }
+        }
+      } else if (q.type === 'text') {
+        for (let i = 0; i < parts.length && i < 5; i++) {
+          const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
+          const rawValue = answers[key];
+          if (rawValue != null && rawValue !== "" && !isNaN(Number(rawValue))) {
+            const numValue = Number(rawValue);
+            if (numValue >= 0) {
+              // ✅ Set jawaban teks berdasarkan indeks
+              if (i === 0) answerData.textAnswer1 = String(numValue);
+              else if (i === 1) answerData.textAnswer2 = String(numValue);
+              else if (i === 2) answerData.textAnswer3 = String(numValue);
+              else if (i === 3) answerData.textAnswer4 = String(numValue);
+              else if (i === 4) answerData.textAnswer5 = String(numValue);
+              hasValidAnswer = true;
+            }
+          }
         }
       }
 
-      if (successCount === 0 && totalCount > 0) {
-        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!");
-        return;
-      }
-
-      if (successCount < totalCount) {
-        alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
-      }
+      if (!hasValidAnswer) continue;
+      totalCount++;
 
       try {
-        await finishAssessment({ assessmentId: selectedAssessmentId });
-      } catch (err) {
-        console.error("❌ Gagal menyelesaikan assessment:", err);
-        alert(`Gagal menyelesaikan assessment: ${err instanceof Error ? err.message : "Error tidak dikenal"}`);
-        return;
+        await saveAssessmentDetail(answerData);
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
+      }
+    }
+
+    if (successCount === 0 && totalCount > 0) {
+      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!");
+      return;
+    }
+
+    if (successCount < totalCount) {
+      alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
+    }
+
+    try {
+      await finishAssessment({ assessmentId: selectedAssessmentId });
+    } catch (err) {
+      console.error("❌ Gagal menyelesaikan assessment:", err);
+      alert(`Gagal menyelesaikan assessment: ${err instanceof Error ? err.message : "Error tidak dikenal"}`);
+      return;
+    }
+
+    const resultData = questions.map((q) => {
+      const baseKey = String(q.id);
+      const parts = q.question.split('|').filter(p => p.trim() !== '');
+      let jawaban = "";
+      if (q.type === 'multitext') {
+        jawaban = answers[baseKey] || "-";
+      } else {
+        const answersArr = parts.map((_, i) => {
+          const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
+          return answers[key] || "-";
+        });
+        jawaban = answersArr.join(" | ");
       }
 
-      const resultData = questions.map((q) => ({
+      return {
         no: q.id,
         kode: q.section,
         pertanyaan: q.question,
-        jawaban: answers[q.id] || "-",
+        jawaban,
         evidence: answers[`evidence-${q.id}`] || "-",
-        status: answers[q.id] ? "Terisi" : "Kosong",
-      }));
-
-      const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
-      const newEntry = {
-        id: Date.now(),
-        unit: "Tel-U Purwokerto",
-        tanggal: new Date().toLocaleDateString("id-ID"),
-        totalTerisi: Object.keys(answers).length,
-        resultData,
+        status: jawaban.split(" | ").every(a => a === "-") ? "Kosong" : "Terisi",
       };
-      localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
-      localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
-      router.push("/assessment/assessmenttable");
-    } catch (err) {
-      console.error("❌ Gagal menyimpan jawaban ke API:", err);
-      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
-    }
-  };
+    });
+
+    const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
+    const newEntry = {
+      id: Date.now(),
+      unit: "Tel-U Purwokerto",
+      tanggal: new Date().toLocaleDateString("id-ID"),
+      totalTerisi: Object.keys(answers).length,
+      resultData,
+    };
+    localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
+    localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+    router.push("/assessment/assessmenttable");
+  } catch (err) {
+    console.error("❌ Gagal menyimpan jawaban ke API:", err);
+    alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
+  }
+};
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -309,11 +354,10 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [formBelumDisimpan]);
 
-  // ✅ Validasi dinamis berdasarkan type
   const allAnswered = questions.slice(0, -1).every((q) => {
     if (q.type === 'text') {
       const baseKey = String(q.id);
-      const parts = q.question.split('|').length;
+      const parts = q.question.split('|').filter(p => p.trim() !== '').length;
       for (let i = 0; i < parts; i++) {
         const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
         const val = answers[key];
@@ -364,7 +408,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
 
-            {/* ✅ Render berdasarkan type */}
             {current.type === 'text' && (
               <div className="space-y-4">
                 {current.question
@@ -395,7 +438,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
               </div>
             )}
 
-            {current.type === 'multitext' && !isLast && (
+            {current.type === 'multitext' && current.options.length > 0 && (
               <div className="space-y-3">
                 {current.options.map((option, index) => (
                   <label key={index} className="flex items-center space-x-3">
@@ -416,46 +459,7 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
                 ))}
               </div>
             )}
-             
-            {/* 
-                    {isLast && (
-                      <>
-                        <ul className="text-sm text-gray-800 list-decimal list-inside space-y-2">
-                          <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Guru Besar</li>
-                          <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Lektor Kepala</li>
-                          <li>Jumlah dosen tetap TUNC yang memiliki jabatan akademik Lektor</li>
-                          <li>Jumlah dosen tetap TUNC</li>
-                        </ul>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                          <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
-                            <p className="text-sm text-gray-600">Download template jawaban</p>
-                            <Button
-                              type="link"
-                              variant="primary"
-                              href="/files/template_jawaban_tunch.xlsx"
-                              download
-                              icon={Download}
-                              iconPosition="left"
-                            >
-                              Download di sini
-                            </Button>
-                          </div>
-                          <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
-                            <p className="text-sm text-gray-600">Upload file Excel</p>
-                            <Button
-                              type="button"
-                              onClick={handleBrowseClick}
-                              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm"
-                            >
-                              Browse File
-                            </Button>
-                            <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    */}
-            
+
             {current.id && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-800 mb-1">Link Evidence</label>
@@ -475,7 +479,6 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
                 />
               </div>
             )}
-
 
             <div className="flex justify-end items-center gap-3 pt-4">
               <Button
