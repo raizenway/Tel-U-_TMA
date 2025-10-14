@@ -4,33 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
+import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
-// Interface untuk data assessment
-interface AssessmentItem {
-  nomor: number;
-  variable: string;
-  bobot: number;
-  indikator: string;
-  tipeSoal: string;
-  status: 'Active' | 'Inactive';
-  pertanyaan: string;
-  linkApi: string;
-  deskripsiSkor0: string;
-  deskripsiSkor1: string;
-  deskripsiSkor2: string;
-  deskripsiSkor3: string;
-  deskripsiSkor4: string;
-  urutan: number;
-}
-
-// Type untuk status input di UI
 type StatusInput = 'Aktif' | 'Non-Aktif';
 
 export default function ApiIgraciasPage() {
   const router = useRouter();
 
   // Form state
-  const [namaVariabel, setNamaVariabel] = useState('');
   const [linkApi, setLinkApi] = useState('');
   const [indikator, setIndikator] = useState('');
   const [pertanyaan, setPertanyaan] = useState('');
@@ -47,25 +29,39 @@ export default function ApiIgraciasPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null); // ✅ state error lokal
 
   // Mode edit
   const [isEditMode, setIsEditMode] = useState(false);
   const [editNomor, setEditNomor] = useState<number | null>(null);
+  const [selectedVariableId, setSelectedVariableId] = useState<number | null>(null);
 
-  // Load data dari editData
+  // Hook API
+  const { mutate: createMutate, loading: createLoading } = useCreateQuestion();
+  const { mutate: updateMutate, loading: updateLoading } = useUpdateQuestion();
+
+  // Data variabel
+  const { data: rawData, loading: variablesLoading } = useTransformationVariableList();
+  const transformationVariables = Array.isArray(rawData) ? rawData : [];
+
+  // Load data dari localStorage (hanya untuk edit)
   useEffect(() => {
     const editData = localStorage.getItem('editData');
-    if (!editData) return;
+    if (!editData) {
+      // Tidak ada data edit → pastikan mode TAMBAH
+      setIsEditMode(false);
+      setEditNomor(null);
+      return;
+    }
 
     try {
       const data = JSON.parse(editData);
-
-      setNamaVariabel(data.variable || '');
       setLinkApi(data.linkApi || '');
       setIndikator(data.indikator || '');
       setPertanyaan(data.pertanyaan || '');
       setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
       setUrutan(data.urutan ? String(data.urutan) : '');
+      setSelectedVariableId(data.transformationVariableId || null);
 
       if (data.deskripsiSkor) {
         setDeskripsiSkor(data.deskripsiSkor);
@@ -79,16 +75,13 @@ export default function ApiIgraciasPage() {
         });
       }
 
-      // Tentukan mode: hanya edit jika ada nomor
-      if (data.nomor !== undefined && data.nomor !== null && data.nomor !== '') {
+      if (data.nomor !== undefined && data.nomor !== null) {
         setEditNomor(data.nomor);
         setIsEditMode(true);
-      } else {
-        setEditNomor(null);
-        setIsEditMode(false);
       }
     } catch (error) {
       console.error('Gagal parsing editData:', error);
+      localStorage.removeItem('editData');
     }
   }, []);
 
@@ -96,7 +89,7 @@ export default function ApiIgraciasPage() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!namaVariabel.trim()) newErrors.namaVariabel = 'Wajib diisi';
+    if (!selectedVariableId) newErrors.namaVariabel = 'Wajib dipilih';
     if (!linkApi.trim()) newErrors.linkApi = 'Wajib diisi';
     if (!indikator.trim()) newErrors.indikator = 'Wajib diisi';
     if (!pertanyaan.trim()) newErrors.pertanyaan = 'Wajib diisi';
@@ -116,10 +109,9 @@ export default function ApiIgraciasPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Cek validasi untuk disable button
   const isFormValid = () => {
     return (
-      namaVariabel.trim() !== '' &&
+      selectedVariableId !== null &&
       linkApi.trim() !== '' &&
       indikator.trim() !== '' &&
       pertanyaan.trim() !== '' &&
@@ -130,60 +122,54 @@ export default function ApiIgraciasPage() {
     );
   };
 
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
+    setSubmitError(null); // ✅ Reset error sebelum simpan
     if (!validate()) return;
 
+    const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+    const finalUrutan = parseInt(urutan, 10) || 1;
+
+    const payload = {
+      transformationVariable: { connect: { id: selectedVariableId } },
+      type: 'api',
+      indicator: indikator.trim(),
+      questionText: pertanyaan.trim(),
+      questionApiUrl: linkApi.trim(),
+      answerText1: '',
+      answerText2: '',
+      answerText3: '',
+      answerText4: '',
+      answerText5: '',
+      scoreDescription0: deskripsiSkor[0].trim(),
+      scoreDescription1: deskripsiSkor[1].trim(),
+      scoreDescription2: deskripsiSkor[2].trim(),
+      scoreDescription3: deskripsiSkor[3].trim(),
+      scoreDescription4: deskripsiSkor[4].trim(),
+      order: finalUrutan,
+      status: finalStatus as 'active' | 'inactive',
+    };
+
     try {
-      const saved = localStorage.getItem('assessmentList');
-      const list: AssessmentItem[] = saved ? JSON.parse(saved) : [];
-
-      // ✅ Konversi status UI → status data dengan tipe yang benar
-      const finalStatus: 'Active' | 'Inactive' =
-        status === 'Aktif' ? 'Active' : 'Inactive';
-
-      const baseData = {
-        variable: namaVariabel,
-        bobot: 1,
-        indikator,
-        pertanyaan,
-        tipeSoal: 'API dari iGracias',
-        status: finalStatus, // ✅ tipe aman
-        linkApi,
-        deskripsiSkor0: deskripsiSkor[0],
-        deskripsiSkor1: deskripsiSkor[1],
-        deskripsiSkor2: deskripsiSkor[2],
-        deskripsiSkor3: deskripsiSkor[3],
-        deskripsiSkor4: deskripsiSkor[4],
-        urutan: parseInt(urutan, 10),
-      };
-
-      let updated: AssessmentItem[];
-
+      let result;
       if (isEditMode && editNomor !== null) {
-        updated = list.map((item) =>
-          item.nomor === editNomor ? { ...item, ...baseData } : item
-        );
+        result = await updateMutate(editNomor, payload);
       } else {
-        const lastNomor = list.length > 0 ? Math.max(...list.map((item) => item.nomor)) : 0;
-        updated = [...list, { ...baseData, nomor: lastNomor + 1 }];
+        result = await createMutate(payload);
       }
 
-      // ✅ Simpan ke localStorage
-      localStorage.setItem('assessmentList', JSON.stringify(updated));
-      localStorage.setItem('newDataAdded', 'true');
-      localStorage.removeItem('editData');
-
-      // ✅ Redirect
-      router.push('/daftar-assessment');
-    } catch (error) {
-      console.error('Gagal menyimpan data:', error);
-      alert('Gagal menyimpan data. Cek console untuk detail.');
+      if (result) {
+        localStorage.removeItem('editData');
+        setIsEditMode(false); // ✅ Reset mode
+        router.push('/daftar-assessment');
+      }
+    } catch (err: any) {
+      setSubmitError(err.message || 'Terjadi kesalahan saat menyimpan soal.');
     }
   };
 
-  // Redirect saat ganti tipe soal
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
+    localStorage.removeItem('editData'); // ✅ Pastikan bersih
     if (selected === 'pilihan-jawaban') {
       router.push('/daftar-assessment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
@@ -198,18 +184,25 @@ export default function ApiIgraciasPage() {
     router.push('/daftar-assessment');
   };
 
+  const isLoading = createLoading || updateLoading;
+
   return (
     <div className="flex">
-      <main className=" flex-1 ">
-        <div
-          className=" rounded-xl shadow-md mx-auto"
-        >
+      <main className="flex-1">
+        <div className="rounded-xl shadow-md mx-auto">
           {/* Header */}
           <div className="p-8 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-800">
               {isEditMode ? 'Edit Soal: API dari iGracias' : 'Soal Baru: API dari iGracias'}
             </h1>
           </div>
+
+          {/* Error Submit (bukan dari hook) */}
+          {submitError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-8 mb-4">
+              ❌ {submitError}
+            </div>
+          )}
 
           {/* Form Content */}
           <div className="p-8 space-y-6 overflow-y-auto max-h-[500px]">
@@ -247,23 +240,25 @@ export default function ApiIgraciasPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nama Variabel</label>
                 <select
                   className={`w-full border ${errors.namaVariabel ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 bg-white`}
-                  value={namaVariabel}
-                  onChange={(e) => setNamaVariabel(e.target.value)}
-                  aria-label="Nama Variabel"
+                  value={selectedVariableId || ''}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    setSelectedVariableId(id || null);
+                  }}
+                  disabled={variablesLoading}
                 >
                   <option value="" disabled>
                     Pilih Nama Variabel
                   </option>
-                  <option value="Akademisi">Akademisi</option>
-                  <option value="Akademik">Akademik</option>
-                  <option value="Alumni">Alumni</option>
-                  <option value="Kemahasiswaan">Kemahasiswaan</option>
-                  <option value="Kerjasama">Kerjasama</option>
-                  <option value="Keuangan">Keuangan</option>
-                  <option value="Mahasiswa Asing">Mahasiswa Asing</option>
-                  <option value="Mutu">Mutu</option>
-                  <option value="SDM">SDM</option>
-                  <option value="PPM, Publikasi, HKI">PPM, Publikasi, HKI</option>
+                  {variablesLoading ? (
+                    <option>Loading...</option>
+                  ) : (
+                    transformationVariables.map((varItem) => (
+                      <option key={varItem.id} value={varItem.id}>
+                        {varItem.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {errors.namaVariabel && (
                   <p className="text-red-500 text-xs mt-1">{errors.namaVariabel}</p>
@@ -360,14 +355,14 @@ export default function ApiIgraciasPage() {
               Batal
             </Button>
             <Button
-              variant="primary" // ✅ Ganti dari "simpan" ke "primary"
+              variant="primary"
               icon={Save}
               iconPosition="left"
               onClick={handleSimpan}
-              disabled={!isFormValid()} // ✅ Disable jika form tidak valid
+              disabled={!isFormValid() || isLoading}
               className="rounded-[12px] px-25 py-2 text-sm font-semibold"
             >
-              Simpan
+              {isLoading ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </div>
         </div>

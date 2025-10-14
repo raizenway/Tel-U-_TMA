@@ -20,6 +20,10 @@ export interface TransformationVariable {
   name: string;
   weight: string;
   description: string;
+  levelDescription1?: string;
+  levelDescription2?: string;
+  levelDescription3?: string;
+  levelDescription4?: string;
   reference: string;
   status: 'active' | 'inactive';
   iconFileId: number | null;        // ✅ tambahkan
@@ -34,6 +38,10 @@ export interface CreateTransformationVariableRequest {
   name: string;
   weight: string;
   description: string;
+  levelDescription1?: string;
+  levelDescription2?: string;
+  levelDescription3?: string;
+  levelDescription4?: string;
   reference: string;
   status: 'active' | 'inactive';
   iconFileId: number | null;        // ✅ tambahkan
@@ -44,9 +52,13 @@ export interface UpdateTransformationVariableRequest {
   name?: string;
   weight?: string;
   description?: string;
+  levelDescription1?: string;
+  levelDescription2?: string;
+  levelDescription3?: string;
+  levelDescription4?: string;
   reference?: string;
   status?: 'active' | 'inactive';
- iconFileId?: number | null;
+  iconFileId?: number | null;
   sortOrder?: string;
 }
 

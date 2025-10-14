@@ -57,13 +57,6 @@ const TablePage = () => {
         skorMin: item.minScore,
         skorMax: item.maxScore,
         deskripsiUmum: item.description,
-        deskripsiPerVariabel: [
-          item.scoreDescription0,
-          item.scoreDescription1,
-          item.scoreDescription2,
-          item.scoreDescription3,
-          item.scoreDescription4,
-        ].filter(Boolean),
       }));
       setData(mapped);
     }
@@ -125,17 +118,6 @@ const TablePage = () => {
   // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
     ...row,
-    deskripsiPerVariabel: (
-      <button
-        className="flex items-center gap-2 text-gray-700 hover:underline"
-        onClick={() => {
-          setSelectedDeskripsiList(row?.deskripsiPerVariabel || []);
-          setShowModal(true);
-        }}
-      >
-        <Eye size={18} strokeWidth={1} /> Lihat Deskripsi
-      </button>
-    ),
     aksi: (
       <div className="flex justify-center gap-4 text-xs">
         <button
@@ -193,11 +175,6 @@ const baseColumns = [
     width: "250px",
     onClick: () => requestSort("deskripsiUmum"),
     isSorted: sortConfig?.key === "deskripsiUmum" ? sortConfig.direction : undefined
-  },
-  { 
-    header: "Deskripsi Per Variabel", 
-    key: "deskripsiPerVariabel", 
-    width: "250px" 
   },
   
 ];
@@ -319,44 +296,6 @@ const columns = roleId === 1
           <div className="font-bold mb-1">⚠ Peringatan</div>
           <div>Data yang sudah dihapus tidak akan bisa dipulihkan.</div>
         </div>
-      </ModalConfirm>
-
-      {/* Modal Deskripsi */}
-      <ModalConfirm
-        isOpen={showModal}
-        onCancel={() => setShowModal(false)}
-        onConfirm={() => {}}
-        title=""
-        header="Deskripsi per Variabel"
-        footer={
-          <div className="flex justify-center pt-4">
-            <Button
-              variant="simpan"
-              className="px-30 py-2 text-lg rounded-md"
-              onClick={() => setShowModal(false)}
-            >
-              Tutup
-            </Button>
-          </div>
-        }
-      >
-        {Array.isArray(selectedDeskripsiList) &&
-        selectedDeskripsiList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {selectedDeskripsiList.map((desc, i) => (
-              <div key={i} className="bg-purple-50 border rounded p-3">
-                <h3 className="font-semibold mb-2">Deskripsi Skor {i}</h3>
-                <p className="text-sm text-gray-700">
-                  {desc || "(Tidak ada deskripsi)"}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center">
-            Tidak ada deskripsi tersedia
-          </p>
-        )}
       </ModalConfirm>
     </div>
   );

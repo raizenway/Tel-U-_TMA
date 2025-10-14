@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function TambahAssessmentPage() {
   const router = useRouter();
   const [tipeSoal, setTipeSoal] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('Active'); // ✅ default 'Active'
+
+  // ✅ Hapus editData saat komponen mount (extra safety)
+  useEffect(() => {
+    localStorage.removeItem('editData');
+  }, []);
 
   const handleTipeSoalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedType = e.target.value;
@@ -14,12 +19,11 @@ export default function TambahAssessmentPage() {
 
     if (!selectedType) return;
 
-    // ✅ Hapus editData lama agar tidak bawa data sebelumnya
-    localStorage.removeItem('editData');
+    // ✅ Pastikan status selalu ada
+    const finalStatus = status || 'Active';
 
-    // ✅ Buat data baru kosong (opsional: bisa isi default)
     const newData = {
-      nomor: '', // akan diisi saat submit
+      nomor: '',
       variable: '',
       bobot: 1,
       indikator: '',
@@ -30,14 +34,12 @@ export default function TambahAssessmentPage() {
       deskripsiSkor3: '',
       deskripsiSkor4: '',
       tipeSoal: selectedType,
-      status: status || 'Active', // gunakan status atau default
+      status: finalStatus,
     };
 
-    // ✅ Simpan sebagai editData → agar form bisa baca
-    // Tapi ini data BARU, bukan edit
-    localStorage.setItem('editData', JSON.stringify(newData));
+    
 
-    // Redirect ke form
+    // Redirect
     switch (selectedType) {
       case 'Pilihan Jawaban':
         router.push('/daftar-assessment/pilih-jawaban');
@@ -56,10 +58,7 @@ export default function TambahAssessmentPage() {
   return (
     <div className="flex">
       <main className="flex-1">
-        <div
-          className="bg-white p-8 rounded-xl shadow-md "
-         
-        >
+        <div className="bg-white p-8 rounded-xl shadow-md">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Tambah Assessment Baru</h1>
 
           <form>
@@ -85,7 +84,7 @@ export default function TambahAssessmentPage() {
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
-                  <option value="">Pilih Status</option>
+                  {/* ✅ Hilangkan opsi kosong */}
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
