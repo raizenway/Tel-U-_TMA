@@ -87,8 +87,11 @@ export default function AssessmentPage() {
         deskripsiSkor4: item.scoreDescription4 || '-',
        tipeSoal: 
         item.type === 'multitext' ? 'Pilihan Jawaban' :
+        item.type == 'text' ? 'Pilihan Jawaban':
         item.type === 'api' ? 'API dari iGracias' :
         item.type === 'excel' ? 'Submit Jawaban Excel' :
+        item.type == 'multitext' ? 'Submit Jawaban Excel':
+        item.type == 'text' ? 'Submit Jawaban Excel':
         'Tipe Tidak Dikenal',
         status: item.status,
       }));

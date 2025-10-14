@@ -7,14 +7,22 @@ import Button from '@/components/button';
 import { X, Save, Eye, EyeOff } from 'lucide-react';
 import TableUpdate from '@/components/TableUpdate';
 import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
+import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
+
+// Tipe untuk tipe soal
+type QuestionType = 'text' | 'multitext';
 
 // Interface untuk preview
 interface AssessmentItem {
   nomor: number;
   variable: string;
   indikator: string;
-  pertanyaan: string;
-  tipeSoal: string;
+  keyIndicator: string;
+  pertanyaan1: string;
+  pertanyaan2: string;
+  pertanyaan3: string;
+  pertanyaan4: string;
+  tipeSoal: QuestionType; // ✅ Gunakan tipe eksplisit
   status: 'Active' | 'Inactive';
   deskripsiSkor0: string;
   deskripsiSkor1: string;
@@ -38,7 +46,7 @@ export default function SubmitExcelPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Hook API
+  const { data: transformationVariables, loading: variablesLoading } = useTransformationVariableList();
   const { mutate: createMutate } = useCreateQuestion();
   const { mutate: updateMutate } = useUpdateQuestion();
 
@@ -67,13 +75,9 @@ export default function SubmitExcelPage() {
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     localStorage.removeItem('editData');
     const selected = e.target.value;
-    if (selected === 'pilihan-jawaban') {
-      router.push('/daftar-assessment/pilih-jawaban');
-    } else if (selected === 'api-igracias') {
-      router.push('/daftar-assessment/api-igracias');
-    } else if (selected === 'submit-excel') {
-      router.push('/daftar-assessment/submit-excel');
-    }
+    if (selected === 'pilihan-jawaban') router.push('/daftar-assessment/pilih-jawaban');
+    else if (selected === 'api-igracias') router.push('/daftar-assessment/api-igracias');
+    else if (selected === 'submit-excel') router.push('/daftar-assessment/submit-excel');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,37 +117,53 @@ export default function SubmitExcelPage() {
         const rows = json.slice(1);
 
         const requiredColumns = [
-          'Variable', 'Indikator', 'Pertanyaan',
-          'Deskripsi Skor 0', 'Deskripsi Skor 1', 'Deskripsi Skor 2',
-          'Deskripsi Skor 3', 'Deskripsi Skor 4', 'Referensi'
+          'Bidang (Variabel)',
+          'Indikator',
+          'Key Indicator',
+          'Pertanyaan 1',
+          'Deskripsi Skor 0',
+          'Deskripsi Skor 1',
+          'Deskripsi Skor 2',
+          'Deskripsi Skor 3',
+          'Deskripsi Skor 4',
+          'Urutan'
         ];
 
         const missing = requiredColumns.filter(col => !headers.includes(col));
         if (missing.length > 0) {
-          alert(`Kolom tidak ditemukan: ${missing.join(', ')}`);
+          alert(`Kolom wajib tidak ditemukan: ${missing.join(', ')}`);
           return;
         }
 
         const idx = (col: string) => headers.indexOf(col);
         const finalStatus: 'Active' | 'Inactive' = status === 'Aktif' ? 'Active' : 'Inactive';
 
-        const items = rows.map((row: any, i) => {
-          const referensiVal = row[idx('Referensi')];
-          const urutan = isNaN(Number(referensiVal)) ? i + 1 : Number(referensiVal);
+        const items: AssessmentItem[] = rows.map((row: any, i) => {
+          const q1 = row[idx('Pertanyaan 1')]?.toString().trim() || '';
+          const q2 = row[idx('Pertanyaan 2')]?.toString().trim() || '';
+          const q3 = row[idx('Pertanyaan 3')]?.toString().trim() || '';
+          const q4 = row[idx('Pertanyaan 4')]?.toString().trim() || '';
+
+          const questionCount = [q1, q2, q3, q4].filter(q => q !== '').length;
+          const tipeSoal: QuestionType = questionCount > 1 ? 'multitext' : 'text'; // ✅ Tipe eksplisit
 
           return {
             nomor: i + 1,
-            variable: row[idx('Variable')]?.toString().trim() || '—',
+            variable: row[idx('Bidang (Variabel)')]?.toString().trim() || '—',
             indikator: row[idx('Indikator')]?.toString().trim() || '—',
-            pertanyaan: row[idx('Pertanyaan')]?.toString().trim() || '—',
-            tipeSoal: 'Submit Jawaban Excel',
+            keyIndicator: row[idx('Key Indicator')]?.toString().trim() || '—',
+            pertanyaan1: q1,
+            pertanyaan2: q2,
+            pertanyaan3: q3,
+            pertanyaan4: q4,
+            tipeSoal,
             status: finalStatus,
             deskripsiSkor0: row[idx('Deskripsi Skor 0')]?.toString().trim() || '—',
             deskripsiSkor1: row[idx('Deskripsi Skor 1')]?.toString().trim() || '—',
             deskripsiSkor2: row[idx('Deskripsi Skor 2')]?.toString().trim() || '—',
             deskripsiSkor3: row[idx('Deskripsi Skor 3')]?.toString().trim() || '—',
             deskripsiSkor4: row[idx('Deskripsi Skor 4')]?.toString().trim() || '—',
-            urutan,
+            urutan: parseInt(row[idx('Urutan')]?.toString().trim() || '1', 10) || i + 1,
           };
         });
 
@@ -188,35 +208,48 @@ export default function SubmitExcelPage() {
         const idx = (col: string) => headers.indexOf(col);
         const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
 
-        // Ambil transformationVariableId dari localStorage (jika ada)
-        // Jika tidak ada, gunakan default (misal: 1)
-        const editData = localStorage.getItem('editData');
-        const transformationVariableId = editData
-          ? JSON.parse(editData).transformationVariableId
-          : 1; // Ganti sesuai kebutuhan
-
         for (const row of rows) {
-          const referensiVal = row[idx('Referensi')];
-          const order = isNaN(Number(referensiVal)) ? 1 : Number(referensiVal);
-            const finalStatus: 'active' | 'inactive' = status === 'Aktif' ? 'active' : 'inactive'
+          const variableName = row[idx('Bidang (Variabel)')]?.toString().trim();
+          if (!variableName) {
+            throw new Error('Kolom "Bidang (Variabel)" tidak boleh kosong.');
+          }
+
+          const variable = transformationVariables?.find((v: any) => v.name === variableName);
+          if (!variable) {
+            throw new Error(`Variabel "${variableName}" tidak ditemukan di database.`);
+          }
+
+          const q1 = row[idx('Pertanyaan 1')]?.toString().trim() || '';
+          const q2 = row[idx('Pertanyaan 2')]?.toString().trim() || '';
+          const q3 = row[idx('Pertanyaan 3')]?.toString().trim() || '';
+          const q4 = row[idx('Pertanyaan 4')]?.toString().trim() || '';
+
+          const questionCount = [q1, q2, q3, q4].filter(q => q !== '').length;
+          const questionType: QuestionType = questionCount > 1 ? 'multitext' : 'text'; // ✅ Literal type
 
           const payload = {
-            transformationVariable: { connect: { id: transformationVariableId } },
-            type: 'excel',
+            transformationVariable: { connect: { id: variable.id } },
+            type: questionType, // ✅ Sekarang aman
             indicator: row[idx('Indikator')]?.toString().trim() || '',
-            questionText: row[idx('Pertanyaan')]?.toString().trim() || '',
-            answerText1: "",
-            answerText2: "",
-            answerText3: "",
-            answerText4: "",
-            answerText5: "",
+            keyIndicator: row[idx('Key Indicator')]?.toString().trim() || '',
+            reference: row[idx('Reference')]?.toString().trim() || '',
+            dataSource: row[idx('Data Source')]?.toString().trim() || '',
+            questionText: q1,
+            questionText2: q2,
+            questionText3: q3,
+            questionText4: q4,
+            answerText1: '',
+            answerText2: '',
+            answerText3: '',
+            answerText4: '',
+            answerText5: '',
             scoreDescription0: row[idx('Deskripsi Skor 0')]?.toString().trim() || '',
             scoreDescription1: row[idx('Deskripsi Skor 1')]?.toString().trim() || '',
             scoreDescription2: row[idx('Deskripsi Skor 2')]?.toString().trim() || '',
             scoreDescription3: row[idx('Deskripsi Skor 3')]?.toString().trim() || '',
             scoreDescription4: row[idx('Deskripsi Skor 4')]?.toString().trim() || '',
-            order,
-            status: finalStatus,
+            order: parseInt(row[idx('Urutan')]?.toString().trim() || '1', 10) || 1,
+            status: finalStatus as 'active' | 'inactive',
           };
 
           if (isEditMode && editNomor) {
@@ -246,13 +279,13 @@ export default function SubmitExcelPage() {
   const previewColumns = [
     { header: 'No', key: 'nomor', width: '60px', className: 'text-center' },
     { header: 'Variable', key: 'variable', width: '150px' },
-    { header: 'Indikator', key: 'indikator', width: '200px' },
-    { header: 'Pertanyaan', key: 'pertanyaan', width: '200px' },
-    { header: 'Deskripsi Skor 0', key: 'deskripsiSkor0', width: '150px' },
-    { header: 'Deskripsi Skor 1', key: 'deskripsiSkor1', width: '150px' },
-    { header: 'Deskripsi Skor 2', key: 'deskripsiSkor2', width: '150px' },
-    { header: 'Deskripsi Skor 3', key: 'deskripsiSkor3', width: '150px' },
-    { header: 'Deskripsi Skor 4', key: 'deskripsiSkor4', width: '150px' },
+    { header: 'Indikator', key: 'indikator', width: '150px' },
+    { header: 'Key Indicator', key: 'keyIndicator', width: '150px' },
+    { header: 'Pertanyaan 1', key: 'pertanyaan1', width: '200px' },
+    { header: 'Pertanyaan 2', key: 'pertanyaan2', width: '150px' },
+    { header: 'Pertanyaan 3', key: 'pertanyaan3', width: '150px' },
+    { header: 'Pertanyaan 4', key: 'pertanyaan4', width: '150px' },
+    { header: 'Tipe', key: 'tipeSoal', width: '100px', className: 'text-center' },
     { header: 'Urutan', key: 'urutan', width: '80px', className: 'text-center' },
     { header: 'Status', key: 'status', width: '100px', className: 'text-center' },
   ];
@@ -319,7 +352,7 @@ export default function SubmitExcelPage() {
             download
             className="inline-block text-blue-500 hover:text-blue-700 mb-6"
           >
-            📥 Download Template Excel
+            📥 Download Template Excel (baru)
           </a>
 
           <div className="flex justify-end space-x-4 mt-6">

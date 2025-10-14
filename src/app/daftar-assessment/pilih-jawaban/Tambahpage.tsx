@@ -651,7 +651,7 @@ useEffect(() => {
               disabled={!isFormValid() || createLoading || updateLoading}
               variant="simpan"
               icon={Save}
-              iconPosition="left"
+              iconPosition="left" 
               onClick={handleSave}
               className="rounded-[12px] px-25 py-2 text-sm font-semibold"
             >

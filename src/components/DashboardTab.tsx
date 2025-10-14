@@ -98,17 +98,34 @@ export default function DashboardTab() {
 
         // --- STUDENT BODY ---
         const yearStrings = ['2021', '2022', '2023', '2024', '2025'];
-        const studentBodyFormatted = yearStrings.map(yearStr => {
-          const yearNum = Number(yearStr);
-          const row: Record<string, any> = { year: yearStr };
-          apiData.branches.forEach((branch: any) => {
-            const campusName = branch.name as CampusKey;
-            const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
-            row[campusName] = dataForYear ? dataForYear.total : null;
-          });
-          return row;
-        });
-        setStudentBodyData(studentBodyFormatted);
+        const studentBodyFormatted: {
+  year: string;
+  "Tel-U Jakarta": number | null;
+  "Tel-U Surabaya": number | null;
+  "Tel-U Purwokerto": number | null;
+  "Tel-U Bandung": number | null;
+}[] = yearStrings.map(yearStr => {
+  const yearNum = Number(yearStr);
+  const row = {
+    year: yearStr,
+    "Tel-U Jakarta": null,
+    "Tel-U Surabaya": null,
+    "Tel-U Purwokerto": null,
+    "Tel-U Bandung": null,
+  };
+
+  apiData.branches.forEach((branch: any) => {
+    const campusName = branch.name as CampusKey;
+    const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
+    if (campusName in row) {
+      row[campusName] = dataForYear ? dataForYear.total : null;
+    }
+  });
+
+  return row;
+});
+
+setStudentBodyData(studentBodyFormatted); // ✅ Sekarang aman
 
         // --- Accreditation Growth ---
         const accreditationFormatted = yearStrings.map(yearStr => {
