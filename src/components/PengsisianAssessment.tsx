@@ -14,9 +14,7 @@ import { useTransformationVariableList } from '@/hooks/useTransformationVariable
 import { useCreateAssessmentDetail, useFinishAssessment } from '@/hooks/useAssessment';
 import {  CreateAssessmentDetail } from '@/interfaces/assessment'
 
-interface PurwokertoTabProps {
-  setIsFormDirty: React.Dispatch<React.SetStateAction<boolean>>;
-}
+
 
 interface QuestionItem {
   id: number;
@@ -29,7 +27,10 @@ interface QuestionItem {
   type: 'text' | 'multitext';
 }
 
-export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps) {
+// GANTI JADI:
+export default function AssessmentFormTab() { // ❌ Tidak terima props
+  // ✅ Tambahkan state lokal
+  const [isFormDirty, setIsFormDirty] = useState(false);
   const [rawQuestions, setRawQuestions] = useState<QuestionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const hookResult = useTransformationVariableList();

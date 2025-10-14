@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
-import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
+import {useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
 type StatusInput = 'Aktif' | 'Non-Aktif';
@@ -131,7 +131,7 @@ export default function ApiIgraciasPage() {
 
     const payload = {
       transformationVariable: { connect: { id: selectedVariableId } },
-      type: 'api',
+      type: 'api' as const,
       indicator: indikator.trim(),
       questionText: pertanyaan.trim(),
       questionApiUrl: linkApi.trim(),

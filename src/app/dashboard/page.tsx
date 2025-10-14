@@ -76,7 +76,7 @@ export default function WelcomePage() {
           {tab === "dashboard" && <DashboardTab />}
           {tab === "user-manual" && <UserManualTab />}
           {tab === "purwokerto" && (
-            <PurwokertoTab setIsFormDirty={setIsFormDirty} />
+            <PurwokertoTab />
           )}
          
           {tab === "assessment-form" && (
