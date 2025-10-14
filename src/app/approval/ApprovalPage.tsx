@@ -27,6 +27,7 @@ const TablePage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
   const [tab] = useState("approval-assessment");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ const TablePage = () => {
   const rowsPerPage = 10;
 
   const columns = [
-    { header: "Nomor", key: "nomor", width: "80px", sortable: true },
+    { header: "Nomor", key: "nomor", width: "100px", sortable: true },
     { header: "Nama Variable", key: "variable", width: "160px", sortable: true },
     { header: "Indikator", key: "indikator", width: "250px" },
     { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
@@ -67,7 +68,7 @@ const TablePage = () => {
       } catch (err) {
         console.error("Gagal memuat daftar periode:", err);
         const fallback = [
-          { id: 1, label: "2025 Ganjil" },
+          { id: 1, label: "2024 Ganjil" },
           { id: 2, label: "2024 Genap" },
         ];
         setPeriodeOptions(fallback);
@@ -78,7 +79,8 @@ const TablePage = () => {
     fetchPeriodeOptions();
   }, []);
 
-  useEffect(() => {
+  // 🔁 Fetch data approval
+  const fetchData = async () => {
     if (selectedPeriodeId === null) {
       setLoading(false);
       return;
@@ -91,72 +93,114 @@ const TablePage = () => {
       return;
     }
 
-    const fetchApprovalData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        const res = await axios.get(`${API_BASE}/assessment/detail`, {
-          params: {
-            branchId: selectedCampusId,
-            periodId: selectedPeriodeId,
-          },
-        });
+      const res = await axios.get(`${API_BASE}/assessment/detail`, {
+        params: {
+          branchId: selectedCampusId,
+          periodId: selectedPeriodeId,
+        },
+      });
 
-        const rawData = res.data.data || [];
+      const rawData = res.data.data || [];
 
-        const transformedData = rawData.map((item: any, index: number) => {
-          const question = item.question || {};
-          const assessment = item.assessment || {};
-
-          return {
-            nomor: index + 1,
-            variable: question.transformationVariable?.name || "-",
-            indikator: question.indicator || "-",
-            pertanyaan: question.questionText || "-",
-            jawaban: item.submissionValue || "-",
-            skor: item.score !== undefined ? item.score : "-",
-            tipeSoal: question.type || "-",
-           
-            assessmentId: assessment.id,
-            detailId: item.id,
-          };
-        });
-
-        setTableData(transformedData);
-      } catch (error: any) {
-        console.error("Gagal memuat data approval:", error);
-
-        let errorMsg = "Gagal memuat data approval.";
-        if (error.response) {
-          errorMsg += ` Status: ${error.response.status}`;
-          if (error.response.data?.message) {
-            errorMsg += ` - ${error.response.data.message}`;
+      // ✅ Fungsi untuk ambil jawaban dari answer
+      const getJawabanFromAnswer = (answer: any): string => {
+        if (!answer) return "-";
+        // Cek textAnswer1 sampai textAnswer5
+        for (let i = 1; i <= 5; i++) {
+          const value = answer[`textAnswer${i}`];
+          if (value && value !== "0" && value !== "") {
+            return String(value);
           }
-        } else if (error.message) {
-          errorMsg += ` - ${error.message}`;
         }
+        return "-";
+      };
 
-        setError(errorMsg);
-        setTableData([]);
-      } finally {
-        setLoading(false);
+      const transformedData = rawData.map((item: any, index: number) => {
+        const question = item.question || {};
+        const assessment = item.assessment || {};
+        const answer = item.answer || {};
+
+        // ✅ Ambil jawaban dari answer (bukan submissionValue)
+        const jawaban = getJawabanFromAnswer(answer);
+        const skor = item.submissionValue !== undefined && item.submissionValue !== ""
+          ? String(item.submissionValue)
+          : "-";
+
+        return {
+          nomor: index + 1,
+          variable: question.transformationVariable?.name || "-",
+          indikator: question.indicator || "-",
+          pertanyaan: question.questionText || "-",
+          jawaban: jawaban,
+          skor: skor,
+          tipeSoal: question.type || "-",
+          assessmentId: assessment.id,
+          detailId: item.id,
+        };
+      });
+
+      setTableData(transformedData);
+    } catch (error: any) {
+      console.error("Gagal memuat data approval:", error);
+      let errorMsg = "Gagal memuat data approval.";
+      if (error.response) {
+        errorMsg += ` Status: ${error.response.status}`;
+        if (error.response.data?.message) {
+          errorMsg += ` - ${error.response.data.message}`;
+        }
+      } else if (error.message) {
+        errorMsg += ` - ${error.message}`;
       }
-    };
+      setError(errorMsg);
+      setTableData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchApprovalData();
+  useEffect(() => {
+    fetchData();
   }, [selectedCampusId, selectedPeriodeId]);
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
-  const handleConfirm = () => {
-    alert(
-      `Data telah ${
-        modalType === "approve" ? "disetujui" : "dikirim untuk revisi"
-      }`
-    );
-    setShowModal(false);
-    setModalType(null);
+  // ✅ Handle konfirmasi untuk 1 assessment saja
+  const handleConfirm = async () => {
+    if (!modalType || !selectedAssessmentId) {
+      setShowModal(false);
+      return;
+    }
+
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+      if (!API_BASE) {
+        alert("NEXT_PUBLIC_API_URL belum di-set");
+        setShowModal(false);
+        return;
+      }
+
+      const endpoint = modalType === "approve"
+        ? `${API_BASE}/assessment/${selectedAssessmentId}/approve`
+        : `${API_BASE}/assessment/${selectedAssessmentId}/reject`;
+
+      await axios.post(endpoint, {});
+
+     
+
+      // Refresh data
+      fetchData();
+    } catch (error: any) {
+      console.error("Gagal melakukan aksi:", error);
+      alert(`Gagal: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setShowModal(false);
+      setModalType(null);
+      setSelectedAssessmentId(null);
+    }
   };
 
   const filteredData = sortedData.filter((row) =>
@@ -279,8 +323,11 @@ const TablePage = () => {
                 variant="success"
                 className="px-13"
                 onClick={() => {
-                  setModalType("approve");
-                  setShowModal(true);
+                  if (tableData.length > 0) {
+                    setSelectedAssessmentId(tableData[0].assessmentId);
+                    setModalType("approve");
+                    setShowModal(true);
+                  }
                 }}
                 disabled={tableData.length === 0}
               >
@@ -290,8 +337,11 @@ const TablePage = () => {
                 variant="danger"
                 className="px-13"
                 onClick={() => {
-                  setModalType("revisi");
-                  setShowModal(true);
+                  if (tableData.length > 0) {
+                    setSelectedAssessmentId(tableData[0].assessmentId);
+                    setModalType("revisi");
+                    setShowModal(true);
+                  }
                 }}
                 disabled={tableData.length === 0}
               >
@@ -306,6 +356,7 @@ const TablePage = () => {
             onCancel={() => {
               setShowModal(false);
               setModalType(null);
+              setSelectedAssessmentId(null);
             }}
             onConfirm={handleConfirm}
             title={`Apakah kamu yakin ingin ${
