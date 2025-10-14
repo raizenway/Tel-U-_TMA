@@ -25,6 +25,10 @@ export default function EditVariablePage() {
   const [namaVariabel, setNamaVariabel] = useState('');
   const [bobot, setBobot] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
+  const [levelDescription1, setLevelDescription1] = useState('');
+  const [levelDescription2, setLevelDescription2] = useState('');
+  const [levelDescription3, setLevelDescription3] = useState('');
+  const [levelDescription4, setLevelDescription4] = useState('');
   const [referensi, setReferensi] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
@@ -49,6 +53,10 @@ useEffect(() => {
   setNamaVariabel(item.name || '');
   setBobot(item.weight?.toString() || '');
   setDeskripsi(item.description || '');
+  setLevelDescription1(item.levelDescription1 || '');
+  setLevelDescription2(item.levelDescription2 || '');
+  setLevelDescription3(item.levelDescription3 || '');
+  setLevelDescription4(item.levelDescription4 || '');
   setReferensi(item.reference || '');
   setStatus(item.status === 'active' ? 'Active' : 'Inactive');
 
@@ -96,6 +104,10 @@ useEffect(() => {
     formData.append('name', namaVariabel.trim());
     formData.append('weight', (parseFloat(bobot) || 0).toString()); // ✅ .toString()
     formData.append('description', deskripsi.trim());
+    formData.append('levelDescription1', levelDescription1.trim());
+    formData.append('levelDescription2', levelDescription2.trim());
+    formData.append('levelDescription3', levelDescription3.trim());
+    formData.append('levelDescription4', levelDescription4.trim());
     formData.append('reference', referensi.trim());
     formData.append('sortOrder', '1'); // ✅ sudah string
     formData.append('status', status.toLowerCase());
@@ -107,6 +119,10 @@ useEffect(() => {
       name: namaVariabel.trim(),
       weight: parseFloat(bobot) || 0,
       description: deskripsi.trim(),
+      levelDescription1: levelDescription1.trim(),
+      levelDescription2: levelDescription2.trim(),
+      levelDescription3: levelDescription3.trim(),
+      levelDescription4: levelDescription4.trim(),
       reference: referensi.trim(),
       sortOrder: 1,
       status: status.toLowerCase() as 'active' | 'inactive',
@@ -247,6 +263,58 @@ useEffect(() => {
                 </div>
               )}
             </div>
+
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 1
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription1}
+              onChange={(e) => setLevelDescription1(e.target.value)}
+              placeholder="Masukkan Level Deskripsi"
+              rows={4}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 2
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription2}
+              onChange={(e) => setLevelDescription2(e.target.value)}
+              placeholder="Masukkan Level Deskripsi"
+              rows={4}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 3
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription3}
+              onChange={(e) => setLevelDescription3(e.target.value)}
+              placeholder="Masukkan Level Deskripsi"
+              rows={4}
+            />
+          </div>
+
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 4
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription4}
+              onChange={(e) => setLevelDescription4(e.target.value)}
+              placeholder="Masukkan Deskripsi"
+              rows={4}
+            />
+          </div>
           </div>
 
           <div className="p-8 flex justify-end gap-4 border-t border-gray-200">
