@@ -1,13 +1,16 @@
+type QuestionType= 'text' | 'multitext' | 'api' |'excel';
+
 export interface Question {
   id: number;
-   transformationVariable: { connect: { id: number } };
-  type: string;
+  transformationVariableId: number;
+  transformationVariable: { connect: { id: number } };
+  type:   QuestionType;
   indicator: string;
   questionText: string;
   questionText2?: string;
   questionText3?: string;
   questionText4?: string;
-  answerText: string;
+  answerText1?: string;
   answerText2?: string;
   answerText3?: string;
   answerText4?: string;
@@ -23,13 +26,13 @@ export interface Question {
 
 export interface CreateQuestionRequest {
   transformationVariable: { connect: { id: number } };
-  type: string;
+  type: QuestionType;
   indicator: string;
   questionText: string;
   questionText2?: string;
   questionText3?: string;
   questionText4?: string;
-  answerText: string;
+  answerText1?: string;
   answerText2?: string;
   answerText3?: string;
   answerText4?: string;
@@ -45,13 +48,13 @@ export interface CreateQuestionRequest {
 
 export interface UpdateQuestionRequest {
   transformationVariable: { connect: { id: number } };
-  type?: string;
+  type?: QuestionType;
   indicator?: string;
   questionText?: string;
   questionText2?: string;
   questionText3?: string;
   questionText4?: string;
-  answerText?: string;
+  answerText1?: string;
   answerText2?: string;
   answerText3?: string;
   answerText4?: string;

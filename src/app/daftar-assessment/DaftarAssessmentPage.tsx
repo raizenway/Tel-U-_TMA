@@ -85,7 +85,11 @@ export default function AssessmentPage() {
         deskripsiSkor2: item.scoreDescription2 || '-',
         deskripsiSkor3: item.scoreDescription3 || '-',
         deskripsiSkor4: item.scoreDescription4 || '-',
-        tipeSoal: item.type === 'multitext' ? 'Pilihan Jawaban' : 'Lainnya',
+       tipeSoal: 
+        item.type === 'multitext' ? 'Pilihan Jawaban' :
+        item.type === 'api' ? 'API dari iGracias' :
+        item.type === 'excel' ? 'Submit Jawaban Excel' :
+        'Tipe Tidak Dikenal',
         status: item.status,
       }));
       setData(dataWithNomor);
@@ -163,6 +167,7 @@ export default function AssessmentPage() {
   };
 
   const handleTambah = () => {
+     localStorage.removeItem('editData');
     router.push('/daftar-assessment/tambah-assessment');
   };
 
