@@ -32,13 +32,62 @@ const CAMPUS_LIST = [
   "Tel-U Bandung",
 ] as const;
 
-type CampusKey = typeof CAMPUS_LIST[number];
+type CampusKey = 
+  | "Tel-U Jakarta"
+  | "Tel-U Surabaya"
+  | "Tel-U Purwokerto"
+  | "Tel-U Bandung";
 
-interface CampusData {
-  "Tel-U Jakarta": number[];
-  "Tel-U Surabaya": number[];
-  "Tel-U Purwokerto": number[];
-  "Tel-U Bandung": number[];
+interface YearlyData {
+  year: number;
+  total: number;
+}
+
+interface Branch {
+  id: number;
+  name: CampusKey;
+  email: string;
+  branchDetails: unknown[];
+  yearlyStudentBody: YearlyData[];
+  yearlyAccreditationGrowth: YearlyData[];
+}
+
+interface TransformationMaturityItem {
+  name: string;
+  value: number;
+}
+
+interface GrowthDataPoint {
+  periodName: string;
+  score: number;
+}
+
+interface VariableGrowth {
+  variable: { id: number; name: string };
+  data: GrowthDataPoint[];
+}
+
+interface BranchGrowth {
+  branch: { id: number; name: CampusKey };
+  growth: VariableGrowth[];
+}
+
+interface DashboardApiResponse {
+  totalBranches: number;
+  totalVariable: number;
+  totalAssessments: number;
+  approvedAssessments: number;
+  onprogressAssessments: number;
+  submittedAssessments: number;
+  assessmentProgress: {
+    onprogress: number;
+    submitted: number;
+    approved: number;
+    rejected: number;
+  };
+  transformationMaturityIndex: TransformationMaturityItem[];
+  transformationVariableBranchGrowth: BranchGrowth[];
+  branches: Branch[];
 }
 
 export default function DashboardTab() {
@@ -60,13 +109,18 @@ export default function DashboardTab() {
 
   const [studentBodyData, setStudentBodyData] = useState<{
     year: string;
-    "Tel-U Jakarta": number | null;
-    "Tel-U Surabaya": number | null;
-    "Tel-U Purwokerto": number | null;
-    "Tel-U Bandung": number | null;
+    "Tel-U Jakarta": number;
+    "Tel-U Surabaya": number;
+    "Tel-U Purwokerto": number;
+    "Tel-U Bandung": number;
   }[]>([]);
 
-  const [accreditationInputData, setAccreditationInputData] = useState<CampusData>({
+  const [accreditationInputData, setAccreditationInputData] = useState<{
+    "Tel-U Jakarta": number[];
+    "Tel-U Surabaya": number[];
+    "Tel-U Purwokerto": number[];
+    "Tel-U Bandung": number[];
+  }>({
     "Tel-U Jakarta": [],
     "Tel-U Surabaya": [],
     "Tel-U Purwokerto": [],
@@ -75,9 +129,37 @@ export default function DashboardTab() {
   const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
 
   const [radarData, setRadarData] = useState<{ subject: string; A: number }[]>([]);
+  const [apiVariables, setApiVariables] = useState<string[]>([]);
+  const [variableGrowthData, setVariableGrowthData] = useState<
+    { branch: CampusKey; variable: string; period: string; score: number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
-  // === FETCH SEMUA DATA ===
+  // ✅ HANYA SATU KAMPUS — DEFAULT BANDUNG
+  const [selectedCampus, setSelectedCampus] = useState<CampusKey>("Tel-U Bandung");
+  const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
+  const [showVariableDropdown, setShowVariableDropdown] = useState(false);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.variable-dropdown-wrapper')) {
+        setShowVariableDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Auto-select first variable
+  useEffect(() => {
+    if (apiVariables.length > 0 && selectedVariables.length === 0) {
+      setSelectedVariables([apiVariables[0]]);
+    }
+  }, [apiVariables, selectedVariables]);
+
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -85,9 +167,8 @@ export default function DashboardTab() {
         if (!response.ok) throw new Error('Failed to fetch dashboard data');
 
         const result = await response.json();
-        const apiData = result.data;
+        const apiData = result.data as DashboardApiResponse;
 
-        // --- Card & Progress ---
         setDashboardData({
           totalBranches: apiData.totalBranches || 0,
           totalVariable: apiData.totalVariable || 0,
@@ -96,71 +177,106 @@ export default function DashboardTab() {
           assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
         });
 
-        // --- STUDENT BODY ---
         const yearStrings = ['2021', '2022', '2023', '2024', '2025'];
         const studentBodyFormatted = yearStrings.map(yearStr => {
           const yearNum = Number(yearStr);
-          const row: Record<string, any> = { year: yearStr };
-          apiData.branches.forEach((branch: any) => {
-            const campusName = branch.name as CampusKey;
-            const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
-            row[campusName] = dataForYear ? dataForYear.total : null;
-          });
+          const row = {
+            year: yearStr,
+            "Tel-U Jakarta": 0,
+            "Tel-U Surabaya": 0,
+            "Tel-U Purwokerto": 0,
+            "Tel-U Bandung": 0,
+          };
+          for (const branch of apiData.branches) {
+            const campusName = branch.name;
+            const dataForYear = branch.yearlyStudentBody.find(item => item.year === yearNum);
+            if (dataForYear) {
+              row[campusName] = dataForYear.total;
+            }
+          }
           return row;
         });
         setStudentBodyData(studentBodyFormatted);
 
-        // --- Accreditation Growth ---
         const accreditationFormatted = yearStrings.map(yearStr => {
           const yearNum = Number(yearStr);
-          const row: Record<string, number> = {};
-          apiData.branches.forEach((branch: any) => {
-            const campusName = branch.name as CampusKey;
-            const dataForYear = branch.yearlyAccreditationGrowth?.find((item: any) => item.year === yearNum);
-            row[campusName] = dataForYear ? dataForYear.total : 0;
-          });
+          const row = {
+            "Tel-U Jakarta": 0,
+            "Tel-U Surabaya": 0,
+            "Tel-U Purwokerto": 0,
+            "Tel-U Bandung": 0,
+          } as Record<CampusKey, number>;
+          for (const branch of apiData.branches) {
+            const campusName = branch.name;
+            const dataForYear = branch.yearlyAccreditationGrowth.find(item => item.year === yearNum);
+            if (dataForYear) {
+              row[campusName] = dataForYear.total;
+            }
+          }
           return row;
         });
 
         setAccreditationYears(yearStrings);
         setAccreditationInputData({
-          "Tel-U Jakarta": accreditationFormatted.map(r => r["Tel-U Jakarta"] ?? 0),
-          "Tel-U Surabaya": accreditationFormatted.map(r => r["Tel-U Surabaya"] ?? 0),
-          "Tel-U Purwokerto": accreditationFormatted.map(r => r["Tel-U Purwokerto"] ?? 0),
-          "Tel-U Bandung": accreditationFormatted.map(r => r["Tel-U Bandung"] ?? 0),
+          "Tel-U Jakarta": accreditationFormatted.map(r => r["Tel-U Jakarta"]),
+          "Tel-U Surabaya": accreditationFormatted.map(r => r["Tel-U Surabaya"]),
+          "Tel-U Purwokerto": accreditationFormatted.map(r => r["Tel-U Purwokerto"]),
+          "Tel-U Bandung": accreditationFormatted.map(r => r["Tel-U Bandung"]),
         });
 
-        // --- Radar Chart (DIPERBAIKI) ---
         const tmiRaw = apiData.transformationMaturityIndex || [];
         const validTmi = tmiRaw
-          .filter((item: any) => 
+          .filter((item): item is TransformationMaturityItem => 
             typeof item.name === 'string' && 
             typeof item.value === 'number' && 
             item.name.trim() !== ''
           )
-          .map((item: any) => ({
+          .map(item => ({
             subject: item.name.trim(),
             A: Number(item.value.toFixed(2)),
           }));
 
-        // Hapus duplikat berdasarkan subject
         const uniqueRadar = Array.from(
-          new Map(validTmi.map((item: any) => [item.subject, item])).values()
+          new Map(validTmi.map(item => [item.subject, item])).values()
         );
-
         setRadarData(uniqueRadar.length > 0 ? uniqueRadar : [
           { subject: "Mutu", A: 80 },
           { subject: "Akademik", A: 60 },
-          { subject: "SDM", A: 98 },
-          { subject: "Spio", A: 90 },
-          { subject: "Kemahasiswaan", A: 80 },
-          { subject: "Admisi", A: 80 },
-          { subject: "PPN,Publikasi,Abdimas", A: 80 },
         ]);
 
+        // Ekstrak variabel & growth data
+        const allVariablesSet = new Set<string>();
+        const growthData: { branch: CampusKey; variable: string; period: string; score: number }[] = [];
+
+        for (const branch of apiData.branches) {
+          const branchName = branch.name;
+          const growth = apiData.transformationVariableBranchGrowth.find(
+            (b) => b.branch.name === branchName
+          )?.growth || [];
+
+          for (const variableEntry of growth) {
+            const varName = variableEntry.variable.name.trim();
+            if (varName === '') continue;
+            allVariablesSet.add(varName);
+
+            for (const dataPoint of variableEntry.data) {
+              if (typeof dataPoint.score === 'number') {
+                growthData.push({
+                  branch: branchName,
+                  variable: varName,
+                  period: dataPoint.periodName,
+                  score: dataPoint.score,
+                });
+              }
+            }
+          }
+        }
+
+        setApiVariables(Array.from(allVariablesSet));
+        setVariableGrowthData(growthData);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching dashboard ', error);
+        console.error('Error fetching dashboard', error);
         setLoading(false);
       }
     };
@@ -168,10 +284,8 @@ export default function DashboardTab() {
     fetchData();
   }, []);
 
-  // === Student Body Derived Data ===
-  const studentYears = Array.from(new Set(studentBodyData.map(d => d.year)))
-    .sort((a, b) => Number(a) - Number(b));
-
+  // Student chart data
+  const studentYears = Array.from(new Set(studentBodyData.map(d => d.year))).sort((a, b) => Number(a) - Number(b));
   const studentDataByCampus = CAMPUS_LIST.map((campus) => {
     const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
     studentYears.forEach((year) => {
@@ -181,7 +295,7 @@ export default function DashboardTab() {
     return data;
   });
 
-  // === Modal & Edit Functions ===
+  // Modal handlers
   const handleAddYear = () => {
     const lastYearStr = studentYears[studentYears.length - 1] ?? '2025';
     const nextYear = String(Number(lastYearStr) + 1);
@@ -194,7 +308,7 @@ export default function DashboardTab() {
     }]);
   };
 
-  const handleInputChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
+  const handleInputChange = (campus: CampusKey, yearIndex: number, value: string) => {
     const num = value === '' ? 0 : Number(value);
     if (isNaN(num)) return;
     const newData = [...studentBodyData];
@@ -208,7 +322,7 @@ export default function DashboardTab() {
     const lastYearStr = accreditationYears[accreditationYears.length - 1] ?? '2025';
     const nextYear = String(Number(lastYearStr) + 1);
     setAccreditationYears(prev => [...prev, nextYear]);
-    (Object.keys(accreditationInputData) as Array<keyof CampusData>).forEach((campus) => {
+    (Object.keys(accreditationInputData) as CampusKey[]).forEach((campus) => {
       setAccreditationInputData(prev => ({
         ...prev,
         [campus]: [...prev[campus], 0],
@@ -216,7 +330,7 @@ export default function DashboardTab() {
     });
   };
 
-  const handleAccreditationChange = (campus: keyof CampusData, yearIndex: number, value: string) => {
+  const handleAccreditationChange = (campus: CampusKey, yearIndex: number, value: string) => {
     const num = value === '' ? 0 : Math.max(0, Math.min(100, Number(value)));
     if (isNaN(num)) return;
     setAccreditationInputData(prev => ({
@@ -275,57 +389,17 @@ export default function DashboardTab() {
 
   const studentColors = ["#A966FF", "#FF0000", "#5D77ff", "#FFB930", "#10B981"];
 
-  // === Variabel Data (Statis) ===
-  const semesterData = [
-    { kampus: "Tel-U Jakarta", periode: "2021 Ganjil", Akademik: 88, SDM: 82, Keuangan: 75, Kemahasiswaan: 70 },
-    { kampus: "Tel-U Jakarta", periode: "2021 Genap", Akademik: 89, SDM: 83, Keuangan: 76, Kemahasiswaan: 72 },
-    { kampus: "Tel-U Jakarta", periode: "2022 Ganjil", Akademik: 90, SDM: 85, Keuangan: 78, Kemahasiswaan: 75 },
-    { kampus: "Tel-U Jakarta", periode: "2022 Genap", Akademik: 91, SDM: 86, Keuangan: 80, Kemahasiswaan: 77 },
-    { kampus: "Tel-U Jakarta", periode: "2023 Ganjil", Akademik: 92, SDM: 88, Keuangan: 82, Kemahasiswaan: 80 },
-    { kampus: "Tel-U Jakarta", periode: "2023 Genap", Akademik: 93, SDM: 89, Keuangan: 84, Kemahasiswaan: 82 },
-    { kampus: "Tel-U Jakarta", periode: "2024 Ganjil", Akademik: 94, SDM: 90, Keuangan: 86, Kemahasiswaan: 85 },
-
-    { kampus: "Tel-U Bandung", periode: "2021 Ganjil", Akademik: 92, SDM: 87, Keuangan: 85, Kemahasiswaan: 80 },
-    { kampus: "Tel-U Bandung", periode: "2021 Genap", Akademik: 93, SDM: 88, Keuangan: 86, Kemahasiswaan: 82 },
-    { kampus: "Tel-U Bandung", periode: "2022 Ganjil", Akademik: 94, SDM: 90, Keuangan: 88, Kemahasiswaan: 85 },
-    { kampus: "Tel-U Bandung", periode: "2022 Genap", Akademik: 95, SDM: 91, Keuangan: 90, Kemahasiswaan: 87 },
-    { kampus: "Tel-U Bandung", periode: "2023 Ganjil", Akademik: 96, SDM: 92, Keuangan: 91, Kemahasiswaan: 89 },
-    { kampus: "Tel-U Bandung", periode: "2023 Genap", Akademik: 97, SDM: 93, Keuangan: 92, Kemahasiswaan: 90 },
-    { kampus: "Tel-U Bandung", periode: "2024 Ganjil", Akademik: 98, SDM: 94, Keuangan: 93, Kemahasiswaan: 91 },
-
-    { kampus: "Tel-U Surabaya", periode: "2021 Ganjil", Akademik: 85, SDM: 80, Keuangan: 70, Kemahasiswaan: 68 },
-    { kampus: "Tel-U Surabaya", periode: "2021 Genap", Akademik: 86, SDM: 81, Keuangan: 72, Kemahasiswaan: 70 },
-    { kampus: "Tel-U Surabaya", periode: "2022 Ganjil", Akademik: 87, SDM: 83, Keuangan: 75, Kemahasiswaan: 73 },
-    { kampus: "Tel-U Surabaya", periode: "2022 Genap", Akademik: 88, SDM: 84, Keuangan: 77, Kemahasiswaan: 75 },
-    { kampus: "Tel-U Surabaya", periode: "2023 Ganjil", Akademik: 89, SDM: 85, Keuangan: 79, Kemahasiswaan: 78 },
-    { kampus: "Tel-U Surabaya", periode: "2023 Genap", Akademik: 90, SDM: 86, Keuangan: 80, Kemahasiswaan: 80 },
-    { kampus: "Tel-U Surabaya", periode: "2024 Ganjil", Akademik: 91, SDM: 87, Keuangan: 82, Kemahasiswaan: 82 },
-
-    { kampus: "Tel-U Purwokerto", periode: "2021 Ganjil", Akademik: 80, SDM: 75, Keuangan: 68, Kemahasiswaan: 65 },
-    { kampus: "Tel-U Purwokerto", periode: "2021 Genap", Akademik: 82, SDM: 76, Keuangan: 70, Kemahasiswaan: 67 },
-    { kampus: "Tel-U Purwokerto", periode: "2022 Ganjil", Akademik: 84, SDM: 78, Keuangan: 73, Kemahasiswaan: 70 },
-    { kampus: "Tel-U Purwokerto", periode: "2022 Genap", Akademik: 85, SDM: 79, Keuangan: 75, Kemahasiswaan: 72 },
-    { kampus: "Tel-U Purwokerto", periode: "2023 Ganjil", Akademik: 86, SDM: 81, Keuangan: 77, Kemahasiswaan: 75 },
-    { kampus: "Tel-U Purwokerto", periode: "2023 Genap", Akademik: 87, SDM: 82, Keuangan: 79, Kemahasiswaan: 77 },
-    { kampus: "Tel-U Purwokerto", periode: "2024 Ganjil", Akademik: 88, SDM: 83, Keuangan: 81, Kemahasiswaan: 79 },
-  ];
-
-  const ALL_VARIABLES = ["Akademik", "SDM", "Keuangan", "Kemahasiswaan"] as const;
-  type Variable = typeof ALL_VARIABLES[number];
-  const [selectedCampus, setSelectedCampus] = useState<CampusKey | "All">("All");
-  const [selectedVariables, setSelectedVariables] = useState<Variable[]>(["Akademik"]);
-  const [showVariableDropdown, setShowVariableDropdown] = useState(false);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.variable-dropdown-wrapper')) {
-        setShowVariableDropdown(false);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+  const getPeriodColor = (period: string) => {
+    const colors = [
+      '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
+      '#10b981', '#06b6d4', '#ef4444', '#d946ef', '#f97316', '#84cc16'
+    ];
+    const uniquePeriods = Array.from(
+      new Set(variableGrowthData.map(d => d.period))
+    ).sort();
+    const idx = uniquePeriods.indexOf(period);
+    return colors[idx >= 0 ? idx % colors.length : 0];
+  };
 
   return (
     <div className="space-y-8 px-4 py-6">
@@ -478,13 +552,13 @@ export default function DashboardTab() {
 
           <div className="flex flex-wrap gap-4 ml-auto">
             <div className="min-w-[180px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">FilterWhere Kampus</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kampus</label>
               <select
                 value={selectedCampus}
-                onChange={(e) => setSelectedCampus(e.target.value as CampusKey | "All")}
+                onChange={(e) => setSelectedCampus(e.target.value as CampusKey)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               >
-                <option value="All">Semua Kampus</option>
+                {/* ✅ HANYA 4 KAMPUS — TANPA "SEMUA KAMPUS" */}
                 {CAMPUS_LIST.map((campus) => (
                   <option key={campus} value={campus}>
                     {campus.replace("Tel-U ", "")}
@@ -494,7 +568,7 @@ export default function DashboardTab() {
             </div>
 
             <div className="min-w-[200px] variable-dropdown-wrapper">
-              <label className="block text-sm font-medium text-gray-700 mb-1">FilterWhere Variabel</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Variabel</label>
               <div className="relative">
                 <button
                   type="button"
@@ -508,7 +582,7 @@ export default function DashboardTab() {
 
                 {showVariableDropdown && (
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {ALL_VARIABLES.map((variable) => (
+                    {apiVariables.map((variable) => (
                       <label
                         key={variable}
                         className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm"
@@ -535,23 +609,26 @@ export default function DashboardTab() {
           </div>
         </div>
 
+        {/* ✅ GRAFIK TANPA RATA-RATA — HANYA NILAI ASLI PER KAMPUS */}
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
             data={(() => {
-              const campuses = selectedCampus === "All" ? CAMPUS_LIST : [selectedCampus];
-              const periods = Array.from(new Set(semesterData.map(d => d.periode)));
+              if (selectedVariables.length === 0) return [];
+
+              const periods = Array.from(new Set(variableGrowthData.map(d => d.period))).sort();
+
               return selectedVariables.map(variable => {
                 const row: { [key: string]: any } = { variabel: variable };
+
                 periods.forEach(period => {
-                  const scores = campuses
-                    .map(campus => {
-                      const data = semesterData.find(d => d.kampus === campus && d.periode === period);
-                      return data ? data[variable as keyof typeof data] : 0;
-                    })
-                    .filter(score => typeof score === 'number');
-                  const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-                  row[period] = Math.round(avg * 100) / 100;
+                  const matching = variableGrowthData.find(d => 
+                    d.branch === selectedCampus &&
+                    d.variable === variable &&
+                    d.period === period
+                  );
+                  row[period] = matching ? matching.score : 0;
                 });
+
                 return row;
               });
             })()}
@@ -563,23 +640,15 @@ export default function DashboardTab() {
             <Tooltip
               cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
               contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-              formatter={(value: number) => [value.toFixed(2) + '%', 'Skor']}
+              formatter={(value: number) => [value.toFixed(0) + '%', 'Skor']}
               labelStyle={{ color: '#fff' }}
             />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }} />
-            {Array.from(new Set(semesterData.map(d => d.periode))).map(period => (
+            {Array.from(new Set(variableGrowthData.map(d => d.period))).sort().map(period => (
               <Bar
                 key={period}
                 dataKey={period}
-                fill={{
-                  '2021 Ganjil': '#6366f1',
-                  '2021 Genap': '#8b5cf6',
-                  '2022 Ganjil': '#ec4899',
-                  '2022 Genap': '#f59e0b',
-                  '2023 Ganjil': '#10b981',
-                  '2023 Genap': '#06b6d4',
-                  '2024 Ganjil': '#ef4444',
-                }[period]}
+                fill={getPeriodColor(period)}
                 name={period}
                 radius={[6, 6, 0, 0]}
                 animationDuration={600}
@@ -647,7 +716,7 @@ export default function DashboardTab() {
                         <td key={j} className="px-2 py-1">
                           <input
                             type="number"
-                            value={row[campus] === null || row[campus] === 0 ? "" : row[campus]}
+                            value={row[campus] === 0 ? "" : row[campus]}
                             onChange={(e) => handleInputChange(campus, j, e.target.value)}
                             className="w-16 h-8 border rounded p-1 text-center focus:ring-2 focus:ring-blue-300 outline-none"
                             placeholder="0"
