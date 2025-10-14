@@ -39,22 +39,39 @@ export default function EditMaturityPage() {
   });
 
   useEffect(() => {
-    const tempKey = `maturityTempForm_${realId}`;
-    const temp = localStorage.getItem(tempKey);
+  // Jangan lanjut jika maturityDetail belum siap
+  if (!maturityDetail) {
+    return;
+  }
 
-    if (temp) {
-      try {
-        const parsed = JSON.parse(temp);
-        if (parsed.id === realId) {
-          console.log("Restoring from localStorage:", parsed);
-          setFormData(parsed);
-          return;
-        }
-      } catch (err) {
-        console.error("Error parsing localStorage:", err);
+  const tempKey = `maturityTempForm_${realId}`;
+  const temp = localStorage.getItem(tempKey);
+
+  if (temp) {
+    try {
+      const parsed = JSON.parse(temp);
+      if (parsed.id === realId) {
+        console.log("Restoring from localStorage:", parsed);
+        setFormData(parsed);
+        return;
       }
+    } catch (err) {
+      console.error("Error parsing localStorage:", err);
     }
-  }, [maturityDetail, realId]);
+  }
+
+  // Isi dari API hanya jika maturityDetail valid
+  setFormData({
+    id: maturityDetail.id,
+    name: maturityDetail.name || "",
+    levelNumber: maturityDetail.levelNumber ?? 0,
+    minScore: String(maturityDetail.minScore ?? ""),
+    maxScore: String(maturityDetail.maxScore ?? ""),
+    description: maturityDetail.description || "",
+    created_at: maturityDetail.created_at || "",
+    updated_at: maturityDetail.updated_at || "",
+  });
+}, [maturityDetail, realId]);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
