@@ -57,43 +57,85 @@ export default function PilihJawabanPage() {
   const { mutate: createMutate, loading: createLoading, error: createError } = useCreateQuestion();
   const { mutate: updateMutate, loading: updateLoading, error: updateError } = useUpdateQuestion();
 
-  // Load data saat edit
-  useEffect(() => {
-    if (transformationVariables.length === 0) return;
-    const editDataRaw = localStorage.getItem('editData');
-    if (!editDataRaw) return;
+ // Load data saat edit
+useEffect(() => {
+  if (transformationVariables.length === 0) return;
+  const editDataRaw = localStorage.getItem('editData');
+  if (!editDataRaw) return;
 
-    try {
-      const data = JSON.parse(editDataRaw);
-      setBobot(data.bobot || 1);
-      setIndikator(data.indikator || '');
-      setKeyIndicator(data.keyIndicator || ''); // ✅ Sesuaikan nama field
-      setReference(data.reference || '');
-      setDataSource(data.dataSource || '');
+  try {
+    const data = JSON.parse(editDataRaw);
 
-      setPertanyaan1(data.questionText || data.pertanyaan || '');
-      setPertanyaan2(data.questionText2 || data.pertanyaan2 || '');
-      setPertanyaan3(data.questionText3 || data.pertanyaan3 || '');
-      setPertanyaan4(data.questionText4 || data.pertanyaan4 || '');
+    setBobot(data.bobot || 1);
+    setIndikator(data.indikator || '');
+    setKeyIndicator(data.keyIndicator || '');
+    setReference(data.reference || '');
+    setDataSource(data.dataSource || '');
+    setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
+    setUrutan(String(data.order || ''));
+    setSelectedVariableId(data.transformationVariableId ?? null);
 
-      let count = 1;
-      if ((data.questionText2 || data.pertanyaan2)?.trim()) count++;
-      if ((data.questionText3 || data.pertanyaan3)?.trim()) count++;
-      if ((data.questionText4 || data.pertanyaan4)?.trim()) count++;
-      setJumlahPertanyaan(Math.min(count, 4) as 1 | 2 | 3 | 4);
+    // Set tipe pertanyaan
+    const typeFromDB = data.type === 'multitext' ? 'pg' : 'short-answer';
+    setTipePertanyaan(typeFromDB);
 
-      setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
-      setTipePertanyaan(data.tipePertanyaan || 'pg');
-      setUrutan(String(data.order || ''));
-      setSelectedVariableId(data.transformationVariableId ?? null);
-      if (data.nomor) {
-        setEditNomor(data.nomor);
-        setIsEditMode(true);
-      }
-    } catch (error) {
-      console.error('Gagal parsing editData:', error);
+    // Set pertanyaan
+    setPertanyaan1(data.questionText || '');
+    setPertanyaan2(data.questionText2 || '');
+    setPertanyaan3(data.questionText3 || '');
+    setPertanyaan4(data.questionText4 || '');
+
+    // Hitung jumlah pertanyaan yang benar-benar ada
+    const questionFields = [
+      data.questionText,
+      data.questionText2,
+      data.questionText3,
+      data.questionText4
+    ];
+    const count = questionFields.filter(text => 
+      text != null && String(text).trim() !== ''
+    ).length;
+    setJumlahPertanyaan((Math.max(count, 1) as 1 | 2 | 3 | 4));
+
+    // Set pgAnswers1 jika tipe PG
+    if (typeFromDB === 'pg') {
+      setPgAnswers1([
+        data.answerText1 || '0',
+        data.answerText2 || '1',
+        data.answerText3 || '2',
+        data.answerText4 || '3',
+        data.answerText5 || '>3'
+      ]);
     }
-  }, [transformationVariables]);
+
+    // Set skor dan deskripsi skor jika tipe short-answer
+    if (typeFromDB === 'short-answer') {
+      setSkor({
+        0: { min: data.scoreMin0 || '0', max: data.scoreMax0 || '1.9' },
+        1: { min: data.scoreMin1 || '2', max: data.scoreMax1 || '4.9' },
+        2: { min: data.scoreMin2 || '5', max: data.scoreMax2 || '6.9' },
+        3: { min: data.scoreMin3 || '7', max: data.scoreMax3 || '8.9' },
+        4: { min: data.scoreMin4 || '9', max: data.scoreMax4 || '12' },
+      });
+
+      setDeskripsiSkor({
+        0: data.scoreDescription0 || 'Tidak ada dokumentasi.',
+        1: data.scoreDescription1 || 'Ada dokumentasi dasar.',
+        2: data.scoreDescription2 || 'Dokumentasi sebagian lengkap.',
+        3: data.scoreDescription3 || 'Dokumentasi hampir lengkap.',
+        4: data.scoreDescription4 || 'Dokumentasi lengkap dan terupdate.',
+      });
+    }
+
+    if (data.nomor) {
+      setEditNomor(data.nomor);
+      setIsEditMode(true);
+    }
+
+  } catch (error) {
+    console.error('Gagal parsing editData:', error);
+  }
+}, [transformationVariables]);
 
   useEffect(() => {
     if (tipePertanyaan === 'pg') {
@@ -466,64 +508,69 @@ export default function PilihJawabanPage() {
             );
           })}
 
-          {/* Tabel Pilihan Ganda */}
-          {tipePertanyaan === 'pg' && (
-            <div className="mb-6">
-              <table className="w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr>
-                    {['A', 'B', 'C', 'D', 'E'].map((label) => (
-                      <th
-                        key={label}
-                        className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center"
-                      >
-                        Jawaban {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {['A', 'B', 'C', 'D', 'E'].map((label) => (
-                      <td key={label} className="border px-3 py-2">
-                        <textarea
-                          className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
-                          rows={2}
-                          placeholder={`Tulis Jawaban ${label}...`}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
-                      <th
-                        key={idx}
-                        className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center"
-                      >
-                        Nilai Jawaban {['A', 'B', 'C', 'D', 'E'][idx]}
-                      </th>
-                    ))}
-                  </tr>
-                  <tr>
-                    {['0', '1', '2', '3', '>3'].map((_, idx) => (
-                      <td key={idx} className="border px-3 py-2">
-                        <input
-                          type="text"
-                          className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                          value={pgAnswers1[idx]}
-                          onChange={(e) => {
-                            const newAnswers = [...pgAnswers1];
-                            newAnswers[idx] = e.target.value;
-                            setPgAnswers1(newAnswers);
-                          }}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
+    {/* Tabel Pilihan Ganda */}
+{tipePertanyaan === 'pg' && (
+  <div className="mb-6">
+    <table className="w-full border-collapse border border-gray-300">
+      <thead>
+        <tr>
+          {['A', 'B', 'C', 'D', 'E'].map((label) => (
+            <th
+              key={label}
+              className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center"
+            >
+              Jawaban {label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {/* Baris 1: Teks Jawaban (dari pgAnswers1) */}
+        <tr>
+          {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
+            <td key={idx} className="border px-3 py-2">
+              <textarea
+                className="w-full border border-gray-300 rounded-md p-2 text-sm resize-none"
+                rows={2}
+                value={pgAnswers1[idx]}
+                onChange={(e) => {
+                  const newAnswers = [...pgAnswers1];
+                  newAnswers[idx] = e.target.value;
+                  setPgAnswers1(newAnswers);
+                }}
+                placeholder={`Tulis Jawaban ${['A', 'B', 'C', 'D', 'E'][idx]}...`}
+              />
+            </td>
+          ))}
+        </tr>
+        {/* Baris 2: Nilai Jawaban (hardcode: A=0, B=1, C=2, D=3, E=4) */}
+        <tr>
+          {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
+            <th
+              key={idx}
+              className="border border-gray-300 px-3 py-2 text-xs bg-gray-50 text-center"
+            >
+              Nilai Jawaban {['A', 'B', 'C', 'D', 'E'][idx]}
+            </th>
+          ))}
+        </tr>
+        <tr>
+          {['A', 'B', 'C', 'D', 'E'].map((_, idx) => (
+            <td key={idx} className="border px-3 py-2">
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-md p-2 text-sm bg-gray-100"
+                value={idx} // ✅ A=0, B=1, C=2, D=3, E=4
+                readOnly
+                placeholder="Nilai"
+              />
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+)}
 
           {/* Edit Rentang Skor — hanya untuk short-answer */}
           {tipePertanyaan === 'short-answer' && (
