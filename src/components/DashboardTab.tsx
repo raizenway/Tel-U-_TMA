@@ -149,16 +149,16 @@ setStudentBodyData(studentBodyFormatted); // ✅ Sekarang aman
 
         // --- Radar Chart (DIPERBAIKI) ---
         const tmiRaw = apiData.transformationMaturityIndex || [];
-        const validTmi = tmiRaw
-          .filter((item: any) => 
-            typeof item.name === 'string' && 
-            typeof item.value === 'number' && 
-            item.name.trim() !== ''
-          )
-          .map((item: any) => ({
-            subject: item.name.trim(),
-            A: Number(item.value.toFixed(2)),
-          }));
+      const validTmi: { subject: string; A: number }[] = tmiRaw
+  .filter((item: any) => 
+    typeof item.name === 'string' && 
+    typeof item.value === 'number' && 
+    item.name.trim() !== ''
+  )
+  .map((item: any) => ({
+    subject: item.name.trim(),
+    A: Number(item.value.toFixed(2)),
+  }));
 
         // Hapus duplikat berdasarkan subject
         const uniqueRadar = Array.from(
