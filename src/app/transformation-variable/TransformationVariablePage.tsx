@@ -1,7 +1,8 @@
   'use client';
 
-  import React, { useState, useMemo, useEffect } from 'react'; // ✅ Tambah useEffect
-  import { useRouter, useSearchParams } from 'next/navigation'; // ✅ Tambah useSearchParams
+  import React, { useState, useMemo, useEffect } from 'react'; 
+  import { Eye as LucideEye } from 'lucide-react';
+  import { useRouter, useSearchParams } from 'next/navigation'; 
   import Button from '@/components/button';
   import TableUpdate from '@/components/TableUpdate';
   import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
@@ -14,16 +15,19 @@
   import { useUpdateTransformationVariable } from '@/hooks/useTransformationVariableList';
   import RoleBasedStatusCell from '@/components/RoleBasedStatusCell';
 
-  // ✅ Tambahkan ini
   type TableItem = {
     id: number;
     nama: string;
     bobot: string | number;
     deskripsi: string;
+    levelDescription1?: string;
+    levelDescription2?: string;
+    levelDescription3?: string;
+    levelDescription4?: string;
     referensi: string;
     LogoUrl: string;
     status: string;
-    nomor_urut: number; // <-- ini yang baru
+    nomor_urut: number; 
   };
 
   export default function AssessmentPage() {
@@ -41,11 +45,16 @@
     direction: 'asc',
   });
 
-    // 🔹 Ambil searchParams
-    const searchParams = useSearchParams();
+     const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+     const [selectedItem, setSelectedItem] = useState<TableItem | null>(null);
 
-    // 🔹 Tambahkan state roleId
-      const [roleId, setRoleId] = useState<number | null>(null);
+     const openDescriptionModal = (item: TableItem) => {
+        setSelectedItem(item);
+        setShowDescriptionModal(true);
+      };
+
+     const searchParams = useSearchParams();
+     const [roleId, setRoleId] = useState<number | null>(null);
     
       // 🔹 Ambil roleId dari localStorage
       useEffect(() => {
@@ -87,11 +96,8 @@
     }, [searchParams, router]);
 
     //Ambil data
-  // ✅ KODE YANG BENAR
-const { data, loading, error, refetch } = useTransformationVariableList();
-   
-    // 🔹 Ambil mutate
-    const { mutate: updateVariable, loading: updating } = useUpdateTransformationVariable();
+   const { data, loading, error, refetch } = useTransformationVariableList();
+   const { mutate: updateVariable, loading: updating } = useUpdateTransformationVariable();
 
 
     if (error) {
@@ -118,6 +124,10 @@ const { data, loading, error, refetch } = useTransformationVariableList();
         const name = item.name ?? '-';
         const weight = item.weight != null ? String(item.weight) : '-';
         const description = item.description ?? '-';
+        const levelDescription1 = item.levelDescription1 ?? '-';
+        const levelDescription2 = item.levelDescription2 ?? '-';
+        const levelDescription3 = item.levelDescription3 ?? '-';
+        const levelDescription4 = item.levelDescription4 ?? '-';
         const reference = item.reference ?? '-';
         const status = item.status === 'active' ? 'Active' : 'Inactive';
 
@@ -127,11 +137,15 @@ const { data, loading, error, refetch } = useTransformationVariableList();
           nama: name,
           bobot: weight,
           deskripsi: description,
+          levelDescription1,
+          levelDescription2,
+          levelDescription3,
+          levelDescription4,
           referensi: reference,
           LogoUrl: '',
           status,
         };
-      }).filter(Boolean) // Hapus null
+      }).filter(Boolean) 
     : [];
     //Sorting
     const handleSort = (key: string) => {
@@ -178,7 +192,7 @@ const { data, loading, error, refetch } = useTransformationVariableList();
     .slice(startIndex, startIndex + rowsPerPage)
     .map((item, index): TableItem => ({
       ...item,
-      nomor_urut: startIndex + index + 1, // ✅ Nomor urut tampilan: 1, 2, 3...
+      nomor_urut: startIndex + index + 1, 
     }));
 
     //modal
@@ -214,20 +228,21 @@ if (!currentItem) {
           name: currentItem.name,
           weight: currentItem.weight,
           description: currentItem.description,
+          levelDescription1: currentItem.levelDescription1,
+          levelDescription2: currentItem.levelDescription2,
+          levelDescription3: currentItem.levelDescription3,
+          levelDescription4: currentItem.levelDescription4,
           reference: currentItem.reference,
           sortOrder: currentItem.sortOrder,
           status: newStatus,
         });
 
-        // Refresh daftar setelah update
           await refetch();
 
-          // ✅ Force re-sort agar urutan tetap sesuai sort terakhir
           if (sortConfig) {
-            setSortConfig({ ...sortConfig }); // <-- INI BARIS BARU YANG WAJIB DITAMBAHKAN
+            setSortConfig({ ...sortConfig }); 
           }
 
-        // ✅ Tampilkan notifikasi sukses
         setSuccessMessage(
           newStatus === 'active'
             ? 'Data berhasil diaktifkan!'
@@ -261,6 +276,7 @@ if (!currentItem) {
       { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
       { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: false},
       { header: 'Deskripsi', key: 'deskripsi', width: '300px', sortable: true },
+     { header: 'Level Deskripsi', key: 'viewdescription', width: '150px', className: 'text-center', sortable: false },
       { header: 'Referensi', key: 'referensi', width: '100px', sortable: true },
       {
         header: 'Logo UPPS/KC',
@@ -295,6 +311,10 @@ if (!currentItem) {
       'Nama Variable': item.nama,
       Bobot: item.bobot,
       Deskripsi: item.deskripsi,
+      'Level Description1': item.levelDescription1,
+      'Level Description2': item.levelDescription2,
+      'Level Description3': item.levelDescription3,
+      'Level Description4': item.levelDescription4,
       Referensi: item.referensi,
       'Logo Url': item.LogoUrl || '-',
       Aksi: item.status === 'Active' ? 'Nonaktifkan' : 'Aktifkan',
@@ -340,7 +360,7 @@ if (!currentItem) {
                 <div className="flex gap-2 flex-wrap">
                   <TableButton 
                     data={dataForExport}
-                    columns={['Nomor', 'Nama Variable', 'Bobot','Deskripsi', 'Referensi', 'Logo URL', 'Aksi']}
+                    columns={['Nomor', 'Nama Variable', 'Bobot','Deskripsi', 'Level Description1',  'Level Description2',  'Level Description3',  'Level Description4', 'Referensi', 'Logo URL', 'Aksi']}
                   />
                   {roleId === 1 && (
                   <Button variant="primary" onClick={() => router.push('/transformation-variable/tambah-variable')}>
@@ -400,6 +420,18 @@ if (!currentItem) {
             );
           }
 
+                            if (columnKey === 'viewdescription') {
+                    return (
+                      <button
+                      onClick={() => openDescriptionModal(item)}
+                      className="flex items-center gap-1 text-gray-600 hover:text-gray-800 text-sm font-medium"
+                      title="Lihat Deskripsi Level"
+                    >
+                      <LucideEye size={16} />
+                      Lihat Deskripsi
+                    </button>
+                    );
+                  }
                   return null;
                 }}
                 />
@@ -447,7 +479,52 @@ if (!currentItem) {
               </div>
             </ModalConfirm>
           )}
-        </div>
+
+           <ModalConfirm
+          isOpen={showDescriptionModal}
+          onCancel={() => {
+            setShowDescriptionModal(false);
+            setSelectedItem(null);
+          }}
+          header="Level Deskripsi"
+          title=""
+          footer={
+            <div className="w-full flex justify-center mt-4">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowDescriptionModal(false);
+                  setSelectedItem(null);
+                }}
+                className="px-10 py-2 rounded-md"
+              >
+                Tutup
+              </Button>
+            </div>
+          }
+             >      
+              {selectedItem && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Level Deskripsi 1</h4>
+                <p className="text-sm text-gray-700">{selectedItem.levelDescription1 || '-'}</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Level Deskripsi 2</h4>
+                <p className="text-sm text-gray-700">{selectedItem.levelDescription2 || '-'}</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Level Deskripsi 3</h4>
+                <p className="text-sm text-gray-700">{selectedItem.levelDescription3 || '-'}</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Level Deskripsi 4</h4>
+                <p className="text-sm text-gray-700">{selectedItem.levelDescription4 || '-'}</p>
+              </div>
+            </div>
+          )}
+        </ModalConfirm>
       </div>
-    );
+    </div>
+  );
   }

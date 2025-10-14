@@ -19,6 +19,10 @@ export default function VariabelFormPage() {
   const [bobot, setBobot] = useState('');
   const [pertanyaan, setPertanyaan] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
+  const [levelDescription1, setLevelDescription1] = useState('');
+  const [levelDescription2, setLevelDescription2] = useState('');
+  const [levelDescription3, setLevelDescription3] = useState('');
+  const [levelDescription4, setLevelDescription4] = useState('');
   const [referensi, setReferensi] = useState('');
   const [status, setStatus] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -43,10 +47,14 @@ export default function VariabelFormPage() {
       !!(namaVariabel.trim() &&
         bobot.trim() &&
         deskripsi.trim() &&
+        levelDescription1.trim() &&
+        levelDescription2.trim() &&
+        levelDescription3.trim() &&
+        levelDescription4.trim() &&
         referensi.trim() &&
         status)
     );
-  }, [namaVariabel, bobot,  deskripsi, referensi, status]);
+  }, [namaVariabel, bobot,  deskripsi, levelDescription1, levelDescription2, levelDescription3, levelDescription4, referensi, status]);
 
   // Prefill jika mode edit
   useEffect(() => {
@@ -61,6 +69,10 @@ export default function VariabelFormPage() {
       setNamaVariabel(parsed.name || parsed.namaVariabel || '');
       setBobot(parsed.weight?.toString() || '');
       setDeskripsi(parsed.description || parsed.deskripsi || '');
+      setLevelDescription1(parsed.levelDescription1 || parsed.levelDescription1 || ''); 
+      setLevelDescription2(parsed.levelDescription2 || parsed.levelDescription2 || ''); 
+      setLevelDescription3(parsed.levelDescription3 || parsed.levelDescription3 || ''); 
+      setLevelDescription4(parsed.levelDescription4 || parsed.levelDescription4 || ''); 
       setReferensi(parsed.reference || parsed.referensi || '');
 
       const parsedStatus = typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
@@ -110,6 +122,10 @@ export default function VariabelFormPage() {
   formData.append('name', namaVariabel.trim());
   formData.append('weight', bobot);
   formData.append('description', deskripsi.trim());
+  formData.append('levelDescription1', levelDescription1.trim());
+  formData.append('levelDescription2', levelDescription2.trim());
+  formData.append('levelDescription3', levelDescription3.trim());
+  formData.append('levelDescription4', levelDescription4.trim());
   formData.append('reference', referensi.trim());
   formData.append('sortOrder', '1');
   formData.append('status', status.toLowerCase());
@@ -253,6 +269,58 @@ export default function VariabelFormPage() {
                 </div>
               )}
             </div>
+            
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 1
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription1}
+              onChange={(e) => setLevelDescription1(e.target.value)}
+              placeholder="Masukkan Level Deskripsi 1"
+              rows={4}
+            />
+          </div>
+
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 2
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription2}
+              onChange={(e) => setLevelDescription2(e.target.value)}
+              placeholder="Masukkan Level Deskripsi 2"
+              rows={4}
+            />
+          </div>
+
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 3
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription3}
+              onChange={(e) => setLevelDescription3(e.target.value)}
+              placeholder="Masukkan Level Deskripsi 3"
+              rows={4}
+            />
+          </div>
+
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Level Deskripsi 4
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              value={levelDescription4}
+              onChange={(e) => setLevelDescription4(e.target.value)}
+              placeholder="Masukkan Level Deskripsi 4"
+              rows={4}
+            />
+          </div>
           </div>
 
           

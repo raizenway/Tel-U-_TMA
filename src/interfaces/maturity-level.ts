@@ -5,11 +5,6 @@ export interface MaturityLevel {
   minScore: string;
   maxScore: string;
   description: string;
-  scoreDescription0?: string;
-  scoreDescription1?: string;
-  scoreDescription2?: string;
-  scoreDescription3?: string;
-  scoreDescription4?: string;
   created_at: string;
   updated_at: string;
 }
@@ -20,11 +15,6 @@ export interface CreateMaturityLevelRequest {
   minScore: string;
   maxScore: string;
   description: string;
-  scoreDescription0?: string;
-  scoreDescription1?: string;
-  scoreDescription2?: string;
-  scoreDescription3?: string;
-  scoreDescription4?: string;
 }
 
 export interface UpdateMaturityLevelRequest {
@@ -34,9 +24,4 @@ export interface UpdateMaturityLevelRequest {
   minScore?: string;
   maxScore?: string;
   description?: string;
-  scoreDescription0?: string;
-  scoreDescription1?: string;
-  scoreDescription2?: string;
-  scoreDescription3?: string;
-  scoreDescription4?: string;
 }
