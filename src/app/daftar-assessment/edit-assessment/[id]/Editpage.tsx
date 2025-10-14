@@ -72,23 +72,55 @@ export default function EditAssessmentPage() {
           return;
         }
 
-        // ✅ Konversi data API ke format yang diharapkan halaman edit
-        const editData = {
-          id: question.id,
-          nomor: question.id,
-          transformationVariableId: question.transformationVariableId, 
-          bobot: 1,
-          indikator: question.indicator,
-          pertanyaan: question.questionText,
-          tipeSoal: getTipeSoalDisplay(question.type),
-          status: question.status === 'active' ? 'Active' : 'Inactive',
-          deskripsiSkor0: question.scoreDescription0,
-          deskripsiSkor1: question.scoreDescription1,
-          deskripsiSkor2: question.scoreDescription2,
-          deskripsiSkor3: question.scoreDescription3,
-          deskripsiSkor4: question.scoreDescription4,
-          urutan: 1,
-        };
+       // ✅ Konversi data API ke format yang diharapkan halaman edit
+const editData = {
+  // Identitas
+  nomor: question.id,
+  transformationVariableId: question.transformationVariableId,
+  
+  // Konten utama
+  bobot: question.bobot || 1,
+  indikator: question.indicator || '',
+  keyIndicator: question.keyIndicator || '', // ✅ Tambahkan ini
+  reference: question.reference || '',       // ✅ Tambahkan ini
+  dataSource: question.dataSource || '',     // ✅ Tambahkan ini
+  
+  // Pertanyaan (sesuai struktur database)
+  questionText: question.questionText || '',
+  questionText2: question.questionText2 || '',
+  questionText3: question.questionText3 || '',
+  questionText4: question.questionText4 || '',
+  
+  // Jawaban untuk tipe PG
+  answerText1: question.answerText1 || '',
+  answerText2: question.answerText2 || '',
+  answerText3: question.answerText3 || '',
+  answerText4: question.answerText4 || '',
+  answerText5: question.answerText5 || '',
+  
+  // Skor untuk tipe short-answer
+  scoreMin0: question.scoreMin0 || '',
+  scoreMax0: question.scoreMax0 || '',
+  scoreMin1: question.scoreMin1 || '',
+  scoreMax1: question.scoreMax1 || '',
+  scoreMin2: question.scoreMin2 || '',
+  scoreMax2: question.scoreMax2 || '',
+  scoreMin3: question.scoreMin3 || '',
+  scoreMax3: question.scoreMax3 || '',
+  scoreMin4: question.scoreMin4 || '',
+  scoreMax4: question.scoreMax4 || '',
+  
+  scoreDescription0: question.scoreDescription0 || '',
+  scoreDescription1: question.scoreDescription1 || '',
+  scoreDescription2: question.scoreDescription2 || '',
+  scoreDescription3: question.scoreDescription3 || '',
+  scoreDescription4: question.scoreDescription4 || '',
+  
+  // Metadata
+  order: question.order || 1,
+  status: question.status === 'active' ? 'Active' : 'Inactive',
+  type: question.type, // ✅ 'multitext' atau 'text' (bukan 'tipeSoal')
+};
 
         // ✅ Simpan ke localStorage — biar kompatibel dengan halaman edit existing
         localStorage.setItem('editData', JSON.stringify(editData));

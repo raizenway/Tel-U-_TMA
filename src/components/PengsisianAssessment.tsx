@@ -241,21 +241,16 @@ export default function AssessmentFormTab({ setIsFormDirty }: PurwokertoTabProps
 
       let hasValidAnswer = false;
 
-      if (q.type === 'multitext') {
-        const userAnswer = answers[baseKey];
-        if (userAnswer != null) {
-          const optionIndex = q.options.findIndex(opt => opt === userAnswer);
-          if (optionIndex >= 0 && optionIndex < 5) {
-            // ✅ Set jawaban berdasarkan indeks (aman, eksplisit)
-            if (optionIndex === 0) answerData.textAnswer1 = "1";
-            else if (optionIndex === 1) answerData.textAnswer2 = "1";
-            else if (optionIndex === 2) answerData.textAnswer3 = "1";
-            else if (optionIndex === 3) answerData.textAnswer4 = "1";
-            else if (optionIndex === 4) answerData.textAnswer5 = "1";
-            hasValidAnswer = true;
-          }
-        }
-      } else if (q.type === 'text') {
+   if (q.type === 'multitext') {
+  const userAnswer = answers[baseKey];
+  if (userAnswer != null && userAnswer !== "") {
+    const optionIndex = q.options.findIndex(opt => opt === userAnswer);
+    if (optionIndex !== -1) {
+      answerData.textAnswer1 = String(optionIndex);
+      hasValidAnswer = true;
+    }
+  }
+}else if (q.type === 'text') {
         for (let i = 0; i < parts.length && i < 5; i++) {
           const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
           const rawValue = answers[key];
