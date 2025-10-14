@@ -178,17 +178,42 @@ export default function DashboardTab() {
         });
 
         const yearStrings = ['2021', '2022', '2023', '2024', '2025'];
-        const studentBodyFormatted = yearStrings.map(yearStr => {
-          const yearNum = Number(yearStr);
-          const row: Record<string, any> = { year: yearStr };
-          apiData.branches.forEach((branch: any) => {
-            const campusName = branch.name as CampusKey;
-            const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
-            row[campusName] = dataForYear ? dataForYear.total : null;
-          });
-          return row;
-        });
-        setStudentBodyData(studentBodyFormatted);
+       // Definisikan tipe helper
+type StudentBodyRow = {
+  year: string;
+  "Tel-U Jakarta": number;
+  "Tel-U Surabaya": number;
+  "Tel-U Purwokerto": number;
+  "Tel-U Bandung": number;
+};
+
+const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
+  const yearNum = Number(yearStr);
+  
+                // Inisialisasi dengan nilai default 0
+                const row: StudentBodyRow = {
+                  year: yearStr,
+                  "Tel-U Jakarta": 0,
+                  "Tel-U Surabaya": 0,
+                  "Tel-U Purwokerto": 0,
+                  "Tel-U Bandung": 0,
+                };
+
+                // Isi data dari API jika tersedia
+                for (const branch of apiData.branches) {
+                  const campusName = branch.name;
+                  if (campusName in row) {
+                    const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
+                    if (dataForYear && typeof dataForYear.total === 'number') {
+                      row[campusName] = dataForYear.total;
+                    }
+                  }
+                }
+
+                return row;
+              });
+
+              setStudentBodyData(studentBodyFormatted); // ✅ Sekarang valid
 
         const accreditationFormatted = yearStrings.map(yearStr => {
           const yearNum = Number(yearStr);
