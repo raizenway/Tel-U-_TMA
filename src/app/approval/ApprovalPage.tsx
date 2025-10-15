@@ -10,6 +10,7 @@ import Pagination from "@/components/Pagination";
 import { useSort } from "@/hooks/useSort";
 import SearchTable from "@/components/SearchTable";
 import axios from "axios";
+import SuccessNotification from "@/components/SuccessNotification"; // ✅ Import notifikasi
 
 const BRANCHES = [
   { id: 1, name: "Tel-U Bandung" },
@@ -33,6 +34,8 @@ const TablePage = () => {
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false); // ✅ State notifikasi sukses
+  const [successMessage, setSuccessMessage] = useState(""); // ✅ Pesan notifikasi
 
   const rowsPerPage = 10;
 
@@ -43,7 +46,7 @@ const TablePage = () => {
     { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
     { header: "Jawaban", key: "jawaban", width: "120px", sortable: true },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
-    { header: "Tipe Soal", key: "tipeSoal", width: "120px", sortable: true },
+    { header: "Tipe Soal", key: "tipeSoal", width: "150px", sortable: true },
   ];
 
   // 🔁 Fetch periode
@@ -109,7 +112,6 @@ const TablePage = () => {
       // ✅ Fungsi untuk ambil jawaban dari answer
       const getJawabanFromAnswer = (answer: any): string => {
         if (!answer) return "-";
-        // Cek textAnswer1 sampai textAnswer5
         for (let i = 1; i <= 5; i++) {
           const value = answer[`textAnswer${i}`];
           if (value && value !== "0" && value !== "") {
@@ -124,11 +126,17 @@ const TablePage = () => {
         const assessment = item.assessment || {};
         const answer = item.answer || {};
 
-        // ✅ Ambil jawaban dari answer (bukan submissionValue)
         const jawaban = getJawabanFromAnswer(answer);
         const skor = item.submissionValue !== undefined && item.submissionValue !== ""
           ? String(item.submissionValue)
           : "-";
+
+           // ✅ Tipe Soal disesuaikan
+  const tipeSoal = question.type === 'text'
+    ? 'Jawaban Singkat'
+    : question.type === 'multitext'
+      ? 'Pilihan Jawaban'
+      : question.type || "-";
 
         return {
           nomor: index + 1,
@@ -137,7 +145,7 @@ const TablePage = () => {
           pertanyaan: question.questionText || "-",
           jawaban: jawaban,
           skor: skor,
-          tipeSoal: question.type || "-",
+          tipeSoal: tipeSoal,
           assessmentId: assessment.id,
           detailId: item.id,
         };
@@ -189,7 +197,13 @@ const TablePage = () => {
 
       await axios.post(endpoint, {});
 
-     
+      // ✅ Tampilkan notifikasi sukses
+      const message = modalType === "approve" 
+        ? "Assessment berhasil disetujui!" 
+        : "Assessment berhasil dikirim untuk revisi!";
+      
+      setSuccessMessage(message);
+      setShowSuccess(true);
 
       // Refresh data
       fetchData();
@@ -365,6 +379,13 @@ const TablePage = () => {
             header="Konfirmasi"
             confirmLabel="Ya, lakukan"
             cancelLabel="Batal"
+          />
+
+          {/* ✅ Notifikasi Sukses */}
+          <SuccessNotification
+            isOpen={showSuccess}
+            onClose={() => setShowSuccess(false)}
+            message={successMessage}
           />
         </div>
       )}
