@@ -213,7 +213,7 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
                 return row;
               });
 
-              setStudentBodyData(studentBodyFormatted); // ✅ Sekarang valid
+              setStudentBodyData(studentBodyFormatted); 
 
         const accreditationFormatted = yearStrings.map(yearStr => {
           const yearNum = Number(yearStr);
