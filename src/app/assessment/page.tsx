@@ -1,4 +1,3 @@
-// app/assessment/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -8,18 +7,27 @@ import { ArrowRight } from "lucide-react";
 import { useCreateAssessment } from "@/hooks/useAssessment";
 import { useAssessmentPeriod } from "@/hooks/useAssessmentPeriod";
 import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
-// Tambahkan branchId sesuai user
+// Mapping branchId → nama kampus
+const branchIdToCampus: Record<number, string> = {
+  1: "Tel-U Bandung",
+  2: "Tel-U Jakarta",
+  3: "Tel-U Surabaya",
+  4: "Tel-U Purwokerto",
+};
+
+// Mapping kampus → config (userId & branchId)
 const campusToUserConfig: Record<string, { userId: number; branchId: number }> = {
   "Tel-U Bandung": { userId: 2, branchId: 1 },
   "Tel-U Jakarta": { userId: 3, branchId: 2 },
   "Tel-U Surabaya": { userId: 4, branchId: 3 },
   "Tel-U Purwokerto": { userId: 5, branchId: 4 },
 };
-// Daftar kampus
-const campuses = [
-  { name: "Tel-U Bandung", image: "/image 2.png" },  
+
+// Semua kampus (untuk referensi gambar)
+const allCampuses = [
+  { name: "Tel-U Bandung", image: "/image 2.png" },
   { name: "Tel-U Jakarta", image: "/image 2.png" },
   { name: "Tel-U Surabaya", image: "/image 2.png" },
   { name: "Tel-U Purwokerto", image: "/image 2.png" },
@@ -35,7 +43,21 @@ export default function AssessmentPage() {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
-  // Ambil semua periode dari API
+  // ✅ Ambil user dari localStorage
+  const user = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  }, []);
+
+  // Redirect ke login jika belum login
+  useEffect(() => {
+    if (!user) {
+      router.replace("/login");
+    }
+  }, [user, router]);
+
+  // Ambil periode
   useEffect(() => {
     const fetchPeriods = async () => {
       try {
@@ -58,10 +80,17 @@ export default function AssessmentPage() {
       }
     };
 
-    fetchPeriods();
-  }, [list]);
+    if (user) fetchPeriods();
+  }, [list, user]);
 
-  // ✅ Diperbarui: Tampilkan SEMUA periode aktif, tanpa batas ID
+  // ✅ Hanya tampilkan kampus sesuai branchId user
+  const campusesToShow = useMemo(() => {
+    if (!user?.branchId) return [];
+    const campusName = branchIdToCampus[user.branchId];
+    if (!campusName) return [];
+    return allCampuses.filter(c => c.name === campusName);
+  }, [user?.branchId]);
+
   const getActivePeriods = () => {
     return allPeriods.filter((p) => p.status === "active");
   };
@@ -71,60 +100,72 @@ export default function AssessmentPage() {
     setShowPeriodModal(true);
   };
 
- const handleSelectPeriod = async (periodId: number) => {
-  if (!selectedCampus) return;
+  const handleSelectPeriod = async (periodId: number) => {
+    if (!selectedCampus) return;
 
-  
-  const config = campusToUserConfig[selectedCampus];
-if (!config) {
-  alert("Kampus tidak dikenali");
-  return;
-}
-const { userId, branchId } = config;
-  if (!userId || !branchId) {
-    alert("Kampus tidak dikenali");
-    return;
-  }
-
-  setSubmittingCampus(selectedCampus);
-  setShowPeriodModal(false);
-
-  try {
-    const response = await mutate({
-      periodId,
-      userId,
-      branchId, // ✅ Kirim branchId ke backend
-      submission_date: new Date().toISOString().split("T")[0],
-    });
-
-  const assessmentId = response.id;
-  if (!assessmentId) {
-    throw new Error("Respons API tidak mengandung assessmentId");
-  }
-
-    const routeMap: Record<string, string> = {
-      "Tel-U Bandung": `/assessment/Bandung?assessmentId=${assessmentId}`,
-      "Tel-U Jakarta": `/assessment/Jakarta?assessmentId=${assessmentId}`,
-      "Tel-U Surabaya": `/assessment/Surabaya?assessmentId=${assessmentId}`,
-      "Tel-U Purwokerto": `/assessment/assessment-form?assessmentId=${assessmentId}`,
-    };
-
-    const route = routeMap[selectedCampus];
-    if (route) {
-      router.push(route);
+    const config = campusToUserConfig[selectedCampus];
+    if (!config) {
+      alert("Kampus tidak dikenali");
+      return;
     }
-  } catch (err) {
-    console.error("Gagal membuat assessment:", err);
-    alert("Gagal memulai assessment. Silakan coba lagi.");
-  } finally {
-    setSubmittingCampus(null);
-    setSelectedCampus(null);
-  }
-};
+    const { userId, branchId } = config;
+
+    setSubmittingCampus(selectedCampus);
+    setShowPeriodModal(false);
+
+    try {
+      const response = await mutate({
+        periodId,
+        userId,
+        branchId,
+        submission_date: new Date().toISOString().split("T")[0],
+      });
+
+      const assessmentId = response.id;
+      if (!assessmentId) {
+        throw new Error("Respons API tidak mengandung assessmentId");
+      }
+
+      const routeMap: Record<string, string> = {
+        "Tel-U Bandung": `/assessment/Bandung?assessmentId=${assessmentId}`,
+        "Tel-U Jakarta": `/assessment/Jakarta?assessmentId=${assessmentId}`,
+        "Tel-U Surabaya": `/assessment/Surabaya?assessmentId=${assessmentId}`,
+        "Tel-U Purwokerto": `/assessment/assessment-form?assessmentId=${assessmentId}`,
+      };
+
+      const route = routeMap[selectedCampus];
+      if (route) {
+        router.push(route);
+      }
+    } catch (err) {
+      console.error("Gagal membuat assessment:", err);
+      alert("Gagal memulai assessment. Silakan coba lagi.");
+    } finally {
+      setSubmittingCampus(null);
+      setSelectedCampus(null);
+    }
+  };
 
   const formatPeriodName = (period: AssessmentPeriodResponseDto) => {
     return `${period.year} - ${period.semester}`;
   };
+
+  // Jika user belum login (sementara)
+  if (!user) {
+    return null; // redirect sudah di-handle
+  }
+
+  // Jika user tidak punya akses ke kampus
+  if (campusesToShow.length === 0) {
+    return (
+      <div className="p-10 text-center">
+        <p className="text-red-600">Anda tidak memiliki akses ke assessment.</p>
+        <Button onClick={() => router.push("/login")} className="mt-4">
+          Kembali ke Login
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex">
@@ -136,7 +177,7 @@ const { userId, branchId } = config;
         )}
 
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-5">
-          {campuses.map((campus) => (
+          {campusesToShow.map((campus) => (
             <div
               key={campus.name}
               className="w-[300px] sm:w-[380px] md:w-[420px] lg:w-[450px] h-[320px] bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center space-y-4"
