@@ -653,13 +653,13 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
           >
             <CartesianGrid stroke="#f0f0f0" strokeDasharray="4 4" />
             <XAxis dataKey="variabel" tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} />
-            <YAxis domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} label={{ value: 'Skor (%)', angle: -90, position: 'insideLeft', offset: -10, fill: '#6b7280', fontSize: 12 }} />
+            <YAxis domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} label={{ value: 'Skor', angle: -90, position: 'insideLeft', offset: -10, fill: '#6b7280', fontSize: 12 }} />
             <Tooltip
-              cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-              contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-              formatter={(value: number) => [value.toFixed(0) + '%', 'Skor']}
-              labelStyle={{ color: '#fff' }}
-            />
+  cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+  contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+  formatter={(value: number) => [value.toFixed(0), 'Skor']}
+  labelStyle={{ color: '#fff' }}
+/>
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }} />
             {Array.from(new Set(variableGrowthData.map(d => d.period))).sort().map(period => (
               <Bar
