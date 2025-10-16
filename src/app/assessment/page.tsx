@@ -17,21 +17,21 @@ const branchIdToCampus: Record<number, string> = {
   4: "Tel-U Purwokerto",
 };
 
-// Mapping kampus → config (userId & branchId)
-const campusToUserConfig: Record<string, { userId: number; branchId: number }> = {
-  "Tel-U Bandung": { userId: 2, branchId: 1 },
-  "Tel-U Jakarta": { userId: 3, branchId: 2 },
-  "Tel-U Surabaya": { userId: 4, branchId: 3 },
-  "Tel-U Purwokerto": { userId: 5, branchId: 4 },
-};
-
-// Semua kampus (untuk referensi gambar)
+// Data kampus untuk tampilan gambar
 const allCampuses = [
   { name: "Tel-U Bandung", image: "/image 2.png" },
   { name: "Tel-U Jakarta", image: "/image 2.png" },
   { name: "Tel-U Surabaya", image: "/image 2.png" },
   { name: "Tel-U Purwokerto", image: "/image 2.png" },
 ];
+
+// Mapping branchId → rute assessment
+const branchIdToRoute: Record<number, string> = {
+  1: "Bandung",
+  2: "Jakarta",
+  3: "Surabaya",
+  4: "assessment-form",
+};
 
 export default function AssessmentPage() {
   const router = useRouter();
@@ -43,7 +43,7 @@ export default function AssessmentPage() {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
-  // ✅ Ambil user dari localStorage
+  // Ambil user dari localStorage
   const user = useMemo(() => {
     if (typeof window === "undefined") return null;
     const stored = localStorage.getItem("user");
@@ -57,7 +57,7 @@ export default function AssessmentPage() {
     }
   }, [user, router]);
 
-  // Ambil periode
+  // Ambil daftar periode
   useEffect(() => {
     const fetchPeriods = async () => {
       try {
@@ -83,13 +83,27 @@ export default function AssessmentPage() {
     if (user) fetchPeriods();
   }, [list, user]);
 
-  // ✅ Hanya tampilkan kampus sesuai branchId user
+  // ✅ LOGIKA AKSES: Super User vs Admin Kampus
   const campusesToShow = useMemo(() => {
-    if (!user?.branchId) return [];
-    const campusName = branchIdToCampus[user.branchId];
+    if (!user) return [];
+
+    // Pastikan role.id ada
+    const roleId = user.role?.id ?? user.roleId; // support dua format
+
+    // Jika Super User (role.id === 1)
+    if (roleId === 1) {
+      return allCampuses;
+    }
+
+    // Jika Admin Kampus (role.id === 2)
+    const branchId = user.branchId;
+    if (!branchId) return [];
+
+    const campusName = branchIdToCampus[branchId];
     if (!campusName) return [];
-    return allCampuses.filter(c => c.name === campusName);
-  }, [user?.branchId]);
+
+    return allCampuses.filter((c) => c.name === campusName);
+  }, [user]);
 
   const getActivePeriods = () => {
     return allPeriods.filter((p) => p.status === "active");
@@ -101,14 +115,29 @@ export default function AssessmentPage() {
   };
 
   const handleSelectPeriod = async (periodId: number) => {
-    if (!selectedCampus) return;
+    if (!selectedCampus || !user) return;
 
-    const config = campusToUserConfig[selectedCampus];
-    if (!config) {
-      alert("Kampus tidak dikenali");
-      return;
+    let userId: number;
+    let branchId: number;
+
+    const roleId = user.role?.id ?? user.roleId;
+
+    if (roleId === 1) {
+      // Super User: gunakan ID user sendiri (misal id=1), tapi branchId diambil dari kampus yang dipilih
+      userId = user.id;
+      const foundEntry = Object.entries(branchIdToCampus).find(
+        ([, name]) => name === selectedCampus
+      );
+      if (!foundEntry) {
+        alert("Kampus tidak dikenali.");
+        return;
+      }
+      branchId = parseInt(foundEntry[0], 10);
+    } else {
+      // Admin biasa
+      userId = user.id;
+      branchId = user.branchId;
     }
-    const { userId, branchId } = config;
 
     setSubmittingCampus(selectedCampus);
     setShowPeriodModal(false);
@@ -121,22 +150,18 @@ export default function AssessmentPage() {
         submission_date: new Date().toISOString().split("T")[0],
       });
 
-      const assessmentId = response.id;
+      const assessmentId = response?.id;
       if (!assessmentId) {
-        throw new Error("Respons API tidak mengandung assessmentId");
+        throw new Error("Assessment ID tidak ditemukan dalam respons");
       }
 
-      const routeMap: Record<string, string> = {
-        "Tel-U Bandung": `/assessment/Bandung?assessmentId=${assessmentId}`,
-        "Tel-U Jakarta": `/assessment/Jakarta?assessmentId=${assessmentId}`,
-        "Tel-U Surabaya": `/assessment/Surabaya?assessmentId=${assessmentId}`,
-        "Tel-U Purwokerto": `/assessment/assessment-form?assessmentId=${assessmentId}`,
-      };
-
-      const route = routeMap[selectedCampus];
-      if (route) {
-        router.push(route);
+      const routeSuffix = branchIdToRoute[branchId];
+      if (!routeSuffix) {
+        alert("Rute untuk kampus ini belum dikonfigurasi.");
+        return;
       }
+
+      router.push(`/assessment/${routeSuffix}?assessmentId=${assessmentId}`);
     } catch (err) {
       console.error("Gagal membuat assessment:", err);
       alert("Gagal memulai assessment. Silakan coba lagi.");
@@ -150,12 +175,10 @@ export default function AssessmentPage() {
     return `${period.year} - ${period.semester}`;
   };
 
-  // Jika user belum login (sementara)
   if (!user) {
-    return null; // redirect sudah di-handle
+    return null;
   }
 
-  // Jika user tidak punya akses ke kampus
   if (campusesToShow.length === 0) {
     return (
       <div className="p-10 text-center">
@@ -197,12 +220,14 @@ export default function AssessmentPage() {
                 icon={ArrowRight}
                 iconPosition="right"
                 onClick={() => handleSelectCampus(campus.name)}
-                disabled={isCreating || submittingCampus === campus.name || loadingPeriodsFromHook}
+                disabled={
+                  isCreating ||
+                  submittingCampus === campus.name ||
+                  loadingPeriodsFromHook
+                }
                 className="rounded-[12px] px-6 py-2 text-sm font-semibold"
               >
-                {loadingPeriodsFromHook
-                  ? "Memuat..."
-                  : submittingCampus === campus.name
+                {loadingPeriodsFromHook || submittingCampus === campus.name
                   ? "Memuat..."
                   : "Pilih"}
               </Button>
@@ -231,7 +256,9 @@ export default function AssessmentPage() {
             </div>
 
             {loadingPeriodsFromHook ? (
-              <p className="text-gray-500 text-sm py-4 text-center">Memuat periode...</p>
+              <p className="text-gray-500 text-sm py-4 text-center">
+                Memuat periode...
+              </p>
             ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                 {getActivePeriods().length > 0 ? (
