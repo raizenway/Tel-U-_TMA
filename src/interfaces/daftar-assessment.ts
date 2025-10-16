@@ -20,6 +20,16 @@ export interface Question {
   scoreDescription2: string;
   scoreDescription3: string;
   scoreDescription4: string;
+  minScore0: number;
+  maxScore0: number;
+  minScore1: number;
+  maxScore1: number;
+  minScore2: number;
+  maxScore2: number;
+  minScore3: number;
+  maxScore3: number;
+  minScore4: number;
+  maxScore4: number;
   order: number;
   status: 'active' | 'inactive';
 }
@@ -42,6 +52,16 @@ export interface CreateQuestionRequest {
   scoreDescription2: string;
   scoreDescription3: string;
   scoreDescription4: string;
+  minScore0: number;
+  maxScore0: number;
+  minScore1: number;
+  maxScore1: number;
+  minScore2: number;
+  maxScore2: number;
+  minScore3: number;
+  maxScore3: number;
+  minScore4: number;
+  maxScore4: number;
   order: number;
   status: 'active' | 'inactive';
 }
@@ -64,6 +84,16 @@ export interface UpdateQuestionRequest {
   scoreDescription2?: string;
   scoreDescription3?: string;
   scoreDescription4?: string;
+  minScore0?: number;
+  maxScore0?: number;
+  minScore1?: number;
+  maxScore1?: number;
+  minScore2?: number;
+  maxScore2?: number;
+  minScore3?: number;
+  maxScore3?: number;
+  minScore4?: number;
+  maxScore4?: number;
   order?: number;
   status?: 'active' | 'inactive';
 }
