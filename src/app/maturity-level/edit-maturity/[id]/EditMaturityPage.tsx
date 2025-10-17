@@ -39,7 +39,6 @@ export default function EditMaturityPage() {
   });
 
   useEffect(() => {
-  // Jangan lanjut jika maturityDetail belum siap
   if (!maturityDetail) {
     return;
   }
@@ -60,7 +59,6 @@ export default function EditMaturityPage() {
     }
   }
 
-  // Isi dari API hanya jika maturityDetail valid
   setFormData({
     id: maturityDetail.id,
     name: maturityDetail.name || "",
