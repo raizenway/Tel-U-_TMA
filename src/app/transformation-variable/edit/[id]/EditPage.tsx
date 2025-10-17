@@ -30,6 +30,7 @@ export default function EditVariablePage() {
   const [levelDescription3, setLevelDescription3] = useState('');
   const [levelDescription4, setLevelDescription4] = useState('');
   const [referensi, setReferensi] = useState('');
+  const [urutan, setUrutan] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
   // 🖼️ State logo — hanya untuk preview, tidak dikirim ke API
@@ -59,6 +60,7 @@ useEffect(() => {
   setLevelDescription4(item.levelDescription4 || '');
   setReferensi(item.reference || '');
   setStatus(item.status === 'active' ? 'Active' : 'Inactive');
+  setUrutan( item.sortOrder || '');
 
 }, [data, variableId]);
   // 🚫 Loading
@@ -111,6 +113,7 @@ useEffect(() => {
     formData.append('reference', referensi.trim());
     formData.append('sortOrder', '1'); // ✅ sudah string
     formData.append('status', status.toLowerCase());
+    formData.append('sortOrder', urutan.trim());
     formData.append('iconFile', logoFile);
 
     payload = formData;
@@ -124,8 +127,8 @@ useEffect(() => {
       levelDescription3: levelDescription3.trim(),
       levelDescription4: levelDescription4.trim(),
       reference: referensi.trim(),
-      sortOrder: 1,
       status: status.toLowerCase() as 'active' | 'inactive',
+      sortOrder: urutan.trim(),
       iconFileId: data.iconFileId,
     };
   }
@@ -237,6 +240,16 @@ useEffect(() => {
                   <option value="Inactive">Non-Aktif</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Urutan</label>
+                <input
+                  type="text"
+                  value={urutan}
+                  onChange={(e) => setUrutan(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                />
             </div>
 
             {/* 🖼️ Upload Logo — Preview Only */}

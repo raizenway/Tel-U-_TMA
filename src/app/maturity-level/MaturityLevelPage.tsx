@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import TableUpdate from "@/components/TableUpdate";
-import { Pencil, Trash2, Eye } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import Button from "@/components/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
@@ -28,13 +28,11 @@ const TablePage = () => {
   const { mutate: deleteMaturity, loading: deleteLoading } = useDeleteMaturityLevel();
 
 
-  // Modal lihat deskripsi
   const [showModal, setShowModal] = useState(false);
   const [selectedDeskripsiList, setSelectedDeskripsiList] = useState<string[]>([]);
 
    const [roleId, setRoleId] = useState<number | null>(null);
   
-    // 🔹 Ambil roleId dari localStorage
     useEffect(() => {
       const user = localStorage.getItem('user');
       if (user) {
@@ -47,7 +45,6 @@ const TablePage = () => {
       }
     }, []);
 
-  // Mapping API -> struktur tabel
   useEffect(() => {
     if (maturityRes?.data) {
       const mapped = maturityRes.data.map((item: any) => ({
@@ -115,7 +112,6 @@ const TablePage = () => {
   }
 };
 
-  // Data + kolom aksi
   const dataDenganAksi = paginatedData.map((row, index) => ({
     ...row,
     aksi: (
@@ -139,7 +135,6 @@ const TablePage = () => {
     ),
   }));
 
-  // 🔹 Buat baseColumns — tanpa kolom "Aksi"
 const baseColumns = [
   { 
     header: "Level", 
@@ -179,7 +174,6 @@ const baseColumns = [
   
 ];
 
-// 🔹 Tambahkan kolom "Aksi" hanya jika roleId === 1
 const columns = roleId === 1
   ? [
       ...baseColumns,
@@ -215,9 +209,6 @@ const columns = roleId === 1
     SkorMinimum: item.skorMin,
     SkorMaximum: item.skorMax,
     DeskripsiUmum: item.deskripsiUmum,
-    DeskripsiPerVariabel: Array.isArray(item.deskripsiPerVariabel)
-      ? item.deskripsiPerVariabel.join(" | ")
-      : "",
   }));
 
   return (
