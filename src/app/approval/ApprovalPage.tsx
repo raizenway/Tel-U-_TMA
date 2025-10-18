@@ -138,17 +138,18 @@ const TablePage = () => {
       ? 'Pilihan Jawaban'
       : question.type || "-";
 
-        return {
-          nomor: index + 1,
-          variable: question.transformationVariable?.name || "-",
-          indikator: question.indicator || "-",
-          pertanyaan: question.questionText || "-",
-          jawaban: jawaban,
-          skor: skor,
-          tipeSoal: tipeSoal,
-          assessmentId: assessment.id,
-          detailId: item.id,
-        };
+       return {
+  nomor: index + 1,
+  variable: question.transformationVariable?.name || "-",
+  indikator: question.indicator || "-",
+  pertanyaan: question.questionText || "-",
+  jawaban: jawaban,
+  skor: skor,
+  tipeSoal: tipeSoal,
+  assessmentId: assessment.id,
+  detailId: item.id,
+  assessment: assessment, // ✅ TAMBAHKAN INI
+};
       });
 
       setTableData(transformedData);
@@ -322,47 +323,51 @@ const TablePage = () => {
             />
           )}
 
-          {/* Pagination & Tombol */}
-          <div className="flex items-center justify-between mt-4">
-            <div className="h-10 flex items-center">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(page) => setCurrentPage(page)}
-              />
-            </div>
+         {/* Pagination & Tombol */}
+<div className="flex items-center justify-between mt-4">
+  <div className="h-10 flex items-center">
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={(page) => setCurrentPage(page)}
+    />
+  </div>
 
-            <div className="flex gap-4">
-              <Button
-                variant="success"
-                className="px-13"
-                onClick={() => {
-                  if (tableData.length > 0) {
-                    setSelectedAssessmentId(tableData[0].assessmentId);
-                    setModalType("approve");
-                    setShowModal(true);
-                  }
-                }}
-                disabled={tableData.length === 0}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="danger"
-                className="px-13"
-                onClick={() => {
-                  if (tableData.length > 0) {
-                    setSelectedAssessmentId(tableData[0].assessmentId);
-                    setModalType("revisi");
-                    setShowModal(true);
-                  }
-                }}
-                disabled={tableData.length === 0}
-              >
-                Revisi
-              </Button>
-            </div>
-          </div>
+  <div className="flex gap-4">
+    {tableData.length > 0 && tableData.some(row => row.assessment?.approvalStatus === 'submitted') && (
+      <>
+        <Button
+          variant="success"
+          className="px-13"
+          onClick={() => {
+            const firstSubmitted = tableData.find(row => row.assessment?.approvalStatus === 'submitted');
+            if (firstSubmitted) {
+              setSelectedAssessmentId(firstSubmitted.assessmentId);
+              setModalType("approve");
+              setShowModal(true);
+            }
+          }}
+        >
+          Approve
+        </Button>
+        <Button
+          variant="danger"
+          className="px-13"
+          onClick={() => {
+            const firstSubmitted = tableData.find(row => row.assessment?.approvalStatus === 'submitted');
+            if (firstSubmitted) {
+              setSelectedAssessmentId(firstSubmitted.assessmentId);
+              setModalType("revisi");
+              setShowModal(true);
+            }
+          }}
+        >
+          Revisi
+        </Button>
+      </>
+    )}
+  </div>
+</div>
 
           {/* Modal */}
           <ModalConfirm
