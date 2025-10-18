@@ -9,8 +9,7 @@ import TableUpdate from '@/components/TableUpdate';
 import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
-// Tipe untuk tipe soal
-type QuestionType = 'text' | 'multitext';
+export type QuestionType = 'text' | 'multitext' | 'api' | 'excel';
 
 // Interface untuk preview
 interface AssessmentItem {
@@ -22,7 +21,7 @@ interface AssessmentItem {
   pertanyaan2: string;
   pertanyaan3: string;
   pertanyaan4: string;
-  tipeSoal: QuestionType; // ✅ Gunakan tipe eksplisit
+  tipeSoal: QuestionType;
   status: 'Active' | 'Inactive';
   deskripsiSkor0: string;
   deskripsiSkor1: string;
@@ -144,8 +143,8 @@ export default function SubmitExcelPage() {
           const q3 = row[idx('Pertanyaan 3')]?.toString().trim() || '';
           const q4 = row[idx('Pertanyaan 4')]?.toString().trim() || '';
 
-          const questionCount = [q1, q2, q3, q4].filter(q => q !== '').length;
-          const tipeSoal: QuestionType = questionCount > 1 ? 'multitext' : 'text'; // ✅ Tipe eksplisit
+          // ✅ SEMUA soal Excel punya tipe 'excel'
+          const tipeSoal: QuestionType = 'excel';
 
           return {
             nomor: i + 1,
@@ -224,12 +223,10 @@ export default function SubmitExcelPage() {
           const q3 = row[idx('Pertanyaan 3')]?.toString().trim() || '';
           const q4 = row[idx('Pertanyaan 4')]?.toString().trim() || '';
 
-          const questionCount = [q1, q2, q3, q4].filter(q => q !== '').length;
-          const questionType: QuestionType = questionCount > 1 ? 'multitext' : 'text'; // ✅ Literal type
-
+          // ✅ PAYLOAD: Gunakan type 'excel' untuk SEMUA
           const payload = {
             transformationVariable: { connect: { id: variable.id } },
-            type: questionType, // ✅ Sekarang aman
+            type: 'excel' as const, 
             indicator: row[idx('Indikator')]?.toString().trim() || '',
             keyIndicator: row[idx('Key Indicator')]?.toString().trim() || '',
             reference: row[idx('Reference')]?.toString().trim() || '',

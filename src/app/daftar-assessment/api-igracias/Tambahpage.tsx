@@ -44,46 +44,44 @@ export default function ApiIgraciasPage() {
   const { data: rawData, loading: variablesLoading } = useTransformationVariableList();
   const transformationVariables = Array.isArray(rawData) ? rawData : [];
 
-  // Load data dari localStorage (hanya untuk edit)
   useEffect(() => {
-    const editData = localStorage.getItem('editData');
-    if (!editData) {
-      // Tidak ada data edit → pastikan mode TAMBAH
-      setIsEditMode(false);
-      setEditNomor(null);
-      return;
+  const editData = localStorage.getItem('editData');
+  if (!editData) {
+    setIsEditMode(false);
+    setEditNomor(null);
+    return;
+  }
+
+  try {
+    const data = JSON.parse(editData);
+
+    setLinkApi(data.linkApi || data.questionApiUrl || '');
+    setIndikator(data.indikator || data.indicator || '');
+    setPertanyaan(data.pertanyaan || data.questionText || '');
+    setStatus(data.status === 'active' ? 'Aktif' : 'Non-Aktif');
+    setUrutan(String(data.order || data.urutan || ''));
+    setSelectedVariableId(data.transformationVariableId || data.transformationVariable?.id || null);
+
+    // ✅ Baca dari field yang benar: scoreDescription0, bukan deskripsiSkor0
+    const loadedDeskripsi = {
+      0: data.scoreDescription0 ?? 'Tidak ada dokumentasi.',
+      1: data.scoreDescription1 ?? 'Ada dokumentasi dasar.',
+      2: data.scoreDescription2 ?? 'Dokumentasi sebagian lengkap.',
+      3: data.scoreDescription3 ?? 'Dokumentasi hampir lengkap.',
+      4: data.scoreDescription4 ?? 'Dokumentasi lengkap dan terupdate.',
+    };
+
+    setDeskripsiSkor(loadedDeskripsi);
+
+    if (data.id !== undefined || data.nomor !== undefined) {
+      setEditNomor(data.id ?? data.nomor);
+      setIsEditMode(true);
     }
-
-    try {
-      const data = JSON.parse(editData);
-      setLinkApi(data.linkApi || '');
-      setIndikator(data.indikator || '');
-      setPertanyaan(data.pertanyaan || '');
-      setStatus(data.status === 'Active' ? 'Aktif' : 'Non-Aktif');
-      setUrutan(data.urutan ? String(data.urutan) : '');
-      setSelectedVariableId(data.transformationVariableId || null);
-
-      if (data.deskripsiSkor) {
-        setDeskripsiSkor(data.deskripsiSkor);
-      } else if (data.deskripsiSkor0 !== undefined) {
-        setDeskripsiSkor({
-          0: data.deskripsiSkor0,
-          1: data.deskripsiSkor1,
-          2: data.deskripsiSkor2,
-          3: data.deskripsiSkor3,
-          4: data.deskripsiSkor4,
-        });
-      }
-
-      if (data.nomor !== undefined && data.nomor !== null) {
-        setEditNomor(data.nomor);
-        setIsEditMode(true);
-      }
-    } catch (error) {
-      console.error('Gagal parsing editData:', error);
-      localStorage.removeItem('editData');
-    }
-  }, []);
+  } catch (error) {
+    console.error('Gagal parsing editData:', error);
+    localStorage.removeItem('editData');
+  }
+}, []);
 
   // Validasi
   const validate = () => {

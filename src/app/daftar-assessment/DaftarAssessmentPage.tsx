@@ -90,8 +90,6 @@ export default function AssessmentPage() {
         item.type == 'text' ? 'Pilihan Jawaban':
         item.type === 'api' ? 'API dari iGracias' :
         item.type === 'excel' ? 'Submit Jawaban Excel' :
-        item.type == 'multitext' ? 'Submit Jawaban Excel':
-        item.type == 'text' ? 'Submit Jawaban Excel':
         'Tipe Tidak Dikenal',
         status: item.status,
       }));

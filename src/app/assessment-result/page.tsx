@@ -8,8 +8,8 @@ import { getPeriodeLabel } from '@/utils/periode';
 import { getAssessmentResult } from '@/lib/api-assessment-result';
 import { useListPeriode } from '@/hooks/usePeriode';
 import { BRANCHES } from '@/interfaces/branch';
+import domtoimage from 'dom-to-image';
 
-/* === Chart.js === */
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -21,9 +21,15 @@ import {
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+ChartJS.register(
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend
+);
 
-// Interfaces
 interface Assessment {
   id: string;
   name: string;
@@ -53,18 +59,6 @@ interface Option {
   name: string;
 }
 
-interface FilterUPPSPopoverProps {
-  open: boolean;
-  onClose: () => void;
-  defaultPeriode: string;
-  defaultSelectedIds: string[];
-  onApply: (payload: FilterPayload) => void;
-  onReset: () => void;
-  options: Option[];
-  periodeOptions: string[];
-}
-
-// Palette
 const palette = [
   { header: 'bg-red-50', border: 'border-red-300', legend: 'bg-red-500', hex: '#EF4444' },
   { header: 'bg-blue-50', border: 'border-blue-300', legend: 'bg-blue-500', hex: '#3B82F6' },
@@ -75,11 +69,6 @@ const palette = [
 ] as const;
 
 const getPalette = (i: number) => palette[i % palette.length];
-
-function hexWithAlpha(hex: string, alpha: number) {
-  const a = Math.round(alpha * 255).toString(16).padStart(2, '0');
-  return `${hex}${a}`;
-}
 
 function RadarChart({
   selectedIds,
@@ -96,13 +85,12 @@ function RadarChart({
     const pal = getPalette(i);
     return {
       label: assessments.find((x) => x.id === id)?.name || id,
-       data: radarDataByUPPS[id] || new Array(radarLabels.length).fill(0),
-      backgroundColor: hexWithAlpha(pal.hex, 0.15),
+      data: radarDataByUPPS[id] || new Array(radarLabels.length).fill(0),
+      backgroundColor: `${pal.hex}26`,
       borderColor: pal.hex,
       borderWidth: 2,
       pointBackgroundColor: pal.hex,
       pointBorderColor: '#fff',
-      tension: 0,
     };
   });
 
@@ -112,28 +100,15 @@ function RadarChart({
       options={{
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top' as const },
-          tooltip: { enabled: true },
-        },
+        plugins: { legend: { position: 'top' }, tooltip: { enabled: true } },
         scales: {
           r: {
             beginAtZero: true,
             max: 100,
             ticks: { stepSize: 20 },
-            grid: {
-              circular: false,
-            },
-            angleLines: {
-              display: true,
-              color: '#ccc',
-            },
-            pointLabels: {
-              font: {
-                size: 12,
-                weight: 'bold',
-              },
-            },
+            grid: { circular: false },
+            angleLines: { display: true, color: '#ccc' },
+            pointLabels: { font: { size: 12, weight: 'bold' } },
           },
         },
       }}
@@ -151,40 +126,44 @@ function FilterUPPSPopover({
   onReset,
   options,
   periodeOptions,
-}: FilterUPPSPopoverProps) {
-  const [periode, setPeriode] = useState<string>(defaultPeriode);
-  const [ids, setIds] = useState<string[]>(defaultSelectedIds);
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultPeriode: string;
+  defaultSelectedIds: string[];
+  onApply: (payload: FilterPayload) => void;
+  onReset: () => void;
+  options: Option[];
+  periodeOptions: string[];
+}) {
+  const [periode, setPeriode] = useState(defaultPeriode);
+  const [ids, setIds] = useState(defaultSelectedIds);
+  const allIds = options.map((o) => o.id);
 
   useEffect(() => {
     setPeriode(defaultPeriode);
     setIds(defaultSelectedIds);
   }, [defaultPeriode, defaultSelectedIds]);
 
-  const toggle = (id: string | 'all', allIds: string[]) => {
+  const toggle = (id: string | 'all') => {
     if (id === 'all') {
       setIds(ids.length === allIds.length ? [] : allIds);
     } else {
-      setIds((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      );
+      setIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     }
   };
 
   if (!open) return null;
 
-  const allIds = options.map((o) => o.id);
-
   return (
     <div className="absolute z-30 mt-2 w-80 bg-white rounded-md shadow-lg border">
       <div className="p-4 space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Pilih Periode
-          </label>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Pilih Periode</label>
           <select
             value={periode}
             onChange={(e) => setPeriode(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-red-400"
+            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-red-400"
           >
             <option value="">-- Pilih Periode --</option>
             {periodeOptions.map((p) => (
@@ -195,23 +174,22 @@ function FilterUPPSPopover({
           </select>
         </div>
 
-        <div className="space-y-2 text-sm text-gray-700 max-h-40 overflow-y-auto pr-1">
+        <div className="space-y-2 text-sm max-h-40 overflow-y-auto pr-1">
           <label className="flex items-center gap-2 cursor-pointer font-semibold text-blue-700">
             <input
               type="checkbox"
               checked={ids.length === allIds.length && allIds.length > 0}
-              onChange={() => toggle('all', allIds)}
+              onChange={() => toggle('all')}
               className="accent-red-600"
             />
             Semua
           </label>
-
           {options.map((opt) => (
             <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={ids.includes(opt.id)}
-                onChange={() => toggle(opt.id, allIds)}
+                onChange={() => toggle(opt.id)}
                 className="accent-red-600"
               />
               {opt.name}
@@ -236,7 +214,7 @@ function FilterUPPSPopover({
               setIds([]);
               onClose();
             }}
-            className="w-full border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-100"
+            className="w-full border text-gray-700 py-2 rounded hover:bg-gray-100"
           >
             Reset
           </button>
@@ -251,33 +229,29 @@ export default function AssessmentResultPage() {
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
 
-  // State untuk menyimpan data assessment
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [reportsByUPPS, setReportsByUPPS] = useState<Record<string, VariableReport[]>>({});
   const [radarDataByUPPS, setRadarDataByUPPS] = useState<Record<string, number[]>>({});
   const [allBranches, setAllBranches] = useState<Option[]>([]);
-
-  // State untuk menyimpan periode aktif dan ID periode yang dipilih
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [radarLabels, setRadarLabels] = useState<string[]>([]);
 
-  // ✅ Ambil daftar branch ID dari constants
-  const allBranchIds = useMemo(() => BRANCHES.map(b => b.id), []);
-
-  const { data: periodeData, loading: periodeLoading, error: periodeError } = useListPeriode(0);
+  const allBranchIds = useMemo(() => BRANCHES.map((b) => b.id), []);
+  const { data: periodeData } = useListPeriode(0);
 
   useEffect(() => {
-    if (periodeData?.data) {
-      const activePeriodes = periodeData.data
-        .filter((p) => p.status === 'active')
-        .map((p) => ({ label: `${p.semester} ${p.tahun}`, id: p.id }));
-
-      setActivePeriods(activePeriodes.map(p => p.label));
-
-      if (activePeriodes.length > 0) {
-        setSelectedPeriodId(activePeriodes[0].id);
-        setFilterPeriode(activePeriodes[0].label);
-      }
+    if (!periodeData?.data) return;
+    const active = periodeData.data
+      .filter((p) => p.status === 'active')
+      .map((p) => `${p.semester} ${p.tahun}`);
+    setActivePeriods(active);
+    if (active.length > 0) {
+      setFilterPeriode(active[0]);
+      const first = periodeData.data.find(
+        (p) => `${p.semester} ${p.tahun}` === active[0]
+      );
+      setSelectedPeriodId(first?.id ?? null);
     }
   }, [periodeData]);
 
@@ -285,170 +259,135 @@ export default function AssessmentResultPage() {
     if (!periodeData?.data) return null;
     const [semester, tahunStr] = label.split(' ');
     const tahun = parseInt(tahunStr, 10);
-    const period = periodeData.data.find(p => p.semester === semester && p.tahun === tahun);
-    return period ? period.id : null;
+    return periodeData.data.find((p) => p.semester === semester && p.tahun === tahun)?.id ?? null;
   };
 
   const fetchAssessmentData = async (branchId: number, periodId: number) => {
     try {
       const res = await getAssessmentResult(branchId, periodId);
-
-      const branch = res.data.branch;
-      const period = res.data.period;
+      const { branch, period, transformationMaturityIndex: tmiData, maturityLevel } = res.data;
       const submitPeriode = `${period.semester} ${period.year}`;
-
-      // Ambil data TMI dari API → dinamis!
-      const tmiData = res.data.transformationMaturityIndex || [];
-
-      // Ekstrak label radar dari API (misal: 6 item → segi-6)
-      const radarLabelsFromAPI = tmiData.map(item => item.name);
-
-      // Hitung radar data sesuai urutan dari API
-      const radarData = tmiData.map(item => parseFloat(item.value.toFixed(2)));
+      const radarLabels = tmiData.map((item: any) => item.name);
+      const radarData = tmiData.map((item: any) => parseFloat(item.value.toFixed(2)));
 
       const assessment: Assessment = {
-        id: String(branch.id), // Gunakan ID asli sebagai string
+        id: String(branch.id),
         name: branch.name,
-        submitPeriode: submitPeriode,
+        submitPeriode,
         email: branch.email,
         studentBody: branch.studentBody,
         jumlahProdi: branch.totalProdi,
         jumlahProdiUnggul: branch.totalProdiUnggul,
-        maturityLevel: res.data.maturityLevel?.name || "Unknown Maturity",
+        maturityLevel: maturityLevel?.name || 'Unknown',
       };
 
-      const reports = tmiData.map((item: any) => {
-        const { name, value } = item;
-        const maturityLevelGlobal = res.data.maturityLevel || {};
-        return {
-          code: "",
-          name: name,
-          point: parseFloat(value.toFixed(2)),
-          maturityLevel: maturityLevelGlobal.name || "Unknown",
-          desc: maturityLevelGlobal.description || "",
-        };
-      });
+      const reports = tmiData.map((item: any) => ({
+        code: '',
+        name: item.name,
+        point: parseFloat(item.value.toFixed(2)),
+        maturityLevel: maturityLevel?.name || 'Unknown',
+        desc: maturityLevel?.description || '',
+      }));
 
-      return { assessment, reports, radarData, submitPeriode, radarLabels: radarLabelsFromAPI };
+      return { assessment, reports, radarData, radarLabels };
     } catch (err) {
-      console.error(`Failed to fetch data for branch ${branchId}, period ${periodId}:`, err);
+      console.error(`Fetch failed for branch ${branchId}, period ${periodId}:`, err);
       return null;
     }
   };
 
-  // State untuk menyimpan label radar (dinamis)
-  const [radarLabels, setRadarLabels] = useState<string[]>([]);
-
   useEffect(() => {
     if (!selectedPeriodId) return;
 
-    async function init() {
-      try {
-        const allDataPromises = allBranchIds.map((branchId) =>
-          fetchAssessmentData(branchId, selectedPeriodId)
-        );
+    const load = async () => {
+      const promises = allBranchIds.map((id) => fetchAssessmentData(id, selectedPeriodId));
+      const results = (await Promise.all(promises)).filter(Boolean) as Awaited<
+        ReturnType<typeof fetchAssessmentData>
+      >[];
 
-        const results = await Promise.all(allDataPromises);
-        const validResults = results.filter((result): result is NonNullable<typeof result> => result !== null);
+      if (results.length === 0) return;
 
-        if (validResults.length === 0) return;
+      setRadarLabels(results[0].radarLabels);
+      setAssessments(results.map((r) => r.assessment));
+      setReportsByUPPS(
+        results.reduce((acc, r) => ({ ...acc, [r.assessment.id]: r.reports }), {})
+      );
+      setRadarDataByUPPS(
+        results.reduce((acc, r) => ({ ...acc, [r.assessment.id]: r.radarData }), {})
+      );
+      setAllBranches(results.map((r) => ({ id: r.assessment.id, name: r.assessment.name })));
+      setFilterIds(results.map((r) => r.assessment.id));
+    };
 
-        // Ambil radarLabels dari hasil pertama (asumsi semua UPPS punya struktur TMI sama)
-        setRadarLabels(validResults[0].radarLabels);
+    load();
+  }, [selectedPeriodId, allBranchIds]);
 
-        const newAssessments = validResults.map((r) => r.assessment);
-        const newReportsByUPPS = validResults.reduce(
-          (acc, r) => ({ ...acc, [r.assessment.id]: r.reports }),
-          {}
-        );
-        const newRadarDataByUPPS = validResults.reduce(
-          (acc, r) => ({ ...acc, [r.assessment.id]: r.radarData }),
-          {}
-        );
-        const newBranchOptions = validResults.map((r) => ({
-          id: r.assessment.id,
-          name: r.assessment.name,
-        }));
-
-        setAssessments(newAssessments);
-        setReportsByUPPS(newReportsByUPPS);
-        setRadarDataByUPPS(newRadarDataByUPPS);
-        setAllBranches(newBranchOptions);
-
-        const allIds = newBranchOptions.map(b => b.id);
-        setFilterIds(allIds);
-      } catch (err) {
-        console.error("Init failed:", err);
-      }
-    }
-
-    init();
-  }, [selectedPeriodId, allBranchIds]); // ✅ Tambahkan allBranchIds sebagai dependency
-
-  const handleApplyFilter = async ({ periode, ids }: FilterPayload) => {
+  const handleApplyFilter = ({ periode, ids }: FilterPayload) => {
     setFilterPeriode(periode);
     setFilterIds(ids);
-
     const periodId = getPeriodIdByLabel(periode);
-    if (!periodId) {
-      console.warn(`Tidak ditemukan periodId untuk periode: ${periode}`);
-      return;
-    }
-
-    setSelectedPeriodId(periodId);
-
-    for (const id of ids) {
-      if (!assessments.some(a => a.id === id)) {
-        const branchId = parseInt(id, 10);
-        // ✅ Pastikan branchId valid
-        const allBranchIds = useMemo(() => BRANCHES.map(b => b.id), []) as number[];
-
-        const data = await fetchAssessmentData(branchId, periodId);
-        if (data) {
-          setAssessments(prev => [...prev, data.assessment]);
-          setReportsByUPPS(prev => ({ ...prev, [id]: data.reports }));
-          setRadarDataByUPPS(prev => ({ ...prev, [id]: data.radarData }));
-
-          // Jika radarLabels belum di-set, ambil dari data ini
-          if (radarLabels.length === 0) {
-            setRadarLabels(data.radarLabels);
-          }
-
-          if (!allBranches.some(b => b.id === id)) {
-            setAllBranches(prev => [...prev, { id, name: data.assessment.name }]);
-          }
-        }
-      }
-    }
+    if (periodId) setSelectedPeriodId(periodId);
   };
 
-  // ✅ Gunakan BRANCHES untuk opsi awal
-  const campusOptions = useMemo<Option[]>(() => {
-    // Jika allBranches belum diisi, gunakan dari constants
-    if (allBranches.length > 0) return allBranches;
-    return BRANCHES.map(b => ({ id: String(b.id), name: b.name }));
-  }, [allBranches]);
+  const campusOptions = useMemo(
+    () => (allBranches.length > 0 ? allBranches : BRANCHES.map((b) => ({ id: String(b.id), name: b.name }))),
+    [allBranches]
+  );
 
-  const periodeOptions = useMemo<string[]>(() => [...new Set(activePeriods)], [activePeriods]);
+  const periodeOptions = useMemo(() => [...new Set(activePeriods)], [activePeriods]);
 
-  const columns = useMemo<Assessment[]>(() => {
-    if (filterIds.length === 0) return [];
-    return assessments.filter(
-      (a) =>
-        filterIds.includes(a.id) &&
-        (!filterPeriode || a.submitPeriode === filterPeriode)
-    );
-  }, [filterIds, filterPeriode, assessments]);
+  const columns = useMemo(
+    () =>
+      assessments.filter(
+        (a) => filterIds.includes(a.id) && (!filterPeriode || a.submitPeriode === filterPeriode)
+      ),
+    [filterIds, filterPeriode, assessments]
+  );
 
   const filterLabel = useMemo(() => {
     const count = filterIds.length;
     const isAll = count === assessments.length;
-    const periodePart = filterPeriode ? ` • ${getPeriodeLabel(filterPeriode)}` : "";
-
-    if (!count && !filterPeriode) return "Pilih UPPS/KC";
+    const periodePart = filterPeriode ? ` • ${getPeriodeLabel(filterPeriode)}` : '';
+    if (!count && !filterPeriode) return 'Pilih UPPS/KC';
     if (isAll) return `Semua UPPS${periodePart}`;
     return `${count} UPPS${periodePart}`;
   }, [filterIds, filterPeriode, assessments]);
+
+  const handleDownloadAll = async () => {
+    const element = document.getElementById('download-content');
+    if (!element) {
+      console.warn('Elemen #download-content tidak ditemukan');
+      return;
+    }
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      const blob = await domtoimage.toBlob(element, {
+        bgcolor: '#ffffff',
+        quality: 1,
+        style: {
+          backgroundColor: 'white',
+          color: 'black',
+          fontSize: '14px',
+        },
+      });
+
+      if (!blob) {
+        console.error('Gagal membuat blob');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `Laporan_Assessment_Semua_UPPS_${filterPeriode || 'semua_periode'}.png`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Gagal generate laporan gabungan:', err);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -465,9 +404,11 @@ export default function AssessmentResultPage() {
             <div className="relative inline-block">
               <button
                 onClick={() => setFilterOpen((v) => !v)}
-                className="min-w-[16rem] flex justify-between items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm"
+                className="min-w-[16rem] flex justify-between items-center px-4 py-2 border rounded-md bg-white text-sm"
               >
-                <span className={clsx(!filterIds.length && !filterPeriode && 'text-gray-400')}>
+                <span
+                  className={clsx(!filterIds.length && !filterPeriode && 'text-gray-400')}
+                >
                   {filterLabel}
                 </span>
                 <FiChevronDown className="text-gray-500" />
@@ -489,98 +430,83 @@ export default function AssessmentResultPage() {
             </div>
 
             {columns.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                Belum ada UPPS/KC yang dipilih. Silakan pilih pada filter di atas.
-              </p>
+              <p className="text-sm text-gray-500 italic">Belum ada UPPS/KC yang dipilih.</p>
             ) : (
               <>
-                <div className="overflow-x-auto border rounded mt-6">
-                  <table className="w-full table-fixed text-sm">
-                    <thead>
-                      <tr>
-                        <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A]/90 text-white">
-                          Nama UPPS/KC
-                        </th>
-                        {columns.map((c, i) => {
-                          const pal = getPalette(i);
-                          return (
-                            <th
-                              key={c.id}
-                              className={clsx(
-                                'px-4 py-3 text-left font-semibold border-l-2 min-w-[220px]',
-                                pal.header,
-                                pal.border
-                              )}
-                            >
-                              {c.name}
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700">
-                      {[
-                        {
-                          label: 'Periode Submit Assessment',
-                          render: (c: Assessment) => getPeriodeLabel(c.submitPeriode),
-                        },
-                        { label: 'Email', render: (c: Assessment) => c.email },
-                        { label: 'Student Body', render: (c: Assessment) => c.studentBody },
-                        { label: 'Jumlah Prodi', render: (c: Assessment) => c.jumlahProdi },
-                        {
-                          label: 'Jumlah Prodi Terakreditasi Unggul',
-                          render: (c: Assessment) => c.jumlahProdiUnggul,
-                        },
-                        { label: 'Maturity Level', render: (c: Assessment) => c.maturityLevel },
-                      ].map((row, idx) => (
-                        <tr key={row.label} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <th className="px-4 py-2 bg-[#12263A]/90 text-white text-left">
-                            {row.label}
+                <div id="download-content" className="space-y-6">
+                  <div className="overflow-x-auto border rounded">
+                    <table className="w-full table-fixed text-sm">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A] bg-opacity-90 text-white">
+                            Nama UPPS/KC
                           </th>
                           {columns.map((c, i) => {
                             const pal = getPalette(i);
                             return (
-                              <td
+                              <th
                                 key={c.id}
                                 className={clsx(
-                                  'px-4 py-2 border-l-2 min-w-[220px]',
+                                  'px-4 py-3 text-left font-semibold border-l-2 min-w-[220px]',
+                                  pal.header,
                                   pal.border
                                 )}
                               >
-                                {row.render(c)}
-                              </td>
+                                {c.name}
+                              </th>
                             );
                           })}
                         </tr>
-                      ))}
+                      </thead>
+                      <tbody>
+                        {[
+                          { label: 'Periode Submit Assessment', render: (c: Assessment) => getPeriodeLabel(c.submitPeriode) },
+                          { label: 'Email', render: (c: Assessment) => c.email },
+                          { label: 'Student Body', render: (c: Assessment) => c.studentBody },
+                          { label: 'Jumlah Prodi', render: (c: Assessment) => c.jumlahProdi },
+                          { label: 'Jumlah Prodi Terakreditasi Unggul', render: (c: Assessment) => c.jumlahProdiUnggul },
+                          { label: 'Maturity Level', render: (c: Assessment) => c.maturityLevel },
+                        ].map((row, idx) => (
+                          <tr key={row.label} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <th className="px-4 py-2 bg-[#12263A] bg-opacity-90 text-white text-left">
+                              {row.label}
+                            </th>
+                            {columns.map((c, i) => {
+                              const pal = getPalette(i);
+                              return (
+                                <td
+                                  key={c.id}
+                                  className={clsx('px-4 py-2 border-l-2 min-w-[220px]', pal.border)}
+                                >
+                                  {row.render(c)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
 
-                      <tr className="border-t">
-                        <th className="px-4 py-2 bg-[#12263A]/90 text-white align-top text-left">
-                          Transformation Maturity Index
-                        </th>
-                        <td
-                          className="px-4 py-4 border-l-2 border-gray-200"
-                          colSpan={columns.length}
-                        >
-                          <div className="w-full h-[420px]">
-                            <RadarChart
-                              selectedIds={columns.map((c) => c.id)}
-                              radarDataByUPPS={radarDataByUPPS}
-                              assessments={assessments}
-                              radarLabels={radarLabels} // ✅ Dinamis dari API
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        <tr className="border-t">
+                          <th className="px-4 py-2 bg-[#12263A] bg-opacity-90 text-white align-top text-left">
+                            Transformation Maturity Index
+                          </th>
+                          <td className="px-4 py-4 border-l-2 border-gray-200" colSpan={columns.length}>
+                            <div className="w-full h-[420px]">
+                              <RadarChart
+                                selectedIds={columns.map((c) => c.id)}
+                                radarDataByUPPS={radarDataByUPPS}
+                                assessments={assessments}
+                                radarLabels={radarLabels}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* --- TABEL LAPORAN VARIABEL PER UPPS --- */}
-                {columns.length > 0 && (
-                  <div className="overflow-x-auto border rounded mt-6">
+                  <div className="overflow-x-auto border rounded">
                     <table className="w-full table-fixed text-sm">
-                      <thead className="bg-[#12263A]/90 text-white">
+                      <thead className="bg-[#12263A] bg-opacity-90 text-white">
                         <tr>
                           <th className="p-3 w-64 text-left">Report</th>
                           {columns.map((c, i) => {
@@ -598,61 +524,39 @@ export default function AssessmentResultPage() {
                       </thead>
                       <tbody>
                         {(() => {
-                          const allVariableData = columns.map(c => {
-                            const reports = reportsByUPPS[c.id] || [];
-                            return reports.map(r => ({
-                              name: r.name,
-                              code: r.code,
-                              point: r.point,
-                              desc: r.desc,
-                            }));
-                          });
-
-                          const maxVars = Math.max(...allVariableData.map(d => d.length));
+                          const reportsList = columns.map((c) => reportsByUPPS[c.id] || []);
+                          const max = Math.max(...reportsList.map((r) => r.length));
 
                           return (
                             <>
-                              {[...Array(maxVars)].map((_, varIdx) => {
-                                const variableData = columns.map((c, i) => {
-                                  const reports = allVariableData[i];
-                                  const report = reports[varIdx];
-                                  return {
-                                    name: report?.name ?? '',
-                                    code: report?.code ?? '',
-                                    point: report?.point ?? 0,
-                                    desc: report?.desc ?? '-',
-                                  };
-                                });
-
+                              {[...Array(max)].map((_, i) => {
+                                const row = columns.map((c, idx) => reportsList[idx][i] || null);
                                 return (
-                                  <React.Fragment key={`var-${varIdx}`}>
-                                    <tr className={varIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <React.Fragment key={`row-${i}`}>
+                                    <tr className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                       <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>
-                                      {columns.map((c, i) => {
-                                        const pal = getPalette(i);
-                                        const data = variableData[i];
+                                      {row.map((r, j) => {
+                                        const pal = getPalette(j);
                                         return (
                                           <td
-                                            key={`${c.id}-name-${varIdx}`}
+                                            key={`name-${j}`}
                                             className={`p-3 text-center border-l-2 ${pal.border}`}
                                           >
-                                            {data.code ? `${data.code} (${data.name})` : data.name}
+                                            {r ? `${r.code} (${r.name})` : '-'}
                                           </td>
                                         );
                                       })}
                                     </tr>
-
-                                    <tr className={varIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                    <tr className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                       <td className="p-3 font-semibold bg-gray-100 text-left">Point</td>
-                                      {columns.map((c, i) => {
-                                        const pal = getPalette(i);
-                                        const data = variableData[i];
+                                      {row.map((r, j) => {
+                                        const pal = getPalette(j);
                                         return (
                                           <td
-                                            key={`${c.id}-point-${varIdx}`}
+                                            key={`point-${j}`}
                                             className={`p-3 text-center border-l-2 ${pal.border}`}
                                           >
-                                            {data.point.toFixed(2)}
+                                            {r ? r.point.toFixed(2) : '-'}
                                           </td>
                                         );
                                       })}
@@ -665,13 +569,12 @@ export default function AssessmentResultPage() {
                                 <td className="p-3 font-semibold bg-gray-100 text-left">Maturity Level</td>
                                 {columns.map((c, i) => {
                                   const pal = getPalette(i);
-                                  const assessment = assessments.find(a => a.id === c.id);
                                   return (
                                     <td
-                                      key={`${c.id}-ml`}
+                                      key={`ml-${i}`}
                                       className={`p-3 text-center border-l-2 ${pal.border}`}
                                     >
-                                      {assessment?.maturityLevel || 'Unknown'}
+                                      {assessments.find((a) => a.id === c.id)?.maturityLevel || 'Unknown'}
                                     </td>
                                   );
                                 })}
@@ -681,74 +584,13 @@ export default function AssessmentResultPage() {
                                 <td className="p-3 font-semibold bg-gray-100 text-left">Deskripsi per Variabel</td>
                                 {columns.map((c, i) => {
                                   const pal = getPalette(i);
-                                  const reports = reportsByUPPS[c.id] || [];
-                                  const desc = reports[0]?.desc || '-';
+                                  const desc = reportsByUPPS[c.id]?.[0]?.desc || '-';
                                   return (
                                     <td
-                                      key={`${c.id}-desc`}
+                                      key={`desc-${i}`}
                                       className={`p-3 text-center border-l-2 ${pal.border}`}
                                     >
                                       {desc}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-
-                              <tr className="bg-gray-50">
-                                <td className="p-3 font-semibold bg-gray-100 text-left">Action</td>
-                                {columns.map((c, i) => {
-                                  const pal = getPalette(i);
-                                  return (
-                                    <td
-                                      key={`${c.id}-action`}
-                                      className={`p-3 text-center border-l-2 ${pal.border}`}
-                                    >
-                                      <Button
-                                        variant="primary"
-                                        onClick={() => {
-                                          import('xlsx').then(XLSX => {
-                                            import('file-saver').then(FileSaver => {
-                                              const assessment = assessments.find(a => a.id === c.id);
-                                              if (!assessment) return;
-
-                                              const metadata = [
-                                                ['Nama UPPS/KC', assessment.name],
-                                                ['Periode Submit Assessment', getPeriodeLabel(assessment.submitPeriode)],
-                                                ['Email', assessment.email],
-                                                ['Student Body', assessment.studentBody],
-                                                ['Jumlah Prodi', assessment.jumlahProdi],
-                                                ['Jumlah Prodi Terakreditasi Unggul', assessment.jumlahProdiUnggul],
-                                                ['Maturity Level (Institusi)', assessment.maturityLevel],
-                                                ['Transformation Maturity Index (TMI)', radarDataByUPPS[c.id]?.length
-                                                  ? (radarDataByUPPS[c.id].reduce((a, b) => a + b, 0) / radarDataByUPPS[c.id].length).toFixed(2)
-                                                  : 'N/A'
-                                                ],
-                                              ];
-
-                                              const metadataSheet = XLSX.utils.aoa_to_sheet(metadata);
-                                              const detailData = reportsByUPPS[c.id]?.map(item => ({
-                                                'Kode Variabel': item.code,
-                                                'Nama Variabel': item.name,
-                                                'Point': item.point,
-                                                'Maturity Level': item.maturityLevel,
-                                                'Deskripsi': item.desc,
-                                              })) || [];
-
-                                              const detailSheet = XLSX.utils.json_to_sheet(detailData);
-
-                                              const workbook = XLSX.utils.book_new();
-                                              XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Metadata');
-                                              XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail Variabel');
-
-                                              const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-                                              const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                                              FileSaver.saveAs(blob, `${c.name.replace(/\s+/g, '_')}-report.xlsx`);
-                                            });
-                                          });
-                                        }}
-                                      >
-                                        Download
-                                      </Button>
                                     </td>
                                   );
                                 })}
@@ -759,7 +601,14 @@ export default function AssessmentResultPage() {
                       </tbody>
                     </table>
                   </div>
-                )}
+                </div>
+
+                <div className="mt-6 flex justify-center">
+                  <Button variant="primary" onClick={handleDownloadAll}>
+                    Download
+                  </Button>
+                </div>
+
               </>
             )}
           </div>
@@ -767,4 +616,4 @@ export default function AssessmentResultPage() {
       </main>
     </div>
   );
-}  
+}
