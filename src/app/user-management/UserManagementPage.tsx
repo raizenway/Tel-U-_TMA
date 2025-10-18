@@ -49,6 +49,53 @@ const branchNames = useMemo(() => {
   4: 'Non-SSO',
 };
 
+// Enrich users with human-readable role and branch names for search
+const enrichedUsers = useMemo(() => {
+  return users.map(user => {
+    if (!user) return null;
+
+    // Ambil nama role: dari API > roleNames > fallback
+    const roleName = 
+      user.role?.name || 
+      (user.roleId != null ? roleNames[user.roleId] : '') || 
+      (user.roleId != null ? `Role ${user.roleId}` : '');
+
+    // Ambil nama cabang: dari API (branchNames) > static (BRANCH_NAMES) > fallback
+    const branchName = 
+      branchNames[user.branchId] || 
+      BRANCH_NAMES[user.branchId] || 
+      (user.branchId != null ? `Cabang ${user.branchId}` : '');
+
+      const statusName = user.status === 'active' ? 'Aktif' : 'Nonaktif';
+
+    return {
+      ...user,
+      _searchableRole: roleName.toLowerCase(),
+      _searchableBranch: branchName.toLowerCase(),
+      _searchableStatus: statusName.toLowerCase(),
+    };
+  }).filter((user): user is NonNullable<typeof user> => user !== null);
+}, [users, branchNames, roleNames]);
+
+// Filter berdasarkan: username, fullname, email, nama role, nama cabang
+const filteredUsers = useMemo(() => {
+  if (!searchTerm) return enrichedUsers;
+  const search = searchTerm.toLowerCase().trim();
+  if (!search) return enrichedUsers;
+
+  return enrichedUsers.filter(user => {
+    return (
+      (user.id != null && user.id.toString().includes(search)) || 
+      (user.username != null && user.username.toLowerCase().includes(search)) ||
+      (user.fullname != null && user.fullname.toLowerCase().includes(search)) ||
+      (user.email != null && user.email.toLowerCase().includes(search)) ||
+      user._searchableStatus.includes(search) ||
+      user._searchableRole.includes(search) ||
+      user._searchableBranch.includes(search)
+    );
+  });
+}, [enrichedUsers, searchTerm]);
+
 const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!");
 
   // Kolom Tabel
@@ -73,19 +120,6 @@ const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!
 const { mutate: activateUser } = useActivateUser();
 const { mutate: deactivateUser } = useDeactivateUser();
 
-
-  // 1. Filter data berdasarkan pencarian
-const filteredUsers = useMemo(() => {
-  if (!searchTerm) return users;
-  const search = searchTerm.toLowerCase();
-  return users.filter((user) =>
-    user.id.toString().includes(search) ||
-    user.username.toLowerCase().includes(search) ||
-    user.fullname.toLowerCase().includes(search) ||
-    user.roleId.toString().includes(search) ||
-    user.status.toLowerCase().includes(search)
-  );
-}, [users, searchTerm]);
 
  // Sorting
   const { sortedData, requestSort, sortConfig } = useSort<User>(filteredUsers, "id");
@@ -194,23 +228,31 @@ const handleConfirm = async () => {
 };
 
 // Siapkan data yang sudah dimodifikasi untuk tabel
-const processedUsers = currentUsers.map(user => ({
-  ...user,
-  // Ambil nama role langsung dari objek role yang dikirim API
-  roleId: user.role?.name || 'Role tidak ditemukan',
+const processedUsers = currentUsers.map(user => {
+  const roleName = 
+    user.role?.name || 
+    (user.roleId != null ? roleNames[user.roleId] : '') || 
+    'Role tidak ditemukan';
 
-  // Untuk branch, tetap gunakan BRANCH_NAMES jika belum ada mapping dari API
-  branchId: BRANCH_NAMES[user.branchId] || `Cabang ${user.branchId}`,
+  const branchName = 
+    branchNames[user.branchId] || 
+    BRANCH_NAMES[user.branchId] || 
+    `Cabang ${user.branchId}`;
 
-  password: '••••••',
-}));
+  return {
+    ...user,
+    roleId: roleName,
+    branchId: branchName,
+    password: '••••••',
+  };
+});
 
 const dataForExport = processedUsers.map((user) => ({
   'User ID': user.id,
   'User Name': user.username,
   'Nama User': user.fullname,
-  Role: user.roleId, 
-  'Kampus Cabang': branchNames[user.branchId] || user.branchId,
+  Role: user.roleId, // sudah berupa string dari processedUsers
+  'Kampus Cabang': user.branchId, // sudah berupa string dari processedUsers
   Status: user.status,
 }));
 
@@ -244,7 +286,7 @@ console.log("Data users:", users);
             />
 
             <div className="flex gap-2 relative" ref={dropdownRef}>
-              <TableButton data={dataForExport}/>
+              <TableButton data={dataForExport} showCopy={false} />
               <div className="relative">
 
                 <Button 

@@ -9,9 +9,10 @@ import * as XLSX from 'xlsx';
 interface TableButtonProps {
   data: Record<string, any>[];
   columns?: string[]; // Opsional: tentukan kolom yang ingin diekspor
+  showCopy?: boolean;
 }
 
-const TableButton: React.FC<TableButtonProps> = ({ data, columns }) => {
+const TableButton: React.FC<TableButtonProps> = ({ data, columns, showCopy = true }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Jika tidak ada data
   if (!data || data.length === 0) {
@@ -106,11 +107,13 @@ const TableButton: React.FC<TableButtonProps> = ({ data, columns }) => {
   };
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      {/* Copy */}
+  <div className="flex gap-2 flex-wrap">
+    {/* Copy — hanya tampilkan jika showCopy !== false */}
+    {showCopy !== false && (
       <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy}>
         Copy
       </Button>
+    )}
 
       {/* Print */}
       <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint}>
