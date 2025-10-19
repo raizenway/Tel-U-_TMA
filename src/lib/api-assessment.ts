@@ -59,7 +59,12 @@ export async function createAssessment(body: CreateAssessment): Promise<ApiRespo
 export async function createAssessmentDetail(
   body: CreateAssessmentDetail
 ): Promise<ApiResponse<Assessment>> {
-  const res = await fetch("http://localhost:3000/api/assessment/detail", {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL belum diatur di .env.local");
+  }
+
+  const res = await fetch(`${apiUrl}/assessment/detail`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

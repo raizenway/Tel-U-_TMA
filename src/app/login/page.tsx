@@ -130,7 +130,7 @@
             {/* Lupa Password */}
             <div className="flex items-center justify-center mt-4 text-sm text-red-500 gap-2">
               <UsersRound />
-              <a href="#" className="hover:underline">
+              <a href="https://satu.telkomuniversity.ac.id/" className="hover:underline">
                 Forgot Password SSO
               </a>
             </div>
@@ -138,7 +138,7 @@
             {/* Kontak Admin */}
             <div className="flex items-center justify-center mt-2 text-sm text-green-600 gap-2">
               <a
-                href="https://wa.me/6281234567890"
+                href="https://wa.me/+6282214782412"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 hover:underline"
