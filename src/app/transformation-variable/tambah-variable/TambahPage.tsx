@@ -25,6 +25,7 @@ export default function VariabelFormPage() {
   const [levelDescription4, setLevelDescription4] = useState('');
   const [referensi, setReferensi] = useState('');
   const [status, setStatus] = useState('');
+  const [urutan, setUrutan] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
@@ -52,9 +53,10 @@ export default function VariabelFormPage() {
         levelDescription3.trim() &&
         levelDescription4.trim() &&
         referensi.trim() &&
+        urutan.trim() &&
         status)
     );
-  }, [namaVariabel, bobot,  deskripsi, levelDescription1, levelDescription2, levelDescription3, levelDescription4, referensi, status]);
+  }, [namaVariabel, bobot,  deskripsi, levelDescription1, levelDescription2, levelDescription3, levelDescription4, referensi, urutan, status]);
 
   // Prefill jika mode edit
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function VariabelFormPage() {
       setLevelDescription3(parsed.levelDescription3 || parsed.levelDescription3 || ''); 
       setLevelDescription4(parsed.levelDescription4 || parsed.levelDescription4 || ''); 
       setReferensi(parsed.reference || parsed.referensi || '');
+      setUrutan(parsed.sortOrder || parsed.urutan || '');
 
       const parsedStatus = typeof parsed.status === 'string' ? parsed.status.toLowerCase() : '';
 
@@ -127,7 +130,7 @@ export default function VariabelFormPage() {
   formData.append('levelDescription3', levelDescription3.trim());
   formData.append('levelDescription4', levelDescription4.trim());
   formData.append('reference', referensi.trim());
-  formData.append('sortOrder', '1');
+  formData.append('sortOrder', urutan.trim());
   formData.append('status', status.toLowerCase());
 
   // 🔥 Kirim file dengan field "icon" — SESUAI POSTMAN!
@@ -245,7 +248,19 @@ export default function VariabelFormPage() {
               </div>
             </div>
 
-            {/* Upload Logo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Urutan
+                </label>
+                <input
+                  type="number"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                  value={urutan}
+                  onChange={(e) => setUrutan(e.target.value)}
+                  placeholder="Masukkan Urutan"
+                />
+              </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Logo Variable

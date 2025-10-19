@@ -135,7 +135,7 @@ export default function DashboardTab() {
   >([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ HANYA SATU KAMPUS — DEFAULT BANDUNG
+  // ✅ Default: Tel-U Bandung
   const [selectedCampus, setSelectedCampus] = useState<CampusKey>("Tel-U Bandung");
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
@@ -163,7 +163,12 @@ export default function DashboardTab() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/assessment/dashboard');
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!baseUrl) {
+          throw new Error('NEXT_PUBLIC_API_URL is not defined in environment variables');
+        }
+
+        const response = await fetch(`${baseUrl}/assessment/dashboard`);
         if (!response.ok) throw new Error('Failed to fetch dashboard data');
 
         const result = await response.json();
@@ -178,42 +183,39 @@ export default function DashboardTab() {
         });
 
         const yearStrings = ['2021', '2022', '2023', '2024', '2025'];
-       // Definisikan tipe helper
-type StudentBodyRow = {
-  year: string;
-  "Tel-U Jakarta": number;
-  "Tel-U Surabaya": number;
-  "Tel-U Purwokerto": number;
-  "Tel-U Bandung": number;
-};
 
-const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
-  const yearNum = Number(yearStr);
-  
-                // Inisialisasi dengan nilai default 0
-                const row: StudentBodyRow = {
-                  year: yearStr,
-                  "Tel-U Jakarta": 0,
-                  "Tel-U Surabaya": 0,
-                  "Tel-U Purwokerto": 0,
-                  "Tel-U Bandung": 0,
-                };
+        type StudentBodyRow = {
+          year: string;
+          "Tel-U Jakarta": number;
+          "Tel-U Surabaya": number;
+          "Tel-U Purwokerto": number;
+          "Tel-U Bandung": number;
+        };
 
-                // Isi data dari API jika tersedia
-                for (const branch of apiData.branches) {
-                  const campusName = branch.name;
-                  if (campusName in row) {
-                    const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
-                    if (dataForYear && typeof dataForYear.total === 'number') {
-                      row[campusName] = dataForYear.total;
-                    }
-                  }
-                }
+        const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
+          const yearNum = Number(yearStr);
+          const row: StudentBodyRow = {
+            year: yearStr,
+            "Tel-U Jakarta": 0,
+            "Tel-U Surabaya": 0,
+            "Tel-U Purwokerto": 0,
+            "Tel-U Bandung": 0,
+          };
 
-                return row;
-              });
+          for (const branch of apiData.branches) {
+            const campusName = branch.name;
+            if (campusName in row) {
+              const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
+              if (dataForYear && typeof dataForYear.total === 'number') {
+                row[campusName] = dataForYear.total;
+              }
+            }
+          }
 
-              setStudentBodyData(studentBodyFormatted); 
+          return row;
+        });
+
+        setStudentBodyData(studentBodyFormatted);
 
         const accreditationFormatted = yearStrings.map(yearStr => {
           const yearNum = Number(yearStr);
@@ -261,7 +263,6 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
           { subject: "Akademik", A: 60 },
         ]);
 
-        // Ekstrak variabel & growth data
         const allVariablesSet = new Set<string>();
         const growthData: { branch: CampusKey; variable: string; period: string; score: number }[] = [];
 
@@ -301,7 +302,13 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
     fetchData();
   }, []);
 
-  // Student chart data
+  // === HELPER FUNCTIONS ===
+  const formatPeriodName = (period: string) => {
+    // Hapus titik dua di awal jika ada, contoh: ": Ganjil 2024" → "Ganjil 2024"
+    return period.replace(/^:\s*/, '');
+  };
+
+  // === CHART DATA ===
   const studentYears = Array.from(new Set(studentBodyData.map(d => d.year))).sort((a, b) => Number(a) - Number(b));
   const studentDataByCampus = CAMPUS_LIST.map((campus) => {
     const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
@@ -312,7 +319,7 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
     return data;
   });
 
-  // Modal handlers
+  // === MODAL HANDLERS ===
   const handleAddYear = () => {
     const lastYearStr = studentYears[studentYears.length - 1] ?? '2025';
     const nextYear = String(Number(lastYearStr) + 1);
@@ -575,7 +582,6 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
                 onChange={(e) => setSelectedCampus(e.target.value as CampusKey)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               >
-                {/* ✅ HANYA 4 KAMPUS — TANPA "SEMUA KAMPUS" */}
                 {CAMPUS_LIST.map((campus) => (
                   <option key={campus} value={campus}>
                     {campus.replace("Tel-U ", "")}
@@ -626,7 +632,6 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
           </div>
         </div>
 
-        {/* ✅ GRAFIK TANPA RATA-RATA — HANYA NILAI ASLI PER KAMPUS */}
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
             data={(() => {
@@ -654,13 +659,25 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
             <CartesianGrid stroke="#f0f0f0" strokeDasharray="4 4" />
             <XAxis dataKey="variabel" tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} label={{ value: 'Skor', angle: -90, position: 'insideLeft', offset: -10, fill: '#6b7280', fontSize: 12 }} />
+
             <Tooltip
   cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
   contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-  formatter={(value: number) => [value.toFixed(0), 'Skor']}
   labelStyle={{ color: '#fff' }}
 />
-            <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }} />
+
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }}
+              payload={Array.from(new Set(variableGrowthData.map(d => d.period))).sort().map(period => ({
+                value: formatPeriodName(period),
+                type: 'circle',
+                id: period,
+                color: getPeriodColor(period),
+              }))}
+            />
+
             {Array.from(new Set(variableGrowthData.map(d => d.period))).sort().map(period => (
               <Bar
                 key={period}
