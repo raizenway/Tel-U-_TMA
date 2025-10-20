@@ -57,16 +57,23 @@ export default function PeriodePage() {
   ];
 
   // Filter
-  const filteredPeriodes = useMemo(() => {
-    if (!searchTerm) return periodes;
-    const term = searchTerm.toLowerCase();
-    return periodes.filter(p =>
-      p.id.toString().includes(term) ||
-      p.tahun.toString().includes(term) ||
-      p.semester.toString().includes(term) ||
-      p.status.includes(term)
-    );
-  }, [periodes, searchTerm]);
+const filteredPeriodes = useMemo(() => {
+  if (!searchTerm) return periodes;
+
+  const term = searchTerm.toLowerCase();
+
+  return periodes.filter(p => {
+    const idMatch = p.id.toString().includes(term);
+    const tahunMatch = p.tahun.toString().includes(term);
+    const semesterMatch = p.semester?.toString().toLowerCase().includes(term) ?? false;
+    
+    // Gunakan formatStatus() agar cocok dengan tampilan pengguna ("Aktif", bukan "active")
+    const statusDisplay = formatStatus(p.status).toLowerCase();
+    const statusMatch = statusDisplay.includes(term);
+
+    return idMatch || tahunMatch || semesterMatch || statusMatch;
+  });
+}, [periodes, searchTerm]);
 
   // Sort
   const { sortedData, requestSort, sortConfig } = useSort<Periode>(filteredPeriodes, "id");
@@ -275,7 +282,7 @@ const handleEditSubmit = async (id: number, formData: {
               placeholder="Cari periode..."
             />
             <div className="flex gap-2">
-              <TableButton data={dataForExport} />
+              <TableButton data={dataForExport} showCopy={false} />
               <Button onClick={handleTambah} className="px-6">
                 Tambah Periode
               </Button>

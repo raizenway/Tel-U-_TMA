@@ -17,6 +17,7 @@ export default function AddUserPage() {
   const [logoPreview, setLogoPreview] = useState<string>(''); // base64 image
   const pathname = usePathname();
   const [, setTab] = useState("welcome");
+  const [logoFile, setLogoFile] = useState<File | null>(null); 
 
   const [form, setForm] = useState({
     username: '',
@@ -90,7 +91,7 @@ const isValidEmail = (email: string) => {
   form.nomorHp.length <= 13 &&
   form.status.trim() !== '' &&
   form.branchId !== ''; 
-  (role !== 'UPPS/KC' || (document.querySelector('#logo') as HTMLInputElement)?.files?.[0]);
+  
 
 const handleSave = async () => {
   if (!isFormValid) return;
@@ -125,25 +126,19 @@ const handleSave = async () => {
     return;
   }
 
-  // ✅ VALIDASI: Jika UPPS/KC, wajib upload logo
-  if (role === 'UPPS/KC' && !(document.querySelector('#logo') as HTMLInputElement)?.files?.[0]) {
-    alert('Logo UPPS/KC wajib diupload.');
-    return;
-  }
 
   // Siapkan data yang akan dikirim ke API
 const body: CreateUserRequest = {
   username: form.username,
   password: form.password,
   fullname: form.namaUser,
-  roleId: role === 'UPPS/KC' ? 2 : 4, // ✅ Ubah string → number
+  roleId: role === 'UPPS/KC' ? 2 : 4,
   email: form.email,
   phoneNumber: form.nomorHp,
-  branchId: Number(form.branchId), // ✅ Konversi string → number
+  branchId: Number(form.branchId),
   status: form.status,
-  picName: picName,            // 👈 Tambahkan ini
-  ...(logoPreview && { logo: (document.querySelector('#logo') as HTMLInputElement)?.files?.[0] as File }),
-  //logo_file_id: logoFileId, // 👈 Tambahkan ini
+  picName: picName,
+  ...(logoFile && { logo: logoFile }),
 };
  try {
     await createUser(body);
@@ -156,13 +151,17 @@ const body: CreateUserRequest = {
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
-  if (!file) return;
+  if (!file) {
+    // Reset jika file dihapus
+    setLogoFileName('Cari Lampiran...');
+    setLogoPreview('');
+    setLogoFile(null);
+    return;
+  }
 
   setLogoFileName(file.name);
-
-  // ✅ Simpan file di state, jangan upload sekarang
-  // Kita akan kirim bersamaan dengan data user nanti
-  setLogoPreview(URL.createObjectURL(file)); // preview base64
+  setLogoPreview(URL.createObjectURL(file));
+  setLogoFile(file); // 👈 simpan file ke state
 };
 
   useEffect(() => {
