@@ -67,6 +67,7 @@ export interface Assessment {
   countScore3:  number;
   countScore4:  number;
   tmiScore: number;
+ branch: Branch;
 }
 
 // Payload untuk create (tetap seperti punyamu)

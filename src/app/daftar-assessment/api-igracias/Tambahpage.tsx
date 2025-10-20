@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/button';
 import { X, Save } from 'lucide-react';
-import {useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
+import { useCreateQuestion, useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
 
 type StatusInput = 'Aktif' | 'Non-Aktif';
@@ -29,7 +29,7 @@ export default function ApiIgraciasPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null); // ✅ state error lokal
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Mode edit
   const [isEditMode, setIsEditMode] = useState(false);
@@ -45,43 +45,42 @@ export default function ApiIgraciasPage() {
   const transformationVariables = Array.isArray(rawData) ? rawData : [];
 
   useEffect(() => {
-  const editData = localStorage.getItem('editData');
-  if (!editData) {
-    setIsEditMode(false);
-    setEditNomor(null);
-    return;
-  }
-
-  try {
-    const data = JSON.parse(editData);
-
-    setLinkApi(data.linkApi || data.questionApiUrl || '');
-    setIndikator(data.indikator || data.indicator || '');
-    setPertanyaan(data.pertanyaan || data.questionText || '');
-    setStatus(data.status === 'active' ? 'Aktif' : 'Non-Aktif');
-    setUrutan(String(data.order || data.urutan || ''));
-    setSelectedVariableId(data.transformationVariableId || data.transformationVariable?.id || null);
-
-    // ✅ Baca dari field yang benar: scoreDescription0, bukan deskripsiSkor0
-    const loadedDeskripsi = {
-      0: data.scoreDescription0 ?? 'Tidak ada dokumentasi.',
-      1: data.scoreDescription1 ?? 'Ada dokumentasi dasar.',
-      2: data.scoreDescription2 ?? 'Dokumentasi sebagian lengkap.',
-      3: data.scoreDescription3 ?? 'Dokumentasi hampir lengkap.',
-      4: data.scoreDescription4 ?? 'Dokumentasi lengkap dan terupdate.',
-    };
-
-    setDeskripsiSkor(loadedDeskripsi);
-
-    if (data.id !== undefined || data.nomor !== undefined) {
-      setEditNomor(data.id ?? data.nomor);
-      setIsEditMode(true);
+    const editData = localStorage.getItem('editData');
+    if (!editData) {
+      setIsEditMode(false);
+      setEditNomor(null);
+      return;
     }
-  } catch (error) {
-    console.error('Gagal parsing editData:', error);
-    localStorage.removeItem('editData');
-  }
-}, []);
+
+    try {
+      const data = JSON.parse(editData);
+
+      setLinkApi(data.linkApi || data.questionApiUrl || '');
+      setIndikator(data.indikator || data.indicator || '');
+      setPertanyaan(data.pertanyaan || data.questionText || '');
+      setStatus(data.status === 'active' ? 'Aktif' : 'Non-Aktif');
+      setUrutan(String(data.order || data.urutan || ''));
+      setSelectedVariableId(data.transformationVariableId || data.transformationVariable?.id || null);
+
+      const loadedDeskripsi = {
+        0: data.scoreDescription0 ?? 'Tidak ada dokumentasi.',
+        1: data.scoreDescription1 ?? 'Ada dokumentasi dasar.',
+        2: data.scoreDescription2 ?? 'Dokumentasi sebagian lengkap.',
+        3: data.scoreDescription3 ?? 'Dokumentasi hampir lengkap.',
+        4: data.scoreDescription4 ?? 'Dokumentasi lengkap dan terupdate.',
+      };
+
+      setDeskripsiSkor(loadedDeskripsi);
+
+      if (data.id !== undefined || data.nomor !== undefined) {
+        setEditNomor(data.id ?? data.nomor);
+        setIsEditMode(true);
+      }
+    } catch (error) {
+      console.error('Gagal parsing editData:', error);
+      localStorage.removeItem('editData');
+    }
+  }, []);
 
   // Validasi
   const validate = () => {
@@ -96,10 +95,9 @@ export default function ApiIgraciasPage() {
       newErrors.urutan = 'Urutan harus angka dan > 0';
     }
 
-    Object.keys(deskripsiSkor).forEach((level) => {
-      const numLevel = Number(level);
-      if (!deskripsiSkor[numLevel]?.trim()) {
-        newErrors[`deskripsiSkor${numLevel}`] = 'Wajib diisi';
+    [0, 1, 2, 3, 4].forEach((level) => {
+      if (!deskripsiSkor[level]?.trim()) {
+        newErrors[`deskripsiSkor${level}`] = 'Wajib diisi';
       }
     });
 
@@ -121,18 +119,19 @@ export default function ApiIgraciasPage() {
   };
 
   const handleSimpan = async () => {
-    setSubmitError(null); // ✅ Reset error sebelum simpan
+    setSubmitError(null);
     if (!validate()) return;
 
-    const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+    const finalStatus: 'active' | 'inactive' = status === 'Aktif' ? 'active' : 'inactive';
     const finalUrutan = parseInt(urutan, 10) || 1;
 
+    // ✅ Payload lengkap sesuai CreateQuestionRequest
     const payload = {
       transformationVariable: { connect: { id: selectedVariableId } },
       type: 'api' as const,
       indicator: indikator.trim(),
       questionText: pertanyaan.trim(),
-      questionApiUrl: linkApi.trim(),
+      questionApiUrl: linkApi.trim(), // ✅ valid karena interface diperbarui
       answerText1: '',
       answerText2: '',
       answerText3: '',
@@ -143,8 +142,19 @@ export default function ApiIgraciasPage() {
       scoreDescription2: deskripsiSkor[2].trim(),
       scoreDescription3: deskripsiSkor[3].trim(),
       scoreDescription4: deskripsiSkor[4].trim(),
+      // ✅ Tambahkan semua min/max score (wajib!)
+      minScore0: 0,
+      maxScore0: 0,
+      minScore1: 1,
+      maxScore1: 1,
+      minScore2: 2,
+      maxScore2: 2,
+      minScore3: 3,
+      maxScore3: 3,
+      minScore4: 4,
+      maxScore4: 4,
       order: finalUrutan,
-      status: finalStatus as 'active' | 'inactive',
+      status: finalStatus,
     };
 
     try {
@@ -157,7 +167,7 @@ export default function ApiIgraciasPage() {
 
       if (result) {
         localStorage.removeItem('editData');
-        setIsEditMode(false); // ✅ Reset mode
+        setIsEditMode(false);
         router.push('/daftar-assessment');
       }
     } catch (err: any) {
@@ -167,7 +177,7 @@ export default function ApiIgraciasPage() {
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
-    localStorage.removeItem('editData'); // ✅ Pastikan bersih
+    localStorage.removeItem('editData');
     if (selected === 'pilihan-jawaban') {
       router.push('/daftar-assessment/pilih-jawaban');
     } else if (selected === 'api-igracias') {
@@ -195,7 +205,7 @@ export default function ApiIgraciasPage() {
             </h1>
           </div>
 
-          {/* Error Submit (bukan dari hook) */}
+          {/* Error Submit */}
           {submitError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-8 mb-4">
               ❌ {submitError}

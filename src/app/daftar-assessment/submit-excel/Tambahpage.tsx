@@ -195,170 +195,233 @@ export default function SubmitExcelPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  const handleSimpan = async () => {
-    setSubmitError(null);
-    if (!file || !status) {
-      alert('Harap unggah file dan pilih status.');
-      return;
-    }
+const handleSimpan = async () => {
+  setSubmitError(null);
+  if (!file || !status) {
+    alert('Harap unggah file dan pilih status.');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const excelData = e.target?.result;
-        const workbook = XLSX.read(excelData, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const excelData = e.target?.result;
+      const workbook = XLSX.read(excelData, { type: 'array' });
 
-        if (json.length < 2) throw new Error('File tidak memiliki data.');
+      // === BACA SOAL DARI SHEET RUMUS ===
+      const rumusSheetName = workbook.SheetNames.find(name => name.includes('Rumus'));
+      if (!rumusSheetName) throw new Error('Sheet "Rumus" tidak ditemukan.');
+      const rumusWorksheet = workbook.Sheets[rumusSheetName];
+      const rumusJson = XLSX.utils.sheet_to_json(rumusWorksheet, { header: 1 });
+      if (rumusJson.length < 5) throw new Error('Sheet Rumus tidak memiliki data.');
 
-        let headerRowIdx = -1;
-        for (let i = 0; i < Math.min(10, json.length); i++) {
-          const row = json[i] as any[];
-          if (row.some(cell => typeof cell === 'string' && cell.includes('Bidang (Variable)'))) {
-            headerRowIdx = i;
+      // Cari header di sheet Rumus
+      let rumusHeaderRowIdx = -1;
+      for (let i = 0; i < Math.min(20, rumusJson.length); i++) {
+        const row = rumusJson[i] as any[];
+        if (row.length < 5) continue;
+        if (row.some(cell => typeof cell === 'string' && (
+          cell.toLowerCase().includes('no') &&
+          (cell.toLowerCase().includes('variable') || cell.toLowerCase().includes('bidang'))
+        ))) {
+          rumusHeaderRowIdx = i;
+          break;
+        }
+      }
+      if (rumusHeaderRowIdx === -1) {
+        for (let i = 0; i < Math.min(20, rumusJson.length); i++) {
+          const row = rumusJson[i] as any[];
+          if (row.some(c => typeof c === 'string' && c.toLowerCase().includes('no')) &&
+              row.some(c => typeof c === 'string' && c.toLowerCase().includes('input'))) {
+            rumusHeaderRowIdx = i;
             break;
           }
         }
-
-        if (headerRowIdx === -1) throw new Error('Header tidak ditemukan.');
-
-        const headers = json[headerRowIdx] as string[];
-        const allRows = json.slice(headerRowIdx + 1);
-
-        const getColIndex = (name: string) => headers.findIndex(h => typeof h === 'string' && h.trim() === name);
-
-        const noCol = getColIndex('No');
-        const varCol = getColIndex('Bidang (Variable)');
-        const keyIndCol = getColIndex('Key Indicator');
-        const indCol = getColIndex('Indikator');
-        const inputCol = getColIndex('Input');
-        const refCol = getColIndex('Referensi');
-
-        const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
-        const payloads: any[] = [];
-
-        for (let i = 0; i < allRows.length; i++) {
-          const row = allRows[i];
-          const firstCell = row[0];
-          if (firstCell === undefined || firstCell === '' || isNaN(Number(firstCell))) {
-            continue;
-          }
-
-          const nomor = parseInt(firstCell, 10);
-          const variableName = row[varCol]?.toString().trim();
-          if (!variableName) continue;
-
-          const variable = variableData?.find((v: any) => v.name === variableName);
-          if (!variable) continue;
-
-          const indikator = row[indCol]?.toString().trim() || '';
-          const keyIndicator = row[keyIndCol]?.toString().trim() || '';
-          const reference = row[refCol]?.toString().trim() || '';
-          const inputVal = row[inputCol]?.toString().trim() || '';
-
-          const nextRow = allRows[i + 1];
-          const isPGDesc = nextRow && nextRow[inputCol]?.toString().startsWith('a.') && nextRow[inputCol].includes('b.');
-
-          if (isPGDesc) {
-            // Soal Pilihan Ganda
-            const pgText = nextRow[inputCol].toString().trim();
-            const lines = pgText.split('\n').map(l => l.trim()).filter(Boolean);
-            const answers = ['', '', '', '', ''];
-            for (const line of lines) {
-              const match = line.match(/^([a-e])\.\s*(.*)/i);
-              if (match) {
-                const idx = 'abcde'.indexOf(match[1].toLowerCase());
-                if (idx >= 0) {
-                  answers[idx] = line;
-                }
-              }
-            }
-
-            payloads.push({
-              transformationVariable: { connect: { id: variable.id } },
-              type: 'multitext',
-              indicator: indikator,
-              keyIndicator: keyIndicator,
-              reference: reference,
-              dataSource: '',
-              questionText: inputVal,
-              questionText2: '',
-              questionText3: '',
-              questionText4: '',
-              answerText1: answers[0],
-              answerText2: answers[1],
-              answerText3: answers[2],
-              answerText4: answers[3],
-              answerText5: answers[4],
-              scoreDescription0: '',
-              scoreDescription1: '',
-              scoreDescription2: '',
-              scoreDescription3: '',
-              scoreDescription4: '',
-              order: nomor,
-              status: finalStatus,
-            });
-            i++; // skip baris deskripsi
-          } else {
-            // Soal Teks dengan sub-pertanyaan
-            let subQuestions = [];
-            let j = i + 1;
-            while (j < allRows.length && !allRows[j][0]) {
-              const subInput = allRows[j][inputCol]?.toString().trim() || '';
-              if (subInput) subQuestions.push(subInput);
-              j++;
-            }
-            i = j - 1;
-
-            payloads.push({
-              transformationVariable: { connect: { id: variable.id } },
-              type: 'text',
-              indicator: indikator,
-              keyIndicator: keyIndicator,
-              reference: reference,
-              dataSource: '',
-              questionText: inputVal,
-              questionText2: subQuestions[0] || '',
-              questionText3: subQuestions[1] || '',
-              questionText4: subQuestions[2] || '',
-              answerText1: '',
-              answerText2: '',
-              answerText3: '',
-              answerText4: '',
-              answerText5: '',
-              scoreDescription0: '',
-              scoreDescription1: '',
-              scoreDescription2: '',
-              scoreDescription3: '',
-              scoreDescription4: '',
-              order: nomor,
-              status: finalStatus,
-            });
-          }
-        }
-
-        for (const payload of payloads) {
-          if (isEditMode && editNomor) {
-            await updateMutate(editNomor, payload);
-          } else {
-            await createMutate(payload);
-          }
-        }
-
-        localStorage.removeItem('editData');
-        router.push('/daftar-assessment');
-      } catch (err: any) {
-        setSubmitError(err.message || 'Gagal menyimpan data ke database.');
-        console.error(err);
-      } finally {
-        setLoading(false);
       }
-    };
-    reader.readAsArrayBuffer(file);
+      if (rumusHeaderRowIdx === -1) throw new Error('Header tidak ditemukan di sheet Rumus.');
+
+      const rumusHeaders = rumusJson[rumusHeaderRowIdx] as string[];
+      const rumusRows = rumusJson.slice(rumusHeaderRowIdx + 1);
+
+      const noColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('no'));
+      const varColR = rumusHeaders.findIndex(h => typeof h === 'string' && (h.toLowerCase().includes('variable') || h.toLowerCase().includes('bidang')));
+      const keyIndColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('key indicator'));
+      const indColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('indikator'));
+      const inputColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('input'));
+      const refColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('referensi'));
+
+      if (varColR === -1 || indColR === -1 || inputColR === -1) {
+        throw new Error('Kolom wajib tidak ditemukan di sheet Rumus.');
+      }
+
+      // === BACA DESKRIPSI SKOR DARI SHEET TMA ===
+      const tmaSheetName = workbook.SheetNames.find(name => name.includes('TMA'));
+      if (!tmaSheetName) throw new Error('Sheet "TMA" tidak ditemukan.');
+      const tmaWorksheet = workbook.Sheets[tmaSheetName];
+      const tmaJson = XLSX.utils.sheet_to_json(tmaWorksheet, { header: 1 });
+      if (tmaJson.length < 5) throw new Error('Sheet TMA tidak memiliki data.');
+
+      // Cari header di sheet TMA
+      let tmaHeaderRowIdx = -1;
+      for (let i = 0; i < Math.min(10, tmaJson.length); i++) {
+        const row = tmaJson[i] as any[];
+        if (row.some(c => typeof c === 'string' && c.toLowerCase().includes('no')) &&
+            row.some(c => typeof c === 'string' && c.toLowerCase().includes('skor'))) {
+          tmaHeaderRowIdx = i;
+          break;
+        }
+      }
+      if (tmaHeaderRowIdx === -1) throw new Error('Header tidak ditemukan di sheet TMA.');
+
+      const tmaHeaders = tmaJson[tmaHeaderRowIdx] as string[];
+      const tmaRows = tmaJson.slice(tmaHeaderRowIdx + 1);
+
+      // Kolom skor SELALU di index 4, 5, 6, 7, 8 — karena tidak ada header
+      const scoreCol0 = 4;
+      const scoreCol1 = 5;
+      const scoreCol2 = 6;
+      const scoreCol3 = 7;
+      const scoreCol4 = 8;
+
+      // Buat peta: nomor → deskripsi skor
+      const scoreMap = new Map<number, string[]>();
+      for (const row of tmaRows) {
+        const no = row[0]; // Kolom No selalu di index 0
+        if (typeof no === 'number' || (typeof no === 'string' && !isNaN(Number(no)))) {
+          const nomor = Number(no);
+          scoreMap.set(nomor, [
+            (row[scoreCol0] || '').toString().trim(),
+            (row[scoreCol1] || '').toString().trim(),
+            (row[scoreCol2] || '').toString().trim(),
+            (row[scoreCol3] || '').toString().trim(),
+            (row[scoreCol4] || '').toString().trim(),
+          ]);
+        }
+      }
+
+      // === PROSES SOAL DARI RUMUS ===
+      const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+      const payloads: any[] = [];
+
+      for (let i = 0; i < rumusRows.length; i++) {
+        const row = rumusRows[i];
+        const firstCell = row[noColR];
+        if (firstCell === undefined || firstCell === '' || isNaN(Number(firstCell))) continue;
+
+        const nomor = parseInt(firstCell, 10);
+        const variableName = row[varColR]?.toString().trim();
+        if (!variableName) continue;
+
+        const variable = variableData?.find((v: any) => v.name === variableName);
+        if (!variable) continue;
+
+        const indikator = row[indColR]?.toString().trim() || '';
+        const keyIndicator = row[keyIndColR]?.toString().trim() || '';
+        const reference = row[refColR]?.toString().trim() || '';
+        const inputVal = row[inputColR]?.toString().trim() || '';
+
+        // Ambil deskripsi skor berdasarkan nomor
+        const scoreDesc = scoreMap.get(nomor) || ['', '', '', '', ''];
+
+        const nextRow = rumusRows[i + 1];
+        const isPGDesc = nextRow && nextRow[inputColR]?.toString().startsWith('a.') && nextRow[inputColR].includes('b.');
+
+        if (isPGDesc) {
+          const pgText = nextRow[inputColR].toString().trim();
+          const lines = pgText.split('\n').map(l => l.trim()).filter(Boolean);
+          const answers = ['', '', '', '', ''];
+          for (const line of lines) {
+            const match = line.match(/^([a-e])\.\s*(.*)/i);
+            if (match) {
+              const idx = 'abcde'.indexOf(match[1].toLowerCase());
+              if (idx >= 0 && idx < 5) answers[idx] = line;
+            }
+          }
+
+          payloads.push({
+            transformationVariable: { connect: { id: variable.id } },
+            type: 'multitext',
+            indicator: indikator,
+            keyIndicator: keyIndicator,
+            reference: reference,
+            dataSource: '',
+            questionText: inputVal,
+            questionText2: '',
+            questionText3: '',
+            questionText4: '',
+            answerText1: answers[0],
+            answerText2: answers[1],
+            answerText3: answers[2],
+            answerText4: answers[3],
+            answerText5: answers[4],
+            scoreDescription0: scoreDesc[0],
+            scoreDescription1: scoreDesc[1],
+            scoreDescription2: scoreDesc[2],
+            scoreDescription3: scoreDesc[3],
+            scoreDescription4: scoreDesc[4],
+            order: nomor,
+            status: finalStatus,
+          });
+          i++; // skip baris deskripsi PG
+        } else {
+          let subQuestions = [];
+          let j = i + 1;
+          while (j < rumusRows.length && !rumusRows[j][noColR]) {
+            const subInput = rumusRows[j][inputColR]?.toString().trim() || '';
+            if (subInput) subQuestions.push(subInput);
+            j++;
+          }
+          i = j - 1;
+
+          payloads.push({
+            transformationVariable: { connect: { id: variable.id } },
+            type: 'text',
+            indicator: indikator,
+            keyIndicator: keyIndicator,
+            reference: reference,
+            dataSource: '',
+            questionText: inputVal,
+            questionText2: subQuestions[0] || '',
+            questionText3: subQuestions[1] || '',
+            questionText4: subQuestions[2] || '',
+            answerText1: '',
+            answerText2: '',
+            answerText3: '',
+            answerText4: '',
+            answerText5: '',
+            scoreDescription0: scoreDesc[0],
+            scoreDescription1: scoreDesc[1],
+            scoreDescription2: scoreDesc[2],
+            scoreDescription3: scoreDesc[3],
+            scoreDescription4: scoreDesc[4],
+            order: nomor,
+            status: finalStatus,
+          });
+        }
+      }
+
+      // Simpan
+      for (const payload of payloads) {
+        if (isEditMode && editNomor) {
+          await updateMutate(editNomor, payload);
+        } else {
+          await createMutate(payload);
+        }
+      }
+
+      localStorage.removeItem('editData');
+      router.push('/daftar-assessment');
+    } catch (err: any) {
+      setSubmitError(err.message || 'Gagal menyimpan data.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
+  reader.readAsArrayBuffer(file);
+};
 
   const handleCancel = () => {
     localStorage.removeItem('editData');
