@@ -40,6 +40,12 @@ export interface AssessmentDetail {
   itemId: number;
   questionId: number;
   answerId: number;
+  countScore0: number;
+  countScore1:  number;
+  countScore2:  number;
+  countScore3:  number;
+  countScore4:  number;
+  tmiScore: number;
   submissionValue: string;
 }
 
@@ -55,6 +61,12 @@ export interface Assessment {
   user: User;
   assessmentPeriod: AssessmentPeriod;
   assessmentDetails: AssessmentDetail[];
+  countScore0: number;
+  countScore1:  number;
+  countScore2:  number;
+  countScore3:  number;
+  countScore4:  number;
+  tmiScore: number;
 }
 
 // Payload untuk create (tetap seperti punyamu)

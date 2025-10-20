@@ -14,7 +14,7 @@ export default function EditAssessmentPage() {
   const { id } = useParams();
   const router = useRouter();
 
-  // Helper: Mapping transformationVariableId → nama variabel
+  // Helper: Mapping transformationVariableId → nama variabel (opsional, tidak dipakai di sini)
   const getVariableName = (id: number): string => {
     const map: Record<number, string> = {
       1: 'Mutu',
@@ -31,11 +31,12 @@ export default function EditAssessmentPage() {
     return map[id] || 'Variabel Tidak Dikenal';
   };
 
-  // Helper: Mapping type → tipeSoal display
+  // ✅ Perbaikan: 'text' dan 'multitext' keduanya → 'Pilihan Jawaban'
+  // Karena halaman /pilih-jawaban mendukung 2 tipe via state `tipePertanyaan`
   const getTipeSoalDisplay = (type: string): string => {
     const map: Record<string, string> = {
       multitext: 'Pilihan Jawaban',
-      text: 'Pilihan Jawaban',
+      text: 'Pilihan Jawaban', // ✅ tetap ke halaman yang sama
       api: 'API dari iGracias',
       submit_excel: 'Submit Jawaban Excel',
     };
@@ -68,7 +69,7 @@ export default function EditAssessmentPage() {
       try {
         const response = await fetch(`${apiUrl}/question/${questionId}`);
         if (!response.ok) {
-          throw new Error('Gagal memuat data');
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         const result = await response.json();
         const question = result.data;
@@ -79,72 +80,57 @@ export default function EditAssessmentPage() {
           return;
         }
 
-        // Konversi data API ke format yang diharapkan halaman edit
-        const editData = {
-          // Identitas
-          nomor: question.id,
-          transformationVariableId: question.transformationVariableId,
+       // Cek tipe soal
+const isShortAnswer = question.type === 'text';
 
-          // Konten utama
-          bobot: question.bobot || 1,
-          indikator: question.indicator || '',
-          keyIndicator: question.keyIndicator || '',
-          reference: question.reference || '',
-          dataSource: question.dataSource || '',
+const editData = {
+  nomor: question.id,
+  transformationVariableId: question.transformationVariableId ?? null,
+  bobot: question.bobot ?? 1,
+  indikator: question.indicator ?? '',
+  keyIndicator: question.keyIndicator ?? '',
+  reference: question.reference ?? '',
+  dataSource: question.dataSource ?? '',
+  questionText: question.questionText ?? '',
+  questionText2: question.questionText2 ?? '',
+  questionText3: question.questionText3 ?? '',
+  questionText4: question.questionText4 ?? '',
+  answerText1: question.answerText1 ?? '',
+  answerText2: question.answerText2 ?? '',
+  answerText3: question.answerText3 ?? '',
+  answerText4: question.answerText4 ?? '',
+  answerText5: question.answerText5 ?? '',
 
-          // Pertanyaan
-          questionText: question.questionText || '',
-          questionText2: question.questionText2 || '',
-          questionText3: question.questionText3 || '',
-          questionText4: question.questionText4 || '',
+  // ✅ SELALU load deskripsi skor
+  scoreDescription0: question.scoreDescription0 ?? 'Tidak ada dokumentasi.',
+  scoreDescription1: question.scoreDescription1 ?? 'Ada dokumentasi dasar.',
+  scoreDescription2: question.scoreDescription2 ?? 'Dokumentasi sebagian lengkap.',
+  scoreDescription3: question.scoreDescription3 ?? 'Dokumentasi hampir lengkap.',
+  scoreDescription4: question.scoreDescription4 ?? 'Dokumentasi lengkap dan terupdate.',
 
-          // Jawaban untuk tipe PG
-          answerText1: question.answerText1 || '',
-          answerText2: question.answerText2 || '',
-          answerText3: question.answerText3 || '',
-          answerText4: question.answerText4 || '',
-          answerText5: question.answerText5 || '',
+  // 🔹 Rentang skor: HANYA load jika tipe = 'text'
+  minScore0: isShortAnswer && question.minScore0 != null ? String(question.minScore0) : '',
+  maxScore0: isShortAnswer && question.maxScore0 != null ? String(question.maxScore0) : '',
+  minScore1: isShortAnswer && question.minScore1 != null ? String(question.minScore1) : '',
+  maxScore1: isShortAnswer && question.maxScore1 != null ? String(question.maxScore1) : '',
+  minScore2: isShortAnswer && question.minScore2 != null ? String(question.minScore2) : '',
+  maxScore2: isShortAnswer && question.maxScore2 != null ? String(question.maxScore2) : '',
+  minScore3: isShortAnswer && question.minScore3 != null ? String(question.minScore3) : '',
+  maxScore3: isShortAnswer && question.maxScore3 != null ? String(question.maxScore3) : '',
+  minScore4: isShortAnswer && question.minScore4 != null ? String(question.minScore4) : '',
+  maxScore4: isShortAnswer && question.maxScore4 != null ? String(question.maxScore4) : '',
 
-          // Skor untuk tipe short-answer (legacy)
-          scoreMin0: question.scoreMin0 || '',
-          scoreMax0: question.scoreMax0 || '',
-          scoreMin1: question.scoreMin1 || '',
-          scoreMax1: question.scoreMax1 || '',
-          scoreMin2: question.scoreMin2 || '',
-          scoreMax2: question.scoreMax2 || '',
-          scoreMin3: question.scoreMin3 || '',
-          scoreMax3: question.scoreMax3 || '',
-          scoreMin4: question.scoreMin4 || '',
-          scoreMax4: question.scoreMax4 || '',
-
-          scoreDescription0: question.scoreDescription0 || '',
-          scoreDescription1: question.scoreDescription1 || '',
-          scoreDescription2: question.scoreDescription2 || '',
-          scoreDescription3: question.scoreDescription3 || '',
-          scoreDescription4: question.scoreDescription4 || '',
-
-          // Skor numerik (format baru — pastikan konsisten kapitalisasi)
-          minScore0: question.minScore0 != null ? String(question.minScore0) : '0',
-          maxScore0: question.maxScore0 != null ? String(question.maxScore0) : '1.9',
-          minScore1: question.minScore1 != null ? String(question.minScore1) : '2',
-          maxScore1: question.maxScore1 != null ? String(question.maxScore1) : '4.9',
-          minScore2: question.minScore2 != null ? String(question.minScore2) : '5',
-          maxScore2: question.maxScore2 != null ? String(question.maxScore2) : '6.9', // ✅ typo diperbaiki
-          minScore3: question.minScore3 != null ? String(question.minScore3) : '7',
-          maxScore3: question.maxScore3 != null ? String(question.maxScore3) : '8.9',
-          minScore4: question.minScore4 != null ? String(question.minScore4) : '9',
-          maxScore4: question.maxScore4 != null ? String(question.maxScore4) : '12',
-
-          // Metadata
-          order: question.order || 1,
-          status: question.status === 'active' ? 'Active' : 'Inactive',
-          type: question.type,
-        };
+  order: question.order ?? 1,
+  status: question.status === 'active' ? 'Active' : 'Inactive',
+  type: question.type ?? 'text',
+};
 
         localStorage.setItem('editData', JSON.stringify(editData));
         localStorage.setItem('editId', String(question.id));
 
-        const targetPath = EDIT_PATH_MAP[getTipeSoalDisplay(question.type)];
+        const displayType = getTipeSoalDisplay(question.type);
+        const targetPath = EDIT_PATH_MAP[displayType];
+
         if (targetPath) {
           router.push(targetPath);
         } else {
