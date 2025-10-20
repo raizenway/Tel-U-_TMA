@@ -9,6 +9,7 @@ import { getAssessmentResult } from '@/lib/api-assessment-result';
 import { useListPeriode } from '@/hooks/usePeriode';
 import { BRANCHES } from '@/interfaces/branch';
 import domtoimage from 'dom-to-image';
+import { useRouter } from 'next/navigation';
 
 import {
   Chart as ChartJS,
@@ -225,6 +226,20 @@ function FilterUPPSPopover({
 }
 
 export default function AssessmentResultPage() {
+  const router = useRouter();
+
+  const user = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    }
+  }, [user, router]);
+
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
@@ -237,7 +252,20 @@ export default function AssessmentResultPage() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
   const [radarLabels, setRadarLabels] = useState<string[]>([]);
 
-  const allBranchIds = useMemo(() => BRANCHES.map((b) => b.id), []);
+  const allBranchIds = useMemo(() => {
+    if (!user) return [];
+
+    const roleId = user.role?.id ?? user.roleId;
+
+    if (roleId === 1) {
+      return BRANCHES.map((b) => b.id);
+    } else if (roleId === 2 && user.branchId) {
+      return [user.branchId];
+    }
+
+    return [];
+  }, [user]);
+
   const { data: periodeData } = useListPeriode(0);
 
   useEffect(() => {
@@ -297,7 +325,7 @@ export default function AssessmentResultPage() {
   };
 
   useEffect(() => {
-    if (!selectedPeriodId) return;
+    if (!selectedPeriodId || allBranchIds.length === 0) return;
 
     const load = async () => {
       const promises = allBranchIds.map((id) => fetchAssessmentData(id, selectedPeriodId));
@@ -329,10 +357,15 @@ export default function AssessmentResultPage() {
     if (periodId) setSelectedPeriodId(periodId);
   };
 
-  const campusOptions = useMemo(
-    () => (allBranches.length > 0 ? allBranches : BRANCHES.map((b) => ({ id: String(b.id), name: b.name }))),
-    [allBranches]
-  );
+  const campusOptions = useMemo(() => {
+    if (allBranches.length > 0) {
+      return allBranches;
+    }
+    return BRANCHES.filter((b) => allBranchIds.includes(b.id)).map((b) => ({
+      id: String(b.id),
+      name: b.name,
+    }));
+  }, [allBranches, allBranchIds]);
 
   const periodeOptions = useMemo(() => [...new Set(activePeriods)], [activePeriods]);
 
@@ -388,6 +421,23 @@ export default function AssessmentResultPage() {
       console.error('Gagal generate laporan gabungan:', err);
     }
   };
+
+  // Jika user tidak punya akses ke branch apa pun
+  if (user && allBranchIds.length === 0) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
+        <div className="text-center p-6 bg-white rounded shadow">
+          <p className="text-red-600">Anda tidak memiliki akses ke data assessment.</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="mt-4 text-blue-600 hover:underline"
+          >
+            Kembali ke Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -608,7 +658,6 @@ export default function AssessmentResultPage() {
                     Download
                   </Button>
                 </div>
-
               </>
             )}
           </div>
