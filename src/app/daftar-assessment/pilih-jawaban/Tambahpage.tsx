@@ -108,25 +108,25 @@
           ]);
         }
 
-        // Set skor dan deskripsi skor jika tipe short-answer
-        if (typeFromDB === 'short-answer') {
-         // Saat load edit data
-setSkor({
-  0: { min: data.minScore0 || '0', max: data.maxScore0 || '1.9' },
-  1: { min: data.minScore1 || '2', max: data.maxScore1 || '4.9' },
-  2: { min: data.minScore2 || '5', max: data.maxScore2 || '6.9' },
-  3: { min: data.minScore3 || '7', max: data.maxScore3 || '8.9' },
-  4: { min: data.minScore4 || '9', max: data.maxScore4 || '12' },
+       // ✅ SELALU set deskripsi skor — untuk PG dan Short Answer
+setDeskripsiSkor({
+  0: data.scoreDescription0 || 'Tidak ada dokumentasi.',
+  1: data.scoreDescription1 || 'Ada dokumentasi dasar.',
+  2: data.scoreDescription2 || 'Dokumentasi sebagian lengkap.',
+  3: data.scoreDescription3 || 'Dokumentasi hampir lengkap.',
+  4: data.scoreDescription4 || 'Dokumentasi lengkap dan terupdate.',
 });
 
-          setDeskripsiSkor({
-            0: data.scoreDescription0 || 'Tidak ada dokumentasi.',
-            1: data.scoreDescription1 || 'Ada dokumentasi dasar.',
-            2: data.scoreDescription2 || 'Dokumentasi sebagian lengkap.',
-            3: data.scoreDescription3 || 'Dokumentasi hampir lengkap.',
-            4: data.scoreDescription4 || 'Dokumentasi lengkap dan terupdate.',
-          });
-        }
+// 🔹 Hanya set rentang skor jika tipe = short-answer
+if (typeFromDB === 'short-answer') {
+  setSkor({
+    0: { min: data.minScore0 || '0', max: data.maxScore0 || '1.9' },
+    1: { min: data.minScore1 || '2', max: data.maxScore1 || '4.9' },
+    2: { min: data.minScore2 || '5', max: data.maxScore2 || '6.9' },
+    3: { min: data.minScore3 || '7', max: data.maxScore3 || '8.9' },
+    4: { min: data.minScore4 || '9', max: data.maxScore4 || '12' },
+  });
+}
 
         if (data.nomor) {
           setEditNomor(data.nomor);
@@ -180,16 +180,17 @@ setSkor({
         setShowConfirmModal(true);
       };
 
-      const handleConfirmSave = async () => {
-        try {
-          const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
-          if (!selectedVariableId) {
-            setErrors({ namaVariabel: 'Wajib dipilih' });
-            return;
-          }
+    const handleConfirmSave = async () => {
+  try {
+    const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+    if (!selectedVariableId) {
+      setErrors({ namaVariabel: 'Wajib dipilih' });
+      return;
+    }
 
-          const questionType: 'multitext' | 'text' = tipePertanyaan === 'pg' ? 'multitext' : 'text';
-          const payload = {
+    const questionType: 'multitext' | 'text' = tipePertanyaan === 'pg' ? 'multitext' : 'text';
+
+    const payload: any = {
       transformationVariable: { connect: { id: selectedVariableId } },
       type: questionType,
       indicator: indikator.trim(),
@@ -200,44 +201,54 @@ setSkor({
       questionText2: jumlahPertanyaan >= 2 ? pertanyaan2.trim() : '',
       questionText3: jumlahPertanyaan >= 3 ? pertanyaan3.trim() : '',
       questionText4: jumlahPertanyaan >= 4 ? pertanyaan4.trim() : '',
-      answerText1: tipePertanyaan === 'pg' ? pgAnswers1[0] : "",
-      answerText2: tipePertanyaan === 'pg' ? pgAnswers1[1] : "",
-      answerText3: tipePertanyaan === 'pg' ? pgAnswers1[2] : "",
-      answerText4: tipePertanyaan === 'pg' ? pgAnswers1[3] : "",
-      answerText5: tipePertanyaan === 'pg' ? pgAnswers1[4] : "",
-      scoreDescription0: deskripsiSkor[0].trim(),
-      scoreDescription1: deskripsiSkor[1].trim(),
-      scoreDescription2: deskripsiSkor[2].trim(),
-      scoreDescription3: deskripsiSkor[3].trim(),
-      scoreDescription4: deskripsiSkor[4].trim(),
-      minScore0: parseFloat(skor[0].min),
-      maxScore0: parseFloat(skor[0].max),
-      minScore1: parseFloat(skor[1].min),
-      maxScore1: parseFloat(skor[1].max),
-      minScore2: parseFloat(skor[2].min),
-      maxScore2: parseFloat(skor[2].max),
-      minScore3: parseFloat(skor[3].min),
-      maxScore3: parseFloat(skor[3].max),
-      minScore4: parseFloat(skor[4].min),
-      maxScore4: parseFloat(skor[4].max),
-  order: parseInt(urutan, 10) || 1,
-  status: finalStatus as 'active' | 'inactive',
+      order: parseInt(urutan, 10) || 1,
+      status: finalStatus as 'active' | 'inactive',
+    };
+
+    // ✅ SELALU kirim deskripsi skor (untuk PG dan Short Answer)
+    payload.scoreDescription0 = deskripsiSkor[0].trim();
+    payload.scoreDescription1 = deskripsiSkor[1].trim();
+    payload.scoreDescription2 = deskripsiSkor[2].trim();
+    payload.scoreDescription3 = deskripsiSkor[3].trim();
+    payload.scoreDescription4 = deskripsiSkor[4].trim();
+
+    // 🔹 Jawaban PG: hanya untuk multitext
+    if (tipePertanyaan === 'pg') {
+      payload.answerText1 = pgAnswers1[0];
+      payload.answerText2 = pgAnswers1[1];
+      payload.answerText3 = pgAnswers1[2];
+      payload.answerText4 = pgAnswers1[3];
+      payload.answerText5 = pgAnswers1[4];
+    }
+
+    // 🔹 Rentang skor: HANYA untuk short-answer
+    if (tipePertanyaan === 'short-answer') {
+      payload.minScore0 = parseFloat(skor[0].min);
+      payload.maxScore0 = parseFloat(skor[0].max);
+      payload.minScore1 = parseFloat(skor[1].min);
+      payload.maxScore1 = parseFloat(skor[1].max);
+      payload.minScore2 = parseFloat(skor[2].min);
+      payload.maxScore2 = parseFloat(skor[2].max);
+      payload.minScore3 = parseFloat(skor[3].min);
+      payload.maxScore3 = parseFloat(skor[3].max);
+      payload.minScore4 = parseFloat(skor[4].min);
+      payload.maxScore4 = parseFloat(skor[4].max);
+    }
+
+    if (isEditMode && editNomor !== null) {
+      await updateMutate(editNomor, payload);
+    } else {
+      await createMutate(payload);
+    }
+
+    localStorage.setItem('newDataAdded', 'true');
+    router.push('/daftar-assessment');
+  } catch (error) {
+    console.error('Error saat menyimpan:', error);
+  } finally {
+    setShowConfirmModal(false);
+  }
 };
-
-          if (isEditMode && editNomor !== null) {
-            await updateMutate(editNomor, payload);
-          } else {
-            await createMutate(payload);
-          }
-
-          localStorage.setItem('newDataAdded', 'true');
-          router.push('/daftar-assessment');
-        } catch (error) {
-          console.error('Error saat menyimpan:', error);
-        } finally {
-          setShowConfirmModal(false);
-        }
-      };
 
       const handleCancel = () => {
         localStorage.removeItem('editData');

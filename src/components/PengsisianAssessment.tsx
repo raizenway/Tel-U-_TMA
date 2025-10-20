@@ -61,56 +61,65 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
   };
 
   useEffect(() => {
-    const fetchAllQuestions = async () => {
-      const tempQuestions: QuestionItem[] = [];
-      for (let i = 0; i < 30; i++) {
-        const id = i + 1;
-        try {
-          const response = await fetch(`http://localhost:3000/api/question/${id}`);
-          if (!response.ok) continue;
-          const result = await response.json();
-          if (result.data && result.data.questionText && result.data.indicator) {
-            const section = `V${Math.floor(i / 5) + 1}`;
-            const options = [];
-            if (result.data.answerText1) options.push(result.data.answerText1);
-            if (result.data.answerText2) options.push(result.data.answerText2);
-            if (result.data.answerText3) options.push(result.data.answerText3);
-            if (result.data.answerText4) options.push(result.data.answerText4);
-            if (result.data.answerText5) options.push(result.data.answerText5);
-            const finalOptions = options.length > 0 
-              ? options 
-              : (id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"]);
+  const fetchAllQuestions = async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) {
+      console.error("NEXT_PUBLIC_API_URL belum diatur di .env.local");
+      setLoading(false);
+      return;
+    }
 
-            const type = result.data.type === 'text' ? 'text' : 'multitext';
+    const tempQuestions: QuestionItem[] = [];
+    for (let i = 0; i < 30; i++) {
+      const id = i + 1;
+      try {
+        const response = await fetch(`${apiUrl}/question/${id}`);
+        if (!response.ok) continue;
+        const result = await response.json();
+        if (result.data && result.data.questionText && result.data.indicator) {
+          const section = `V${Math.floor(i / 5) + 1}`;
+          const options = [];
+          if (result.data.answerText1) options.push(result.data.answerText1);
+          if (result.data.answerText2) options.push(result.data.answerText2);
+          if (result.data.answerText3) options.push(result.data.answerText3);
+          if (result.data.answerText4) options.push(result.data.answerText4);
+          if (result.data.answerText5) options.push(result.data.answerText5);
+          const finalOptions = options.length > 0 
+            ? options 
+            : (id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"]);
 
-            tempQuestions.push({
-              id,
-              section,
-              number: id,
-              question: [
-                result.data.questionText,
-                result.data.questionText2,
-                result.data.questionText3,
-                result.data.questionText4
-              ]
-                .filter(part => part && typeof part === 'string' && part.trim() !== '')
-                .join(' | '),
-              indicator: result.data.indicator,
-              options: finalOptions,
-              transformationVariableId: result.data.transformationVariableId 
-                ? Number(result.data.transformationVariableId) 
-                : undefined,
-              type,
-            });
-          }
-        } catch (err) {
-          console.error(`❌ Error fetching question ${id}:`, err);
+          const type = result.data.type === 'text' ? 'text' : 'multitext';
+
+          tempQuestions.push({
+            id,
+            section,
+            number: id,
+            question: [
+              result.data.questionText,
+              result.data.questionText2,
+              result.data.questionText3,
+              result.data.questionText4
+            ]
+              .filter(part => part && typeof part === 'string' && part.trim() !== '')
+              .join(' | '),
+            indicator: result.data.indicator,
+            options: finalOptions,
+            transformationVariableId: result.data.transformationVariableId 
+              ? Number(result.data.transformationVariableId) 
+              : undefined,
+            type,
+          });
         }
+      } catch (err) {
+        console.error(`❌ Error fetching question ${id}:`, err);
       }
-      setRawQuestions(tempQuestions);
-    };
-    fetchAllQuestions();
-  }, []);
+    }
+    setRawQuestions(tempQuestions);
+    setLoading(false);
+  };
+
+  fetchAllQuestions();
+}, []);
 
   const questions = useMemo(() => {
     return rawQuestions.map(q => ({
