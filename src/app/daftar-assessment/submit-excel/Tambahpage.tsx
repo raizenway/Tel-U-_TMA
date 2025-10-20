@@ -11,23 +11,14 @@ import { useTransformationVariableList } from '@/hooks/useTransformationVariable
 
 export type QuestionType = 'text' | 'multitext' | 'api' | 'excel';
 
-// Interface untuk preview
 interface AssessmentItem {
   nomor: number;
   variable: string;
   indikator: string;
   keyIndicator: string;
   pertanyaan1: string;
-  pertanyaan2: string;
-  pertanyaan3: string;
-  pertanyaan4: string;
   tipeSoal: QuestionType;
   status: 'Active' | 'Inactive';
-  deskripsiSkor0: string;
-  deskripsiSkor1: string;
-  deskripsiSkor2: string;
-  deskripsiSkor3: string;
-  deskripsiSkor4: string;
   urutan: number;
 }
 
@@ -45,11 +36,10 @@ export default function SubmitExcelPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { data: transformationVariables, loading: variablesLoading } = useTransformationVariableList();
+  const { data: variableData } = useTransformationVariableList();
   const { mutate: createMutate } = useCreateQuestion();
   const { mutate: updateMutate } = useUpdateQuestion();
 
-  // Load edit data
   useEffect(() => {
     const editData = localStorage.getItem('editData');
     if (!editData) {
@@ -105,168 +95,333 @@ export default function SubmitExcelPage() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array' });
+        const excelData = e.target?.result;
+        const workbook = XLSX.read(excelData, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         if (json.length < 2) throw new Error('File tidak memiliki data.');
 
-        const headers = json[0] as string[];
-        const rows = json.slice(1);
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(10, json.length); i++) {
+          const row = json[i] as any[];
+          if (row.some(cell => typeof cell === 'string' && cell.includes('Bidang (Variable)'))) {
+            headerRowIdx = i;
+            break;
+          }
+        }
 
-        const requiredColumns = [
-          'Bidang (Variabel)',
-          'Indikator',
-          'Key Indicator',
-          'Pertanyaan 1',
-          'Deskripsi Skor 0',
-          'Deskripsi Skor 1',
-          'Deskripsi Skor 2',
-          'Deskripsi Skor 3',
-          'Deskripsi Skor 4',
-          'Urutan'
-        ];
+        if (headerRowIdx === -1) throw new Error('Header tidak ditemukan.');
 
-        const missing = requiredColumns.filter(col => !headers.includes(col));
-        if (missing.length > 0) {
-          alert(`Kolom wajib tidak ditemukan: ${missing.join(', ')}`);
+        const headers = json[headerRowIdx] as string[];
+        const allRows = json.slice(headerRowIdx + 1);
+
+        const getColIndex = (name: string) => headers.findIndex(h => typeof h === 'string' && h.trim() === name);
+
+        const noCol = getColIndex('No');
+        const varCol = getColIndex('Bidang (Variable)');
+        const keyIndCol = getColIndex('Key Indicator');
+        const indCol = getColIndex('Indikator');
+        const inputCol = getColIndex('Input');
+
+        if (varCol === -1 || indCol === -1 || inputCol === -1) {
+          alert('Kolom wajib tidak ditemukan: Bidang (Variable), Indikator, atau Input.');
           return;
         }
 
-        const idx = (col: string) => headers.indexOf(col);
         const finalStatus: 'Active' | 'Inactive' = status === 'Aktif' ? 'Active' : 'Inactive';
+        const items: AssessmentItem[] = [];
 
-        const items: AssessmentItem[] = rows.map((row: any, i) => {
-          const q1 = row[idx('Pertanyaan 1')]?.toString().trim() || '';
-          const q2 = row[idx('Pertanyaan 2')]?.toString().trim() || '';
-          const q3 = row[idx('Pertanyaan 3')]?.toString().trim() || '';
-          const q4 = row[idx('Pertanyaan 4')]?.toString().trim() || '';
+        for (let i = 0; i < allRows.length; i++) {
+          const row = allRows[i];
+          const firstCell = row[0];
+          if (firstCell === undefined || firstCell === '' || isNaN(Number(firstCell))) {
+            continue;
+          }
 
-          // ✅ SEMUA soal Excel punya tipe 'excel'
-          const tipeSoal: QuestionType = 'excel';
+          const nomor = parseInt(firstCell, 10);
+          const variable = row[varCol]?.toString().trim() || '—';
+          const indikator = row[indCol]?.toString().trim() || '—';
+          const keyIndicator = row[keyIndCol]?.toString().trim() || '—';
+          const inputVal = row[inputCol]?.toString().trim() || '';
 
-          return {
-            nomor: i + 1,
-            variable: row[idx('Bidang (Variabel)')]?.toString().trim() || '—',
-            indikator: row[idx('Indikator')]?.toString().trim() || '—',
-            keyIndicator: row[idx('Key Indicator')]?.toString().trim() || '—',
-            pertanyaan1: q1,
-            pertanyaan2: q2,
-            pertanyaan3: q3,
-            pertanyaan4: q4,
-            tipeSoal,
-            status: finalStatus,
-            deskripsiSkor0: row[idx('Deskripsi Skor 0')]?.toString().trim() || '—',
-            deskripsiSkor1: row[idx('Deskripsi Skor 1')]?.toString().trim() || '—',
-            deskripsiSkor2: row[idx('Deskripsi Skor 2')]?.toString().trim() || '—',
-            deskripsiSkor3: row[idx('Deskripsi Skor 3')]?.toString().trim() || '—',
-            deskripsiSkor4: row[idx('Deskripsi Skor 4')]?.toString().trim() || '—',
-            urutan: parseInt(row[idx('Urutan')]?.toString().trim() || '1', 10) || i + 1,
-          };
-        });
+          // Cek apakah baris berikutnya adalah deskripsi PG
+          const nextRow = allRows[i + 1];
+          const isPGDesc = nextRow && nextRow[inputCol]?.toString().startsWith('a.') && nextRow[inputCol].includes('b.');
+
+          if (isPGDesc) {
+            items.push({
+              nomor,
+              variable,
+              indikator,
+              keyIndicator,
+              pertanyaan1: inputVal,
+              tipeSoal: 'multitext',
+              status: finalStatus,
+              urutan: nomor,
+            });
+            i++; // skip baris deskripsi
+          } else {
+            // Ambil sub-pertanyaan (baris tanpa nomor setelahnya)
+            let subQuestions = [];
+            let j = i + 1;
+            while (j < allRows.length && !allRows[j][0]) {
+              const subInput = allRows[j][inputCol]?.toString().trim() || '';
+              if (subInput) subQuestions.push(subInput);
+              j++;
+            }
+            i = j - 1;
+
+            items.push({
+              nomor,
+              variable,
+              indikator,
+              keyIndicator,
+              pertanyaan1: inputVal,
+              tipeSoal: 'text',
+              status: finalStatus,
+              urutan: nomor,
+            });
+          }
+        }
 
         setPreviewData(items);
         setIsPreviewOpen(true);
-      } catch (err) {
-        alert('Gagal membaca file Excel. Pastikan format benar.');
+      } catch (err: any) {
+        alert('Gagal membaca file Excel: ' + (err.message || 'Format tidak sesuai.'));
         console.error(err);
       }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const handleSimpan = async () => {
-    setSubmitError(null);
-    if (!file || !status) {
-      alert('Harap unggah file dan pilih status.');
-      return;
-    }
+const handleSimpan = async () => {
+  setSubmitError(null);
+  if (!file || !status) {
+    alert('Harap unggah file dan pilih status.');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const excelData = e.target?.result;
+      const workbook = XLSX.read(excelData, { type: 'array' });
 
-        if (json.length < 2) throw new Error('File tidak memiliki data.');
+      // === BACA SOAL DARI SHEET RUMUS ===
+      const rumusSheetName = workbook.SheetNames.find(name => name.includes('Rumus'));
+      if (!rumusSheetName) throw new Error('Sheet "Rumus" tidak ditemukan.');
+      const rumusWorksheet = workbook.Sheets[rumusSheetName];
+      const rumusJson = XLSX.utils.sheet_to_json(rumusWorksheet, { header: 1 });
+      if (rumusJson.length < 5) throw new Error('Sheet Rumus tidak memiliki data.');
 
-        const headers = json[0] as string[];
-        const rows = json.slice(1);
-
-        if (isEditMode && rows.length !== 1) {
-          alert('Dalam mode edit, hanya boleh ada 1 baris data.');
-          setLoading(false);
-          return;
+      // Cari header di sheet Rumus
+      let rumusHeaderRowIdx = -1;
+      for (let i = 0; i < Math.min(20, rumusJson.length); i++) {
+        const row = rumusJson[i] as any[];
+        if (row.length < 5) continue;
+        if (row.some(cell => typeof cell === 'string' && (
+          cell.toLowerCase().includes('no') &&
+          (cell.toLowerCase().includes('variable') || cell.toLowerCase().includes('bidang'))
+        ))) {
+          rumusHeaderRowIdx = i;
+          break;
         }
+      }
+      if (rumusHeaderRowIdx === -1) {
+        for (let i = 0; i < Math.min(20, rumusJson.length); i++) {
+          const row = rumusJson[i] as any[];
+          if (row.some(c => typeof c === 'string' && c.toLowerCase().includes('no')) &&
+              row.some(c => typeof c === 'string' && c.toLowerCase().includes('input'))) {
+            rumusHeaderRowIdx = i;
+            break;
+          }
+        }
+      }
+      if (rumusHeaderRowIdx === -1) throw new Error('Header tidak ditemukan di sheet Rumus.');
 
-        const idx = (col: string) => headers.indexOf(col);
-        const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+      const rumusHeaders = rumusJson[rumusHeaderRowIdx] as string[];
+      const rumusRows = rumusJson.slice(rumusHeaderRowIdx + 1);
 
-        for (const row of rows) {
-          const variableName = row[idx('Bidang (Variabel)')]?.toString().trim();
-          if (!variableName) {
-            throw new Error('Kolom "Bidang (Variabel)" tidak boleh kosong.');
+      const noColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('no'));
+      const varColR = rumusHeaders.findIndex(h => typeof h === 'string' && (h.toLowerCase().includes('variable') || h.toLowerCase().includes('bidang')));
+      const keyIndColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('key indicator'));
+      const indColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('indikator'));
+      const inputColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('input'));
+      const refColR = rumusHeaders.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('referensi'));
+
+      if (varColR === -1 || indColR === -1 || inputColR === -1) {
+        throw new Error('Kolom wajib tidak ditemukan di sheet Rumus.');
+      }
+
+      // === BACA DESKRIPSI SKOR DARI SHEET TMA ===
+      const tmaSheetName = workbook.SheetNames.find(name => name.includes('TMA'));
+      if (!tmaSheetName) throw new Error('Sheet "TMA" tidak ditemukan.');
+      const tmaWorksheet = workbook.Sheets[tmaSheetName];
+      const tmaJson = XLSX.utils.sheet_to_json(tmaWorksheet, { header: 1 });
+      if (tmaJson.length < 5) throw new Error('Sheet TMA tidak memiliki data.');
+
+      // Cari header di sheet TMA
+      let tmaHeaderRowIdx = -1;
+      for (let i = 0; i < Math.min(10, tmaJson.length); i++) {
+        const row = tmaJson[i] as any[];
+        if (row.some(c => typeof c === 'string' && c.toLowerCase().includes('no')) &&
+            row.some(c => typeof c === 'string' && c.toLowerCase().includes('skor'))) {
+          tmaHeaderRowIdx = i;
+          break;
+        }
+      }
+      if (tmaHeaderRowIdx === -1) throw new Error('Header tidak ditemukan di sheet TMA.');
+
+      const tmaHeaders = tmaJson[tmaHeaderRowIdx] as string[];
+      const tmaRows = tmaJson.slice(tmaHeaderRowIdx + 1);
+
+      // Kolom skor SELALU di index 4, 5, 6, 7, 8 — karena tidak ada header
+      const scoreCol0 = 4;
+      const scoreCol1 = 5;
+      const scoreCol2 = 6;
+      const scoreCol3 = 7;
+      const scoreCol4 = 8;
+
+      // Buat peta: nomor → deskripsi skor
+      const scoreMap = new Map<number, string[]>();
+      for (const row of tmaRows) {
+        const no = row[0]; // Kolom No selalu di index 0
+        if (typeof no === 'number' || (typeof no === 'string' && !isNaN(Number(no)))) {
+          const nomor = Number(no);
+          scoreMap.set(nomor, [
+            (row[scoreCol0] || '').toString().trim(),
+            (row[scoreCol1] || '').toString().trim(),
+            (row[scoreCol2] || '').toString().trim(),
+            (row[scoreCol3] || '').toString().trim(),
+            (row[scoreCol4] || '').toString().trim(),
+          ]);
+        }
+      }
+
+      // === PROSES SOAL DARI RUMUS ===
+      const finalStatus = status === 'Aktif' ? 'active' : 'inactive';
+      const payloads: any[] = [];
+
+      for (let i = 0; i < rumusRows.length; i++) {
+        const row = rumusRows[i];
+        const firstCell = row[noColR];
+        if (firstCell === undefined || firstCell === '' || isNaN(Number(firstCell))) continue;
+
+        const nomor = parseInt(firstCell, 10);
+        const variableName = row[varColR]?.toString().trim();
+        if (!variableName) continue;
+
+        const variable = variableData?.find((v: any) => v.name === variableName);
+        if (!variable) continue;
+
+        const indikator = row[indColR]?.toString().trim() || '';
+        const keyIndicator = row[keyIndColR]?.toString().trim() || '';
+        const reference = row[refColR]?.toString().trim() || '';
+        const inputVal = row[inputColR]?.toString().trim() || '';
+
+        // Ambil deskripsi skor berdasarkan nomor
+        const scoreDesc = scoreMap.get(nomor) || ['', '', '', '', ''];
+
+        const nextRow = rumusRows[i + 1];
+        const isPGDesc = nextRow && nextRow[inputColR]?.toString().startsWith('a.') && nextRow[inputColR].includes('b.');
+
+        if (isPGDesc) {
+          const pgText = nextRow[inputColR].toString().trim();
+          const lines = pgText.split('\n').map(l => l.trim()).filter(Boolean);
+          const answers = ['', '', '', '', ''];
+          for (const line of lines) {
+            const match = line.match(/^([a-e])\.\s*(.*)/i);
+            if (match) {
+              const idx = 'abcde'.indexOf(match[1].toLowerCase());
+              if (idx >= 0 && idx < 5) answers[idx] = line;
+            }
           }
 
-          const variable = transformationVariables?.find((v: any) => v.name === variableName);
-          if (!variable) {
-            throw new Error(`Variabel "${variableName}" tidak ditemukan di database.`);
-          }
-
-          const q1 = row[idx('Pertanyaan 1')]?.toString().trim() || '';
-          const q2 = row[idx('Pertanyaan 2')]?.toString().trim() || '';
-          const q3 = row[idx('Pertanyaan 3')]?.toString().trim() || '';
-          const q4 = row[idx('Pertanyaan 4')]?.toString().trim() || '';
-
-          // ✅ PAYLOAD: Gunakan type 'excel' untuk SEMUA
-          const payload = {
+          payloads.push({
             transformationVariable: { connect: { id: variable.id } },
-            type: 'excel' as const, 
-            indicator: row[idx('Indikator')]?.toString().trim() || '',
-            keyIndicator: row[idx('Key Indicator')]?.toString().trim() || '',
-            reference: row[idx('Reference')]?.toString().trim() || '',
-            dataSource: row[idx('Data Source')]?.toString().trim() || '',
-            questionText: q1,
-            questionText2: q2,
-            questionText3: q3,
-            questionText4: q4,
+            type: 'multitext',
+            indicator: indikator,
+            keyIndicator: keyIndicator,
+            reference: reference,
+            dataSource: '',
+            questionText: inputVal,
+            questionText2: '',
+            questionText3: '',
+            questionText4: '',
+            answerText1: answers[0],
+            answerText2: answers[1],
+            answerText3: answers[2],
+            answerText4: answers[3],
+            answerText5: answers[4],
+            scoreDescription0: scoreDesc[0],
+            scoreDescription1: scoreDesc[1],
+            scoreDescription2: scoreDesc[2],
+            scoreDescription3: scoreDesc[3],
+            scoreDescription4: scoreDesc[4],
+            order: nomor,
+            status: finalStatus,
+          });
+          i++; // skip baris deskripsi PG
+        } else {
+          let subQuestions = [];
+          let j = i + 1;
+          while (j < rumusRows.length && !rumusRows[j][noColR]) {
+            const subInput = rumusRows[j][inputColR]?.toString().trim() || '';
+            if (subInput) subQuestions.push(subInput);
+            j++;
+          }
+          i = j - 1;
+
+          payloads.push({
+            transformationVariable: { connect: { id: variable.id } },
+            type: 'text',
+            indicator: indikator,
+            keyIndicator: keyIndicator,
+            reference: reference,
+            dataSource: '',
+            questionText: inputVal,
+            questionText2: subQuestions[0] || '',
+            questionText3: subQuestions[1] || '',
+            questionText4: subQuestions[2] || '',
             answerText1: '',
             answerText2: '',
             answerText3: '',
             answerText4: '',
             answerText5: '',
-            scoreDescription0: row[idx('Deskripsi Skor 0')]?.toString().trim() || '',
-            scoreDescription1: row[idx('Deskripsi Skor 1')]?.toString().trim() || '',
-            scoreDescription2: row[idx('Deskripsi Skor 2')]?.toString().trim() || '',
-            scoreDescription3: row[idx('Deskripsi Skor 3')]?.toString().trim() || '',
-            scoreDescription4: row[idx('Deskripsi Skor 4')]?.toString().trim() || '',
-            order: parseInt(row[idx('Urutan')]?.toString().trim() || '1', 10) || 1,
-            status: finalStatus as 'active' | 'inactive',
-          };
-
-          if (isEditMode && editNomor) {
-            await updateMutate(editNomor, payload);
-          } else {
-            await createMutate(payload);
-          }
+            scoreDescription0: scoreDesc[0],
+            scoreDescription1: scoreDesc[1],
+            scoreDescription2: scoreDesc[2],
+            scoreDescription3: scoreDesc[3],
+            scoreDescription4: scoreDesc[4],
+            order: nomor,
+            status: finalStatus,
+          });
         }
-
-        localStorage.removeItem('editData');
-        router.push('/daftar-assessment');
-      } catch (err: any) {
-        setSubmitError(err.message || 'Gagal menyimpan data ke database.');
-        console.error(err);
-      } finally {
-        setLoading(false);
       }
-    };
-    reader.readAsArrayBuffer(file);
+
+      // Simpan
+      for (const payload of payloads) {
+        if (isEditMode && editNomor) {
+          await updateMutate(editNomor, payload);
+        } else {
+          await createMutate(payload);
+        }
+      }
+
+      localStorage.removeItem('editData');
+      router.push('/daftar-assessment');
+    } catch (err: any) {
+      setSubmitError(err.message || 'Gagal menyimpan data.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
+  reader.readAsArrayBuffer(file);
+};
 
   const handleCancel = () => {
     localStorage.removeItem('editData');
@@ -276,12 +431,9 @@ export default function SubmitExcelPage() {
   const previewColumns = [
     { header: 'No', key: 'nomor', width: '60px', className: 'text-center' },
     { header: 'Variable', key: 'variable', width: '150px' },
-    { header: 'Indikator', key: 'indikator', width: '150px' },
-    { header: 'Key Indicator', key: 'keyIndicator', width: '150px' },
-    { header: 'Pertanyaan 1', key: 'pertanyaan1', width: '200px' },
-    { header: 'Pertanyaan 2', key: 'pertanyaan2', width: '150px' },
-    { header: 'Pertanyaan 3', key: 'pertanyaan3', width: '150px' },
-    { header: 'Pertanyaan 4', key: 'pertanyaan4', width: '150px' },
+    { header: 'Indikator', key: 'indikator', width: '250px' },
+    { header: 'Key Indicator', key: 'keyIndicator', width: '200px' },
+    { header: 'Pertanyaan', key: 'pertanyaan1', width: '250px' },
     { header: 'Tipe', key: 'tipeSoal', width: '100px', className: 'text-center' },
     { header: 'Urutan', key: 'urutan', width: '80px', className: 'text-center' },
     { header: 'Status', key: 'status', width: '100px', className: 'text-center' },
@@ -302,7 +454,7 @@ export default function SubmitExcelPage() {
           )}
 
           <div className="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded-lg mb-6">
-            <p>Download template Excel, isi, lalu upload di bawah.</p>
+            <p>Upload file Excel hasil pengisian TMA (format seperti contoh).</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -343,14 +495,6 @@ export default function SubmitExcelPage() {
             />
             {file && <p className="text-sm text-green-600 mt-1">✅ {file.name}</p>}
           </div>
-
-          <a
-            href="/template-assessment.xlsx"
-            download
-            className="inline-block text-blue-500 hover:text-blue-700 mb-6"
-          >
-            📥 Download Template Excel (baru)
-          </a>
 
           <div className="flex justify-end space-x-4 mt-6">
             <Button

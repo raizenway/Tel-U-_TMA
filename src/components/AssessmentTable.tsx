@@ -7,38 +7,34 @@ import Table from '@/components/Table';
 import SuccessNotification from '@/components/SuccessNotification';
 import Button from '@/components/button';
 import ModalConfirm from './StarAssessment/ModalConfirm';
-import { MessageCircleWarning, Pencil, Eye, Play, BookOpenCheck } from 'lucide-react';
+import {
+  MessageCircleWarning,
+  Pencil,
+  Eye,
+  Play,
+  BookOpenCheck,
+} from 'lucide-react';
 import { Search, Copy, Printer, Download } from 'lucide-react';
-import { useListAssessment } from '@/hooks/useAssessment'; // ✅ hooks yang sudah dibuat
-
-
+import { useListAssessment } from '@/hooks/useAssessment';
 
 // Mapping status
-const mapStatusToUI = (approvalStatus: string): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
+const mapStatusToUI = (
+  approvalStatus: string
+): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
   switch (approvalStatus) {
-    case 'submitted': return { status: 'Submitted', aksi: 'edit' };
-    case 'approved': return { status: 'Approved', aksi: 'view' };
-    case 'edit_requested': return { status: 'Edit', aksi: 'edit' };
-    default: return { status: 'Belum Selesai', aksi: 'progress' };
+    case 'submitted':
+      return { status: 'Submitted', aksi: 'edit' };
+    case 'approved':
+      return { status: 'Approved', aksi: 'view' };
+    case 'edit_requested':
+      return { status: 'Edit', aksi: 'edit' };
+    default:
+      return { status: 'Belum Selesai', aksi: 'progress' };
   }
-};
-
-// Hitung skor & hasil
-const calculateScores = (details: any[]): { skor: (number | string)[]; hasil: number | string } => {
-  if (!details || details.length === 0) {
-    return { skor: ['-', '-', '-', '-'], hasil: '-' };
-  }
-  const skor = details.slice(0, 4).map((d: any) => d.answerId ?? '-');
-  while (skor.length < 4) skor.push('-');
-  const validScores = skor.filter((s: any) => typeof s === 'number') as number[];
-  const hasil = validScores.length > 0
-    ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
-    : '-';
-  return { skor, hasil };
 };
 
 const AssessmentTable = ({ hideStartButton = false }) => {
-  const { data: apiData, loading, error } = useListAssessment(); // ✅ ambil dari hooks
+  const { data: apiData, loading, error } = useListAssessment();
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,12 +49,20 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     }
   }, []);
 
- // Transform data API ke format yang diharapkan oleh tabel
+  // Transform data API ke format tabel
 const data = apiData.map((item) => {
-  const campusName = item.user.branch?.name || 'Kampus Tidak Diketahui';
+  const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
   const { status, aksi } = mapStatusToUI(item.approvalStatus);
-  const { skor, hasil } = calculateScores(item.assessmentDetails);
-   // ✅ Bangun periode dari assessmentPeriod
+
+  // ✅ Ambil skor langsung dari field API
+  const skor = [
+    typeof item.countScore1 === 'number' ? item.countScore1 : '-',
+    typeof item.countScore2 === 'number' ? item.countScore2 : '-',
+    typeof item.countScore3 === 'number' ? item.countScore3 : '-',
+    typeof item.countScore4 === 'number' ? item.countScore4 : '-',
+  ];
+  const hasil = typeof item.tmiScore === 'number' ? item.tmiScore : '-';
+
   const periode = item.assessmentPeriod
     ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
     : '–';
@@ -67,7 +71,6 @@ const data = apiData.map((item) => {
     id: item.id,
     logo: <FaSchool className="text-blue-600 text-xl" />,
     nama: campusName,
-   // ✅ Ambil periode langsung dari API
     periode,
     skor,
     hasil,
@@ -76,7 +79,6 @@ const data = apiData.map((item) => {
   };
 });
 
-  // Filter berdasarkan pencarian
   const filteredData = data.filter((item) =>
     item.nama.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -95,7 +97,6 @@ const data = apiData.map((item) => {
 
   // ✅ Approve
   const handleApprove = (id: number) => {
-    // TODO: Panggil API approve
     setShowModal(false);
     setShowSuccess(true);
     localStorage.setItem('showSuccessNotification', 'true');
@@ -106,7 +107,7 @@ const data = apiData.map((item) => {
     { header: 'No', key: 'nomor', width: '50px' },
     { header: 'Logo', key: 'logo', width: '60px' },
     { header: 'Nama UPPS/KC', key: 'nama', width: '220px' },
-    { header: 'periode', key: 'periode', width: '140px' },
+    { header: 'Periode', key: 'periode', width: '140px' },
     { header: 'Skor 1', key: 'skor1', width: '80px' },
     { header: 'Skor 2', key: 'skor2', width: '80px' },
     { header: 'Skor 3', key: 'skor3', width: '80px' },
@@ -206,7 +207,17 @@ const data = apiData.map((item) => {
 
   // 📋 COPY
   const handleCopy = () => {
-    const headers = ['No', 'Nama UPPS/KC', 'Tanggal Submit', 'Skor 1', 'Skor 2', 'Skor 3', 'Skor 4', 'Hasil', 'Status'];
+    const headers = [
+      'No',
+      'Nama UPPS/KC',
+      'Periode',
+      'Skor 1',
+      'Skor 2',
+      'Skor 3',
+      'Skor 4',
+      'Hasil',
+      'Status',
+    ];
     const rows = tableData.map((row) => [
       row.nomor,
       typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
@@ -219,10 +230,12 @@ const data = apiData.map((item) => {
       row.statusText,
     ].join('\t'));
 
-    navigator.clipboard.writeText([headers.join('\t'), ...rows].join('\n')).then(
-      () => alert('Data berhasil disalin!'),
-      () => alert('Gagal menyalin data.')
-    );
+    navigator.clipboard
+      .writeText([headers.join('\t'), ...rows].join('\n'))
+      .then(
+        () => alert('Data berhasil disalin!'),
+        () => alert('Gagal menyalin data.')
+      );
   };
 
   // 🖨️ PRINT
@@ -266,7 +279,17 @@ const data = apiData.map((item) => {
 
   // 🔽 DOWNLOAD CSV
   const handleDownloadCSV = () => {
-    const headers = ['No', 'Nama UPPS/KC', 'Tanggal Submit', 'Skor 1', 'Skor 2', 'Skor 3', 'Skor 4', 'Hasil', 'Status'];
+    const headers = [
+      'No',
+      'Nama UPPS/KC',
+      'Periode',
+      'Skor 1',
+      'Skor 2',
+      'Skor 3',
+      'Skor 4',
+      'Hasil',
+      'Status',
+    ];
     const rows = tableData.map((row) => [
       row.nomor,
       typeof row.nama === 'string' ? row.nama : row.nama.props.children[0],
@@ -289,7 +312,6 @@ const data = apiData.map((item) => {
     URL.revokeObjectURL(url);
   };
 
-  // Render loading/error
   if (loading) {
     return (
       <div className="p-6 md:p-8 bg-white rounded-lg shadow-md border border-gray-45 w-full mt-20">
@@ -322,7 +344,9 @@ const data = apiData.map((item) => {
         confirmLabel="Approve"
         cancelLabel="Tolak"
         onConfirm={() => {
-          const purwokerto = data.find((item) => item.nama === 'Tel-U Purwokerto');
+          const purwokerto = data.find(
+            (item) => item.nama === 'Tel-U Purwokerto'
+          );
           if (purwokerto) handleApprove(purwokerto.id);
         }}
         onCancel={() => setShowModal(false)}
@@ -330,8 +354,12 @@ const data = apiData.map((item) => {
 
       {/* Header Section */}
       <div>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-2">Pengisian Assessment</h2>
-        <p className="text-sm text-gray-600">Berikut adalah daftar UPPS/KC yang sudah melakukan assessment</p>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+          Pengisian Assessment
+        </h2>
+        <p className="text-sm text-gray-600">
+          Berikut adalah daftar UPPS/KC yang sudah melakukan assessment
+        </p>
       </div>
 
       {/* Search + Action Buttons */}
@@ -349,13 +377,31 @@ const data = apiData.map((item) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy} className="h-10 px-4 py-2 text-sm">
+            <Button
+              variant="outline"
+              icon={Copy}
+              iconPosition="left"
+              onClick={handleCopy}
+              className="h-10 px-4 py-2 text-sm"
+            >
               Copy
             </Button>
-            <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint} className="h-10 px-4 py-2 text-sm">
+            <Button
+              variant="outline"
+              icon={Printer}
+              iconPosition="left"
+              onClick={handlePrint}
+              className="h-10 px-4 py-2 text-sm"
+            >
               Print
             </Button>
-            <Button variant="outline" icon={Download} iconPosition="left" onClick={handleDownloadCSV} className="h-10 px-4 py-2 text-sm">
+            <Button
+              variant="outline"
+              icon={Download}
+              iconPosition="left"
+              onClick={handleDownloadCSV}
+              className="h-10 px-4 py-2 text-sm"
+            >
               Download
             </Button>
 
@@ -379,7 +425,6 @@ const data = apiData.map((item) => {
           data={tableData}
           currentPage={1}
           rowsPerPage={10}
-         
         />
       </div>
     </div>

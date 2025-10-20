@@ -132,7 +132,9 @@ export default function TableUpdate({
             )}
           </div>
         )
-             : (item[col.key] ??  '-')}
+             : typeof item[col.key] === 'string' 
+  ? <div className="whitespace-pre-line break-words">{item[col.key]}</div> 
+  : (item[col.key] ?? '-')}
                   </td>
                     ))}
                   </tr>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   RadarChart,
   Radar,
@@ -90,6 +90,52 @@ interface DashboardApiResponse {
   branches: Branch[];
 }
 
+// === FUNGSI DI LUAR KOMPONEN (pure functions) ===
+const CURRENT_YEAR = new Date().getFullYear(); // 2025
+
+const cleanYearlyData = (rawData: YearlyData[]): YearlyData[] => {
+  if (!Array.isArray(rawData)) return [];
+  return rawData
+    .map(item => ({
+      ...item,
+      year: item.year > CURRENT_YEAR ? CURRENT_YEAR : item.year,
+    }))
+    .filter(
+      item =>
+        typeof item.year === 'number' &&
+        item.year <= CURRENT_YEAR &&
+        item.year >= 2000 &&
+        typeof item.total === 'number'
+    );
+};
+
+const getAllYearsFromBranches = (branches: Branch[]): string[] => {
+  const years = new Set<string>();
+  branches.forEach(branch => {
+    const cleanedStudent = cleanYearlyData(branch.yearlyStudentBody);
+    const cleanedAccred = cleanYearlyData(branch.yearlyAccreditationGrowth);
+    [...cleanedStudent, ...cleanedAccred].forEach(d => {
+      years.add(String(d.year));
+    });
+  });
+  return Array.from(years).sort((a, b) => Number(a) - Number(b));
+};
+
+// === FORMAT PERIOD NAME ===
+const formatPeriodName = (period: string): string => {
+  return period.replace(/^:\s*/, '');
+};
+
+// === GET PERIOD COLOR ===
+const getPeriodColor = (period: string, allPeriods: string[]): string => {
+  const colors = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
+    '#10b981', '#06b6d4', '#ef4444', '#d946ef', '#f97316', '#84cc16'
+  ];
+  const idx = allPeriods.indexOf(period);
+  return colors[idx >= 0 ? idx % colors.length : 0];
+};
+
 export default function DashboardTab() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
@@ -126,8 +172,8 @@ export default function DashboardTab() {
     "Tel-U Purwokerto": [],
     "Tel-U Bandung": [],
   });
-  const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
 
+  const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
   const [radarData, setRadarData] = useState<{ subject: string; A: number }[]>([]);
   const [apiVariables, setApiVariables] = useState<string[]>([]);
   const [variableGrowthData, setVariableGrowthData] = useState<
@@ -135,7 +181,6 @@ export default function DashboardTab() {
   >([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ HANYA SATU KAMPUS — DEFAULT BANDUNG
   const [selectedCampus, setSelectedCampus] = useState<CampusKey>("Tel-U Bandung");
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
@@ -163,7 +208,12 @@ export default function DashboardTab() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/assessment/dashboard');
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!baseUrl) {
+          throw new Error('NEXT_PUBLIC_API_URL is not defined');
+        }
+
+        const response = await fetch(`${baseUrl}/assessment/dashboard`);
         if (!response.ok) throw new Error('Failed to fetch dashboard data');
 
         const result = await response.json();
@@ -177,43 +227,43 @@ export default function DashboardTab() {
           assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
         });
 
-        const yearStrings = ['2021', '2022', '2023', '2024', '2025'];
-       // Definisikan tipe helper
-type StudentBodyRow = {
-  year: string;
-  "Tel-U Jakarta": number;
-  "Tel-U Surabaya": number;
-  "Tel-U Purwokerto": number;
-  "Tel-U Bandung": number;
-};
+        const DEFAULT_YEARS = ['2021', '2022', '2023', '2024', '2025'];
+        const apiYears = getAllYearsFromBranches(apiData.branches);
+        const allYearsSet = new Set([...DEFAULT_YEARS, ...apiYears]);
+        const yearStrings = Array.from(allYearsSet).sort((a, b) => Number(a) - Number(b));
 
-const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
-  const yearNum = Number(yearStr);
-  
-                // Inisialisasi dengan nilai default 0
-                const row: StudentBodyRow = {
-                  year: yearStr,
-                  "Tel-U Jakarta": 0,
-                  "Tel-U Surabaya": 0,
-                  "Tel-U Purwokerto": 0,
-                  "Tel-U Bandung": 0,
-                };
+        type StudentBodyRow = {
+          year: string;
+          "Tel-U Jakarta": number;
+          "Tel-U Surabaya": number;
+          "Tel-U Purwokerto": number;
+          "Tel-U Bandung": number;
+        };
 
-                // Isi data dari API jika tersedia
-                for (const branch of apiData.branches) {
-                  const campusName = branch.name;
-                  if (campusName in row) {
-                    const dataForYear = branch.yearlyStudentBody?.find((item: any) => item.year === yearNum);
-                    if (dataForYear && typeof dataForYear.total === 'number') {
-                      row[campusName] = dataForYear.total;
-                    }
-                  }
-                }
+        const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
+          const yearNum = Number(yearStr);
+          const row: StudentBodyRow = {
+            year: yearStr,
+            "Tel-U Jakarta": 0,
+            "Tel-U Surabaya": 0,
+            "Tel-U Purwokerto": 0,
+            "Tel-U Bandung": 0,
+          };
 
-                return row;
-              });
+          for (const branch of apiData.branches) {
+            const campusName = branch.name;
+            if (campusName in row) {
+              const cleanedData = cleanYearlyData(branch.yearlyStudentBody);
+              const dataForYear = cleanedData.find(item => item.year === yearNum);
+              if (dataForYear) {
+                row[campusName] = dataForYear.total;
+              }
+            }
+          }
+          return row;
+        });
 
-              setStudentBodyData(studentBodyFormatted); 
+        setStudentBodyData(studentBodyFormatted);
 
         const accreditationFormatted = yearStrings.map(yearStr => {
           const yearNum = Number(yearStr);
@@ -223,9 +273,11 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
             "Tel-U Purwokerto": 0,
             "Tel-U Bandung": 0,
           } as Record<CampusKey, number>;
+
           for (const branch of apiData.branches) {
             const campusName = branch.name;
-            const dataForYear = branch.yearlyAccreditationGrowth.find(item => item.year === yearNum);
+            const cleanedData = cleanYearlyData(branch.yearlyAccreditationGrowth);
+            const dataForYear = cleanedData.find(item => item.year === yearNum);
             if (dataForYear) {
               row[campusName] = dataForYear.total;
             }
@@ -242,13 +294,13 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
         });
 
         const tmiRaw = apiData.transformationMaturityIndex || [];
-        const validTmi = tmiRaw
-          .filter((item: any) => 
+        const validTmi = (tmiRaw as TransformationMaturityItem[])
+          .filter((item) => 
             typeof item.name === 'string' && 
             typeof item.value === 'number' && 
             item.name.trim() !== ''
           )
-          .map((item: any) => ({
+          .map((item) => ({
             subject: item.name.trim(),
             A: Number(item.value.toFixed(2)),
           }));
@@ -261,7 +313,6 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
           { subject: "Akademik", A: 60 },
         ]);
 
-        // Ekstrak variabel & growth data
         const allVariablesSet = new Set<string>();
         const growthData: { branch: CampusKey; variable: string; period: string; score: number }[] = [];
 
@@ -301,20 +352,11 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
     fetchData();
   }, []);
 
-  // Student chart data
-  const studentYears = Array.from(new Set(studentBodyData.map(d => d.year))).sort((a, b) => Number(a) - Number(b));
-  const studentDataByCampus = CAMPUS_LIST.map((campus) => {
-    const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
-    studentYears.forEach((year) => {
-      const item = studentBodyData.find(d => d.year === year);
-      data[year] = item ? (item[campus] ?? 0) : 0;
-    });
-    return data;
-  });
-
-  // Modal handlers
+  // === MODAL & INPUT HANDLERS ===
   const handleAddYear = () => {
-    const lastYearStr = studentYears[studentYears.length - 1] ?? '2025';
+    const lastYearStr = studentBodyData.length > 0 
+      ? studentBodyData[studentBodyData.length - 1].year 
+      : String(CURRENT_YEAR);
     const nextYear = String(Number(lastYearStr) + 1);
     setStudentBodyData(prev => [...prev, {
       year: nextYear,
@@ -323,6 +365,13 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
       "Tel-U Purwokerto": 0,
       "Tel-U Bandung": 0,
     }]);
+    setAccreditationYears(prev => [...prev, nextYear]);
+    (Object.keys(accreditationInputData) as CampusKey[]).forEach((campus) => {
+      setAccreditationInputData(prev => ({
+        ...prev,
+        [campus]: [...prev[campus], 0],
+      }));
+    });
   };
 
   const handleInputChange = (campus: CampusKey, yearIndex: number, value: string) => {
@@ -336,7 +385,9 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
   };
 
   const handleAddAccreditationYear = () => {
-    const lastYearStr = accreditationYears[accreditationYears.length - 1] ?? '2025';
+    const lastYearStr = accreditationYears.length > 0 
+      ? accreditationYears[accreditationYears.length - 1] 
+      : String(CURRENT_YEAR);
     const nextYear = String(Number(lastYearStr) + 1);
     setAccreditationYears(prev => [...prev, nextYear]);
     (Object.keys(accreditationInputData) as CampusKey[]).forEach((campus) => {
@@ -406,18 +457,18 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
 
   const studentColors = ["#A966FF", "#FF0000", "#5D77ff", "#FFB930", "#10B981"];
 
-  const getPeriodColor = (period: string) => {
-    const colors = [
-      '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
-      '#10b981', '#06b6d4', '#ef4444', '#d946ef', '#f97316', '#84cc16'
-    ];
-    const uniquePeriods = Array.from(
-      new Set(variableGrowthData.map(d => d.period))
-    ).sort();
-    const idx = uniquePeriods.indexOf(period);
-    return colors[idx >= 0 ? idx % colors.length : 0];
-  };
+  const studentYears = accreditationYears;
 
+  const studentDataByCampus = CAMPUS_LIST.map((campus) => {
+    const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
+    studentYears.forEach((year) => {
+      const item = studentBodyData.find(d => d.year === year);
+      data[year] = item ? (item[campus] ?? 0) : 0;
+    });
+    return data;
+  });
+
+  // === RENDER ===
   return (
     <div className="space-y-8 px-4 py-6">
       {/* Stat Cards */}
@@ -575,7 +626,6 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
                 onChange={(e) => setSelectedCampus(e.target.value as CampusKey)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               >
-                {/* ✅ HANYA 4 KAMPUS — TANPA "SEMUA KAMPUS" */}
                 {CAMPUS_LIST.map((campus) => (
                   <option key={campus} value={campus}>
                     {campus.replace("Tel-U ", "")}
@@ -626,7 +676,6 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
           </div>
         </div>
 
-        {/* ✅ GRAFIK TANPA RATA-RATA — HANYA NILAI ASLI PER KAMPUS */}
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
             data={(() => {
@@ -654,18 +703,48 @@ const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
             <CartesianGrid stroke="#f0f0f0" strokeDasharray="4 4" />
             <XAxis dataKey="variabel" tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 12 }} axisLine={{ stroke: '#d1d5db' }} tickLine={false} label={{ value: 'Skor', angle: -90, position: 'insideLeft', offset: -10, fill: '#6b7280', fontSize: 12 }} />
+
             <Tooltip
-  cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-  contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-  formatter={(value: number) => [value.toFixed(0), 'Skor']}
-  labelStyle={{ color: '#fff' }}
-/>
-            <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }} />
+              cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+              contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+              labelStyle={{ color: '#fff' }}
+            />
+
+            {/* ✅ CUSTOM LEGEND CONTENT */}
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ paddingTop: 20, fontSize: '12px', color: '#4b5563' }}
+              content={({ payload }) => {
+                if (!payload?.length) return null;
+                const periods = payload.map(p => p.value as string).sort();
+                return (
+                  <ul className="flex flex-wrap gap-4 justify-center">
+                    {periods.map((period, idx) => (
+                      <li key={idx} style={{ color: getPeriodColor(period, periods), display: 'flex', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: getPeriodColor(period, periods),
+                            marginRight: 6,
+                          }}
+                        />
+                        {formatPeriodName(period)}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              }}
+            />
+
             {Array.from(new Set(variableGrowthData.map(d => d.period))).sort().map(period => (
               <Bar
                 key={period}
                 dataKey={period}
-                fill={getPeriodColor(period)}
+                fill={getPeriodColor(period, Array.from(new Set(variableGrowthData.map(d => d.period))).sort())}
                 name={period}
                 radius={[6, 6, 0, 0]}
                 animationDuration={600}
