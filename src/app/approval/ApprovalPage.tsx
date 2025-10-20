@@ -10,7 +10,7 @@ import Pagination from "@/components/Pagination";
 import { useSort } from "@/hooks/useSort";
 import SearchTable from "@/components/SearchTable";
 import axios from "axios";
-import SuccessNotification from "@/components/SuccessNotification"; // ✅ Import notifikasi
+import SuccessNotification from "@/components/SuccessNotification";
 
 const BRANCHES = [
   { id: 1, name: "Tel-U Bandung" },
@@ -34,17 +34,28 @@ const TablePage = () => {
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false); // ✅ State notifikasi sukses
-  const [successMessage, setSuccessMessage] = useState(""); // ✅ Pesan notifikasi
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const rowsPerPage = 10;
 
   const columns = [
     { header: "Nomor", key: "nomor", width: "100px", sortable: true },
-    { header: "Nama Variable", key: "variable", width: "160px", sortable: true },
-    { header: "Indikator", key: "indikator", width: "250px" },
-    { header: "Pertanyaan", key: "pertanyaan", width: "250px" },
-    { header: "Jawaban", key: "jawaban", width: "120px", sortable: true },
+    { header: "Nama Variable", key: "variable", width: "250px", sortable: true },
+    { header: "Indikator", key: "indikator", width: "300px" },
+    { 
+      header: "Pertanyaan", 
+      key: "pertanyaan", 
+      width: "250px",
+      className: "whitespace-pre-line break-words"
+    },
+    { 
+      header: "Jawaban", 
+      key: "jawaban", 
+      width: "319px", 
+      sortable: true,
+      className: "whitespace-pre-line break-words"
+    },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
     { header: "Tipe Soal", key: "tipeSoal", width: "150px", sortable: true },
   ];
@@ -109,47 +120,105 @@ const TablePage = () => {
 
       const rawData = res.data.data || [];
 
-      // ✅ Fungsi untuk ambil jawaban dari answer
-      const getJawabanFromAnswer = (answer: any): string => {
-        if (!answer) return "-";
-        for (let i = 1; i <= 5; i++) {
-          const value = answer[`textAnswer${i}`];
-          if (value && value !== "0" && value !== "") {
-            return String(value);
-          }
-        }
-        return "-";
-      };
+      const getJawabanFromAnswer = (answer: any, question: any): string => {
+  if (!answer || !question) return "-";
 
+  if (question.type === 'multitext') {
+    for (let i = 1; i <= 5; i++) {
+      const value = answer[`textAnswer${i}`];
+      // ✅ Handle semua bentuk true: "1", 1, true, "yes", dll
+      if (value === "1" || value === 1 || value === true || value === "true" || value === "yes") {
+        const textKey = `answerText${i}`;
+        const textValue = question[textKey];
+        return textValue || `Opsi ${i}`;
+      }
+    }
+    return "-"; // jika tidak ada yang diisi
+  }
+
+  return "-";
+};
+
+  const getCombinedTextQuestion = (question: any, answer: any): { pertanyaan: string; jawaban: string } => {
+  const pertanyaanLines: string[] = [];
+  const jawabanLines: string[] = [];
+
+  // Pertanyaan 1
+  if (question.questionText && answer.textAnswer1 !== undefined && answer.textAnswer1 !== "") {
+    pertanyaanLines.push(question.questionText);
+    jawabanLines.push(String(answer.textAnswer1));
+  }
+
+  // Pertanyaan 2
+  if (question.questionText2 && answer.textAnswer2 !== undefined && answer.textAnswer2 !== "") {
+    pertanyaanLines.push( question.questionText2); // ✅ tambah - hanya jika ada Q2
+    jawabanLines.push(String(answer.textAnswer2)); // ✅ tambah - hanya jika ada Q2
+  }
+
+  // Pertanyaan 3-5 (opsional)
+  for (let i = 3; i <= 5; i++) {
+    const qText = question[`questionText${i}`];
+    const aText = answer[`textAnswer${i}`];
+    if (qText && aText !== undefined && aText !== "") {
+      pertanyaanLines.push(qText); // ✅ tambah - hanya jika ada Q3+
+      jawabanLines.push(String(aText)); // ✅ tambah - hanya jika ada Q3+
+    }
+  }
+
+  if (pertanyaanLines.length === 0) {
+    return { pertanyaan: "-", jawaban: "-" };
+  }
+
+  // Gabungkan dengan newline
+  return {
+    pertanyaan: pertanyaanLines.join("\n"),
+    jawaban: jawabanLines.join("\n"),
+  };
+};
       const transformedData = rawData.map((item: any, index: number) => {
         const question = item.question || {};
         const assessment = item.assessment || {};
         const answer = item.answer || {};
 
-        const jawaban = getJawabanFromAnswer(answer);
+        let pertanyaan = "-";
+        let jawaban = "-";
+
+        if (question.type === 'text') {
+          // Gabungkan semua pertanyaan dan jawaban
+          const combined = getCombinedTextQuestion(question, answer);
+          pertanyaan = combined.pertanyaan;
+          jawaban = combined.jawaban;
+        } else if (question.type === 'multitext') {
+          // Untuk multitext, tampilkan teks jawaban lengkap
+          pertanyaan = question.questionText || "-";
+          jawaban = getJawabanFromAnswer(answer, question);
+        } else {
+          pertanyaan = question.questionText || "-";
+          jawaban = getJawabanFromAnswer(answer, question);
+        }
+
         const skor = item.submissionValue !== undefined && item.submissionValue !== ""
           ? String(item.submissionValue)
           : "-";
 
-           // ✅ Tipe Soal disesuaikan
-  const tipeSoal = question.type === 'text'
-    ? 'Jawaban Singkat'
-    : question.type === 'multitext'
-      ? 'Pilihan Jawaban'
-      : question.type || "-";
+        const tipeSoal = question.type === 'text'
+          ? 'Jawaban Singkat'
+          : question.type === 'multitext'
+            ? 'Pilihan Jawaban'
+            : question.type || "-";
 
-       return {
-  nomor: index + 1,
-  variable: question.transformationVariable?.name || "-",
-  indikator: question.indicator || "-",
-  pertanyaan: question.questionText || "-",
-  jawaban: jawaban,
-  skor: skor,
-  tipeSoal: tipeSoal,
-  assessmentId: assessment.id,
-  detailId: item.id,
-  assessment: assessment, // ✅ TAMBAHKAN INI
-};
+        return {
+          nomor: index + 1,
+          variable: question.transformationVariable?.name || "-",
+          indikator: question.indicator || "-",
+          pertanyaan: pertanyaan,
+          jawaban: jawaban,
+          skor: skor,
+          tipeSoal: tipeSoal,
+          assessmentId: assessment.id,
+          detailId: item.id,
+          assessment: assessment,
+        };
       });
 
       setTableData(transformedData);
@@ -198,7 +267,6 @@ const TablePage = () => {
 
       await axios.post(endpoint, {});
 
-      // ✅ Tampilkan notifikasi sukses
       const message = modalType === "approve" 
         ? "Assessment berhasil disetujui!" 
         : "Assessment berhasil dikirim untuk revisi!";
@@ -206,7 +274,6 @@ const TablePage = () => {
       setSuccessMessage(message);
       setShowSuccess(true);
 
-      // Refresh data
       fetchData();
     } catch (error: any) {
       console.error("Gagal melakukan aksi:", error);
@@ -323,51 +390,51 @@ const TablePage = () => {
             />
           )}
 
-         {/* Pagination & Tombol */}
-<div className="flex items-center justify-between mt-4">
-  <div className="h-10 flex items-center">
-    <Pagination
-      currentPage={currentPage}
-      totalPages={totalPages}
-      onPageChange={(page) => setCurrentPage(page)}
-    />
-  </div>
+          {/* Pagination & Tombol */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="h-10 flex items-center">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
+            </div>
 
-  <div className="flex gap-4">
-    {tableData.length > 0 && tableData.some(row => row.assessment?.approvalStatus === 'submitted') && (
-      <>
-        <Button
-          variant="success"
-          className="px-13"
-          onClick={() => {
-            const firstSubmitted = tableData.find(row => row.assessment?.approvalStatus === 'submitted');
-            if (firstSubmitted) {
-              setSelectedAssessmentId(firstSubmitted.assessmentId);
-              setModalType("approve");
-              setShowModal(true);
-            }
-          }}
-        >
-          Approve
-        </Button>
-        <Button
-          variant="danger"
-          className="px-13"
-          onClick={() => {
-            const firstSubmitted = tableData.find(row => row.assessment?.approvalStatus === 'submitted');
-            if (firstSubmitted) {
-              setSelectedAssessmentId(firstSubmitted.assessmentId);
-              setModalType("revisi");
-              setShowModal(true);
-            }
-          }}
-        >
-          Revisi
-        </Button>
-      </>
-    )}
-  </div>
-</div>
+            <div className="flex gap-4">
+              {tableData.length > 0 && tableData.some(row => row.assessment?.approvalStatus === 'submitted') && (
+                <>
+                  <Button
+                    variant="success"
+                    className="px-13"
+                    onClick={() => {
+                      const firstSubmitted = tableData.find(row => row.assessment?.approvalStatus === 'submitted');
+                      if (firstSubmitted) {
+                        setSelectedAssessmentId(firstSubmitted.assessmentId);
+                        setModalType("approve");
+                        setShowModal(true);
+                      }
+                    }}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="px-13"
+                    onClick={() => {
+                      const firstSubmitted = tableData.find(row => row.assessment?.approvalStatus === 'submitted');
+                      if (firstSubmitted) {
+                        setSelectedAssessmentId(firstSubmitted.assessmentId);
+                        setModalType("revisi");
+                        setShowModal(true);
+                      }
+                    }}
+                  >
+                    Revisi
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* Modal */}
           <ModalConfirm
