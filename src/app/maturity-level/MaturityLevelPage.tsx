@@ -232,7 +232,7 @@ const columns = roleId === 1
                 placeholder="Cari level maturity..."
               />
               <div className="flex items-center gap-2">
-                <TableButton data={dataForExport} />
+                <TableButton data={dataForExport} showCopy={false}/>
                 {roleId === 1 && (
                 <Button className="px-8" onClick={handleTambah}>
                   Tambah Maturity Level
