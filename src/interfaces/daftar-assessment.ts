@@ -6,6 +6,7 @@ export interface Question {
   transformationVariable: { connect: { id: number } };
   type:   QuestionType;
   indicator: string;
+   questionApiUrl?: string;
   questionText: string;
   questionText2?: string;
   questionText3?: string;
@@ -38,6 +39,7 @@ export interface CreateQuestionRequest {
   transformationVariable: { connect: { id: number } };
   type: QuestionType;
   indicator: string;
+   questionApiUrl?: string;
   questionText: string;
   questionText2?: string;
   questionText3?: string;
