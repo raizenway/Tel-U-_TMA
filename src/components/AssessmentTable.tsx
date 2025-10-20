@@ -50,34 +50,34 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   }, []);
 
   // Transform data API ke format tabel
-  const data = apiData.map((item) => {
-    const campusName = item.user?.branch?.name || 'Kampus Tidak Diketahui';
-    const { status, aksi } = mapStatusToUI(item.approvalStatus);
+const data = apiData.map((item) => {
+  const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
+  const { status, aksi } = mapStatusToUI(item.approvalStatus);
 
-    // ✅ Ambil skor langsung dari field API
-    const skor = [
-      typeof item.countScore1 === 'number' ? item.countScore1 : '-',
-      typeof item.countScore2 === 'number' ? item.countScore2 : '-',
-      typeof item.countScore3 === 'number' ? item.countScore3 : '-',
-      typeof item.countScore4 === 'number' ? item.countScore4 : '-',
-    ];
-    const hasil = typeof item.tmiScore === 'number' ? item.tmiScore : '-';
+  // ✅ Ambil skor langsung dari field API
+  const skor = [
+    typeof item.countScore1 === 'number' ? item.countScore1 : '-',
+    typeof item.countScore2 === 'number' ? item.countScore2 : '-',
+    typeof item.countScore3 === 'number' ? item.countScore3 : '-',
+    typeof item.countScore4 === 'number' ? item.countScore4 : '-',
+  ];
+  const hasil = typeof item.tmiScore === 'number' ? item.tmiScore : '-';
 
-    const periode = item.assessmentPeriod
-      ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
-      : '–';
+  const periode = item.assessmentPeriod
+    ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
+    : '–';
 
-    return {
-      id: item.id,
-      logo: <FaSchool className="text-blue-600 text-xl" />,
-      nama: campusName,
-      periode,
-      skor,
-      hasil,
-      status,
-      aksi,
-    };
-  });
+  return {
+    id: item.id,
+    logo: <FaSchool className="text-blue-600 text-xl" />,
+    nama: campusName,
+    periode,
+    skor,
+    hasil,
+    status,
+    aksi,
+  };
+});
 
   const filteredData = data.filter((item) =>
     item.nama.toLowerCase().includes(searchTerm.toLowerCase())
