@@ -8,7 +8,6 @@ import { getPeriodeLabel } from '@/utils/periode';
 import { getAssessmentResult } from '@/lib/api-assessment-result';
 import { useListPeriode } from '@/hooks/usePeriode';
 import { BRANCHES } from '@/interfaces/branch';
-import domtoimage from 'dom-to-image';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -21,6 +20,9 @@ import {
   Legend,
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
+
+import { toPng } from 'dom-to-image-more';
+import jsPDF from 'jspdf';
 
 ChartJS.register(
   RadialLinearScale,
@@ -87,7 +89,7 @@ function RadarChart({
     return {
       label: assessments.find((x) => x.id === id)?.name || id,
       data: radarDataByUPPS[id] || new Array(radarLabels.length).fill(0),
-      backgroundColor: `${pal.hex}26`,
+      backgroundColor: hexWithAlpha(pal.hex, 0.15),
       borderColor: pal.hex,
       borderWidth: 2,
       pointBackgroundColor: pal.hex,
@@ -101,7 +103,10 @@ function RadarChart({
       options={{
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' }, tooltip: { enabled: true } },
+        plugins: {
+          legend: { position: 'top' as const },
+          tooltip: { enabled: true },
+        },
         scales: {
           r: {
             beginAtZero: true,
@@ -116,6 +121,11 @@ function RadarChart({
       height={380}
     />
   );
+}
+
+function hexWithAlpha(hex: string, alpha: number) {
+  const a = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  return `${hex}${a}`;
 }
 
 function FilterUPPSPopover({
@@ -243,6 +253,8 @@ export default function AssessmentResultPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false); 
 
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [reportsByUPPS, setReportsByUPPS] = useState<Record<string, VariableReport[]>>({});
@@ -250,19 +262,18 @@ export default function AssessmentResultPage() {
   const [allBranches, setAllBranches] = useState<Option[]>([]);
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
-  const [radarLabels, setRadarLabels] = useState<string[]>([]);
+  const [radarLabels, setRadarLabels] = useState<string[]>([
+    'Budaya Mutu', 'Relevansi Pengabdian Pada Masyarakat', 'Akuntabilitas', 'Diferensiasi Misi', 'Relevansi Pendidikan', 'Relevansi Penelitian'
+  ]);
 
   const allBranchIds = useMemo(() => {
     if (!user) return [];
-
     const roleId = user.role?.id ?? user.roleId;
-
     if (roleId === 1) {
       return BRANCHES.map((b) => b.id);
     } else if (roleId === 2 && user.branchId) {
-      return [user.branchId];
+      return [Number(user.branchId)];
     }
-
     return [];
   }, [user]);
 
@@ -284,9 +295,13 @@ export default function AssessmentResultPage() {
   }, [periodeData]);
 
   const getPeriodIdByLabel = (label: string): number | null => {
-    if (!periodeData?.data) return null;
-    const [semester, tahunStr] = label.split(' ');
+    if (!periodeData?.data || !label) return null;
+    const parts = label.trim().split(' ');
+    if (parts.length < 2) return null;
+    const semester = parts[0];
+    const tahunStr = parts[1];
     const tahun = parseInt(tahunStr, 10);
+    if (isNaN(tahun)) return null;
     return periodeData.data.find((p) => p.semester === semester && p.tahun === tahun)?.id ?? null;
   };
 
@@ -310,11 +325,11 @@ export default function AssessmentResultPage() {
       };
 
       const reports = tmiData.map((item: any) => ({
-        code: '',
+        code: item.code || item.name,
         name: item.name,
         point: parseFloat(item.value.toFixed(2)),
         maturityLevel: maturityLevel?.name || 'Unknown',
-        desc: maturityLevel?.description || '',
+        desc: maturityLevel?.description || item.description || '',
       }));
 
       return { assessment, reports, radarData, radarLabels };
@@ -325,7 +340,14 @@ export default function AssessmentResultPage() {
   };
 
   useEffect(() => {
-    if (!selectedPeriodId || allBranchIds.length === 0) return;
+    if (!selectedPeriodId || allBranchIds.length === 0) {
+      setAssessments([]);
+      setReportsByUPPS({});
+      setRadarDataByUPPS({});
+      setAllBranches([]);
+      setFilterIds([]);
+      return;
+    }
 
     const load = async () => {
       const promises = allBranchIds.map((id) => fetchAssessmentData(id, selectedPeriodId));
@@ -393,36 +415,41 @@ export default function AssessmentResultPage() {
       return;
     }
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+    setIsDownloading(true);
+    setIsExporting(true);
 
-      const blob = await domtoimage.toBlob(element, {
-        bgcolor: '#ffffff',
-        quality: 1,
-        style: {
-          backgroundColor: 'white',
-          color: 'black',
-          fontSize: '14px',
-        },
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
       });
 
-      if (!blob) {
-        console.error('Gagal membuat blob');
-        return;
-      }
+      const img = new Image();
+      img.src = dataUrl;
+      await img.decode();
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = `Laporan_Assessment_Semua_UPPS_${filterPeriode || 'semua_periode'}.png`;
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
+      const imgWidth = img.width;
+      const imgHeight = img.height + 20;
+
+      const orientation = imgWidth > imgHeight ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'px',
+        format: [imgWidth, imgHeight],
+      });
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Laporan_Assessment_${filterPeriode || 'semua_periode'}.pdf`);
     } catch (err) {
-      console.error('Gagal generate laporan gabungan:', err);
+      console.error('Gagal generate PDF:', err);
+    } finally {
+      setIsDownloading(false);
+      setIsExporting(false);
     }
   };
 
-  // Jika user tidak punya akses ke branch apa pun
   if (user && allBranchIds.length === 0) {
     return (
       <div className="flex min-h-screen bg-gray-100 items-center justify-center">
@@ -483,12 +510,19 @@ export default function AssessmentResultPage() {
               <p className="text-sm text-gray-500 italic">Belum ada UPPS/KC yang dipilih.</p>
             ) : (
               <>
-                <div id="download-content" className="space-y-6">
+                <div
+                  id="download-content"
+                  className={clsx(
+                    "space-y-6",
+                    isExporting && "whitespace-nowrap min-w-max"
+                  )}
+                  style={isExporting ? { display: 'inline-block' } : {}}
+                >
                   <div className="overflow-x-auto border rounded">
-                    <table className="w-full table-fixed text-sm">
+                    <table className="w-full table-auto text-sm">
                       <thead>
                         <tr>
-                          <th className="px-4 py-3 w-64 text-left font-semibold bg-[#12263A] bg-opacity-90 text-white">
+                          <th className="px-4 py-3 min-w-[280px] text-left font-semibold bg-[#12263A]/90 text-white border-r border-[#12263A]/70">
                             Nama UPPS/KC
                           </th>
                           {columns.map((c, i) => {
@@ -518,7 +552,7 @@ export default function AssessmentResultPage() {
                           { label: 'Maturity Level', render: (c: Assessment) => c.maturityLevel },
                         ].map((row, idx) => (
                           <tr key={row.label} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <th className="px-4 py-2 bg-[#12263A] bg-opacity-90 text-white text-left">
+                            <th className="px-4 py-2 min-w-[280px] bg-[#12263A]/90 text-white text-left border-r border-[#12263A]/70">
                               {row.label}
                             </th>
                             {columns.map((c, i) => {
@@ -536,7 +570,7 @@ export default function AssessmentResultPage() {
                         ))}
 
                         <tr className="border-t">
-                          <th className="px-4 py-2 bg-[#12263A] bg-opacity-90 text-white align-top text-left">
+                          <th className="px-4 py-2 min-w-[280px] bg-[#12263A]/90 text-white align-top text-left border-r border-[#12263A]/70">
                             Transformation Maturity Index
                           </th>
                           <td className="px-4 py-4 border-l-2 border-gray-200" colSpan={columns.length}>
@@ -554,108 +588,103 @@ export default function AssessmentResultPage() {
                     </table>
                   </div>
 
-                  <div className="overflow-x-auto border rounded">
-                    <table className="w-full table-fixed text-sm">
-                      <thead className="bg-[#12263A] bg-opacity-90 text-white">
-                        <tr>
-                          <th className="p-3 w-64 text-left">Report</th>
-                          {columns.map((c, i) => {
-                            const pal = getPalette(i);
-                            return (
-                              <th
-                                key={c.id}
-                                className={`px-4 py-3 text-left font-semibold min-w-[220px] text-black border-l-2 ${pal.header} ${pal.border}`}
-                              >
-                                {c.name}
-                              </th>
-                            );
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(() => {
-                          const reportsList = columns.map((c) => reportsByUPPS[c.id] || []);
-                          const max = Math.max(...reportsList.map((r) => r.length));
+                  <div className="overflow-x-auto border rounded mt-6">
+                    <div className="flex gap-0 min-h-[300px]">
+                      <div className="w-[280px] bg-[#12263A]/90 text-white flex flex-col shrink-0">
+                        <div className="p-4 font-bold text-center border-b border-[#12263A]/70">
+                          Report
+                        </div>
+                        <div className="flex-1"></div>
+                      </div>
 
-                          return (
-                            <>
-                              {[...Array(max)].map((_, i) => {
-                                const row = columns.map((c, idx) => reportsList[idx][i] || null);
+                      <div className="flex-1 overflow-x-auto">
+                        <table className="w-full table-auto text-sm">
+                          <thead className="bg-[#12263A]/90 text-black">
+                            <tr>
+                              {columns.map((c, i) => {
+                                const pal = getPalette(i);
                                 return (
-                                  <React.Fragment key={`row-${i}`}>
-                                    <tr className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                      <td className="p-3 font-semibold bg-gray-100 text-left">Nama Variabel</td>
-                                      {row.map((r, j) => {
-                                        const pal = getPalette(j);
-                                        return (
-                                          <td
-                                            key={`name-${j}`}
-                                            className={`p-3 text-center border-l-2 ${pal.border}`}
-                                          >
-                                            {r ? `${r.code} (${r.name})` : '-'}
-                                          </td>
-                                        );
-                                      })}
-                                    </tr>
-                                    <tr className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                      <td className="p-3 font-semibold bg-gray-100 text-left">Point</td>
-                                      {row.map((r, j) => {
-                                        const pal = getPalette(j);
-                                        return (
-                                          <td
-                                            key={`point-${j}`}
-                                            className={`p-3 text-center border-l-2 ${pal.border}`}
-                                          >
-                                            {r ? r.point.toFixed(2) : '-'}
-                                          </td>
-                                        );
-                                      })}
-                                    </tr>
+                                  <th
+                                    key={c.id}
+                                    colSpan={4}
+                                    className={clsx(
+                                      "p-4 text-center font-bold border-l whitespace-nowrap",
+                                      pal.header,
+                                      pal.border
+                                    )}
+                                    style={{ color: pal.hex }}
+                                  >
+                                    {c.name}
+                                  </th>
+                                );
+                              })}
+                            </tr>
+                            <tr>
+                              {columns.map((c, i) => {
+                                const pal = getPalette(i);
+                                return (
+                                  <React.Fragment key={`${c.id}-sub`}>
+                                    <th className={clsx("p-3 text-center border-l min-w-[150px] whitespace-nowrap", pal.header, pal.border)}>
+                                      Nama Variabel
+                                    </th>
+                                    <th className={clsx("p-3 text-center border-l min-w-[90px] whitespace-nowrap", pal.header, pal.border)}>
+                                      Point
+                                    </th>
+                                    <th className={clsx("p-3 text-center min-w-[160px] whitespace-nowrap", pal.header, pal.border)}>
+                                      Maturity Level
+                                    </th>
+                                    <th className={clsx("p-3 text-center min-w-[200px] whitespace-nowrap", pal.header, pal.border)}>
+                                      Deskripsi
+                                    </th>
                                   </React.Fragment>
                                 );
                               })}
-
-                              <tr className="bg-gray-50">
-                                <td className="p-3 font-semibold bg-gray-100 text-left">Maturity Level</td>
-                                {columns.map((c, i) => {
-                                  const pal = getPalette(i);
-                                  return (
-                                    <td
-                                      key={`ml-${i}`}
-                                      className={`p-3 text-center border-l-2 ${pal.border}`}
-                                    >
-                                      {assessments.find((a) => a.id === c.id)?.maturityLevel || 'Unknown'}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-
-                              <tr className="bg-white">
-                                <td className="p-3 font-semibold bg-gray-100 text-left">Deskripsi per Variabel</td>
-                                {columns.map((c, i) => {
-                                  const pal = getPalette(i);
-                                  const desc = reportsByUPPS[c.id]?.[0]?.desc || '-';
-                                  return (
-                                    <td
-                                      key={`desc-${i}`}
-                                      className={`p-3 text-center border-l-2 ${pal.border}`}
-                                    >
-                                      {desc}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              const sampleId = columns[0]?.id;
+                              const sampleReports = sampleId ? reportsByUPPS[sampleId] || [] : [];
+                              return sampleReports.map((v, idx) => (
+                                <tr key={idx} className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                                  {columns.map((c, i) => {
+                                    const pal = getPalette(i);
+                                    const report = (reportsByUPPS[c.id] || []).find((r) => r.code === v.code);
+                                    return (
+                                      <React.Fragment key={`${c.id}-${v.code}`}>
+                                        <td className={clsx("p-3 text-center border-l min-w-[150px] whitespace-pre-line", pal.border)}>
+                                          {report?.name ?? "-"}
+                                        </td>
+                                        <td className={clsx("p-3 text-center border-l min-w-[90px]", pal.border)}>
+                                          {report?.point ?? "-"}
+                                        </td>
+                                        <td className={clsx("p-3 text-center border-l min-w-[160px]", pal.border)}>
+                                          {report?.maturityLevel ?? "-"}
+                                        </td>
+                                        <td className={clsx("p-3 text-center border-l max-w-[200px] whitespace-pre-line text-xs", pal.border)}>
+                                          {report?.desc || "-"}
+                                        </td>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </tr>
+                              ));
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-6 flex justify-center">
-                  <Button variant="primary" onClick={handleDownloadAll}>
-                    Download
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="primary"
+                    onClick={handleDownloadAll}
+                    disabled={isDownloading}
+                    className="px-6 py-2 text-sm"
+                  >
+                    {isDownloading ? 'Mengunduh...' : 'Download'}
                   </Button>
                 </div>
               </>

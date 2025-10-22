@@ -1,4 +1,4 @@
-  // components/sidebar.tsx
+// components/sidebar.tsx
   "use client";
 
   import Image from "next/image";
@@ -138,6 +138,11 @@
           {
             name: "Assessment Period",
             path: "periode",
+            icon: <BookOpen size={18} />,
+          },
+          {
+            name: "UPPS/KC",
+            path: "kampus-cabang",
             icon: <BookOpen size={18} />,
           },
         ],
