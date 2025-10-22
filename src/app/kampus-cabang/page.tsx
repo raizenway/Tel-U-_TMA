@@ -10,7 +10,7 @@ import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
 import { useListBranch } from "@/hooks/useBranch";
-import { Branch } from '@/interfaces/branch.interface';
+import { Branch, BranchDetail} from '@/interfaces/branch.interface';
 
 export default function KampusCabangPage() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function KampusCabangPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // ✅ State untuk data di modal (editable)
-  const [modalData, setModalData] = useState<{ year: number; studyProgramCount: number; superiorAccreditedStudyProgramCount: number }[]>([]);
+  const [modalData, setModalData] = useState<BranchDetail[]>([]);
 
   const columns = [
     { header: 'No', key: 'id', width: '60px', sortable: true },
@@ -69,13 +69,7 @@ export default function KampusCabangPage() {
   const handleDetailClick = (branch: Branch) => {
     setSelectedBranch(branch);
     // Inisialisasi data modal dari branchDetails
-    setModalData(
-      branch.branchDetails.map(detail => ({
-        year: detail.year,
-        studyProgramCount: detail.studyProgramCount,
-        superiorAccreditedStudyProgramCount: detail.superiorAccreditedStudyProgramCount
-      }))
-    );
+    setModalData(branch.branchDetails); 
     setIsDetailModalOpen(true);
   };
 
@@ -87,67 +81,86 @@ export default function KampusCabangPage() {
 
   // ✅ Tambah baris baru
   const handleAddYear = () => {
-    if (modalData.length === 0) {
-      setModalData([{ year: 2021, studyProgramCount: 0, superiorAccreditedStudyProgramCount: 0 }]);
-      return;
-    }
+  if (!selectedBranch) return; // ✅ TAMBAHKAN INI — pastikan selectedBranch ada
+
+  if (modalData.length === 0) {
+    setModalData([{
+      id: undefined as any,
+      branchId: selectedBranch.id,
+      year: 2021,
+      studentBodyCount: 0,
+      studyProgramCount: 0,
+      superiorAccreditedStudyProgramCount: 0,
+      accreditationGrowth: 0,
+    }]);
+    return;
+  }
 
     // Cari tahun terakhir
     const lastYear = Math.max(...modalData.map(d => d.year));
     const nextYear = lastYear + 1;
 
     setModalData(prev => [
-      ...prev,
-      { year: nextYear, studyProgramCount: 0, superiorAccreditedStudyProgramCount: 0 }
-    ]);
+    ...prev,
+    {
+      id: undefined as any, // ← penting: tidak ada id untuk data baru
+      branchId: selectedBranch!.id,
+      year: nextYear,
+      studentBodyCount: 0,
+      studyProgramCount: 0,
+      superiorAccreditedStudyProgramCount: 0,
+      accreditationGrowth: 0,
+    }
+  ]);
   };
 
   // ✅ Ubah nilai di input (validasi angka)
-  const handleInputChange = (index: number, field: string, value: string) => {
-    // Hanya izinkan angka
-    const newValue = value.replace(/[^0-9]/g, '');
-    const numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
-    setModalData(prev =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: numValue } : item
-      )
-    );
-  };
+const handleInputChange = (idOrYear: number, field: keyof BranchDetail, value: string) => {
+  const newValue = value.replace(/[^0-9]/g, '');
+  const numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
+
+  setModalData(prev =>
+    prev.map(item =>
+      // Jika item punya id, cari berdasarkan id
+      // Jika tidak (data baru), cari berdasarkan year
+      (item.id !== undefined && item.id === idOrYear) ||
+      (item.id === undefined && item.year === idOrYear)
+        ? { ...item, [field]: numValue }
+        : item
+    )
+  );
+};
 
 const handleSave = async () => {
   if (!selectedBranch) return;
 
   setIsSaving(true);
   try {
-    // ✅ Gunakan NEXT_PUBLIC_API_URL untuk kirim ke backend eksternal
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!baseUrl) {
+      throw new Error('NEXT_PUBLIC_API_URL tidak ditemukan di environment variables.');
+    }
+
     const response = await fetch(`${baseUrl}/branch/detail`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(
-        modalData.map(item => ({
-          branchId: selectedBranch.id,
-          year: item.year,
-          studyProgramCount: item.studyProgramCount,
-          superiorAccreditedStudyProgramCount: item.superiorAccreditedStudyProgramCount,
-        }))
-      ),
+      body: JSON.stringify(modalData),
     });
 
     if (!response.ok) {
-      throw new Error('Gagal menyimpan data');
+      const errorMsg = await response.text();
+      throw new Error(`Gagal menyimpan data: ${errorMsg}`);
     }
 
-    // ✅ Sukses: tampilkan notifikasi & tutup modal
     setShowSuccess(true);
     setSuccessMessage('Data berhasil disimpan!');
     setIsDetailModalOpen(false);
-    setRefreshFlag(prev => prev + 1); // refresh tabel utama
+    setRefreshFlag(prev => prev + 1);
   } catch (err) {
     console.error('Error menyimpan:', err);
-    alert('Gagal menyimpan data. Coba lagi.');
+    alert(`Gagal menyimpan data: ${(err as Error).message}`);
   } finally {
     setIsSaving(false);
   }
@@ -248,96 +261,95 @@ const handleSave = async () => {
           />
         </div>
 
-        {/* ✅ Modal: TANPA nama kampus di atas */}
-{/* ✅ Modal: TANPA nama kampus di atas */}
-<ModalConfirm
-  isOpen={isDetailModalOpen}
-  onCancel={closeDetailModal}
-  title=""
-  header="Ubah Data Mahasiswa"
-  // ❌ HAPUS confirmLabel & cancelLabel karena kita render sendiri di footer
-  footer={
-    <div className="flex justify-center gap-4 mt-4">
-      {/* ✅ Tombol Batal — pakai Button */}
-      <Button
-        variant="ghost"
-        onClick={closeDetailModal}
-        className="rounded-[2px] px-8 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
-      >
-        Batal
-      </Button>
-      {/* ✅ Tombol Simpan — pakai Button */}
-      <Button
-        variant="primary"
-        onClick={handleSave}
-        disabled={isSaving}
-        className="px-6 py-2 text-sm font-medium"
-      >
-        {isSaving ? 'Menyimpan...' : 'Simpan'}
-      </Button>
-    </div>
-  }
->
-  <div className="space-y-4">
-    {/* ✅ Tombol Tambah Tahun — pakai Button yang sama */}
-    <div className="flex justify-end">
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={handleAddYear}
-        className="px-4 py-1.5  font-medium"
-      >
-        + Tambah Tahun
-      </Button>
-    </div>
+        {/* Modal */}
+        <ModalConfirm
+          isOpen={isDetailModalOpen}
+          onCancel={closeDetailModal}
+          title=""
+          header="Ubah Data Mahasiswa"
+          // ❌ HAPUS confirmLabel & cancelLabel karena kita render sendiri di footer
+          footer={
+            <div className="flex justify-center gap-4 mt-4">
+              {/* ✅ Tombol Batal — pakai Button */}
+              <Button
+                variant="ghost"
+                onClick={closeDetailModal}
+                className="rounded-[2px] px-8 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
+              {/* ✅ Tombol Simpan — pakai Button */}
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-6 py-2 text-sm font-medium"
+              >
+                {isSaving ? 'Menyimpan...' : 'Simpan'}
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            {/* ✅ Tombol Tambah Tahun — pakai Button yang sama */}
+            <div className="flex justify-end">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAddYear}
+                className="px-4 py-1.5  font-medium"
+              >
+                + Tambah Tahun
+              </Button>
+            </div>
 
-    {/* 🟢 Tabel Editable */}
-    <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border px-2 py-1 text-left text-xs">Tahun</th>
-            <th className="border px-2 py-1 text-left text-xs">Jumlah Prodi</th>
-            <th className="border px-2 py-1 text-left text-xs">Jumlah Prodi Terakreditasi Unggul</th>
-          </tr>
-        </thead>
-        <tbody>
-          {modalData.map((row, index) => (
-            <tr key={index}>
-              <td className="border px-2 py-1 text-xs">
-                <input
-                  type="text"
-                  value={row.year || ''}
-                  onInput={(e) => handleInputChange(index, 'year', e.currentTarget.value)}
-                  className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
-                  placeholder="Tahun"
-                />
-              </td>
-              <td className="border px-2 py-1 text-xs">
-                <input
-                  type="text"
-                  value={row.studyProgramCount || ''}
-                  onInput={(e) => handleInputChange(index, 'studyProgramCount', e.currentTarget.value)}
-                  className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
-                  placeholder="Jumlah Prodi"
-                />
-              </td>
-              <td className="border px-2 py-1 text-xs">
-                <input
-                  type="text"
-                  value={row.superiorAccreditedStudyProgramCount || ''}
-                  onInput={(e) => handleInputChange(index, 'superiorAccreditedStudyProgramCount', e.currentTarget.value)}
-                  className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
-                  placeholder="Jumlah Prodi Terakreditasi Unggul"
-                />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</ModalConfirm>
+            {/* 🟢 Tabel Editable */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-2 py-1 text-left text-xs">Tahun</th>
+                    <th className="border px-2 py-1 text-left text-xs">Jumlah Prodi</th>
+                    <th className="border px-2 py-1 text-left text-xs">Jumlah Prodi Terakreditasi Unggul</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalData.map((row) => (
+                    <tr key={row.id ?? row.year}>
+                      <td className="border px-2 py-1 text-xs">
+                        <input
+                          type="text"
+                          value={row.year || ''}
+                          onInput={(e) => handleInputChange(row.id ?? row.year, 'year', e.currentTarget.value)}
+                          className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                          placeholder="Tahun"
+                        />
+                      </td>
+                      <td className="border px-2 py-1 text-xs">
+                        <input
+                          type="text"
+                          value={row.studyProgramCount || ''}
+                          onInput={(e) => handleInputChange(row.id ?? row.year, 'studyProgramCount', e.currentTarget.value)}
+                          className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                          placeholder="Jumlah Prodi"
+                        />
+                      </td>
+                      <td className="border px-2 py-1 text-xs">
+                        <input
+                          type="text"
+                          value={row.superiorAccreditedStudyProgramCount || ''}
+                          onInput={(e) => handleInputChange(row.id ?? row.year, 'superiorAccreditedStudyProgramCount', e.currentTarget.value)}
+                          className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                          placeholder="Jumlah Prodi Terakreditasi Unggul"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </ModalConfirm>
       </main>
     </div>
   );

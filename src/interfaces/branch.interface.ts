@@ -1,5 +1,6 @@
 export interface BranchDetail {
   id: number;
+  tempId?: string; 
   branchId: number;
   year: number;
   studentBodyCount: number;

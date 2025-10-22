@@ -19,12 +19,16 @@ export const useListBranch = (refreshFlag: number): UseListBranchResult => {
       setError(null);
 
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!baseUrl) {
+          throw new Error("NEXT_PUBLIC_API_URL belum diatur di .env");
+        }
+
         const response = await fetch(`${baseUrl}/branch`, {
-        method: 'GET',
-        headers: {
+          method: 'GET',
+          headers: {
             'Content-Type': 'application/json',
-        },
+          },
         });
 
         if (!response.ok) {
@@ -41,7 +45,7 @@ export const useListBranch = (refreshFlag: number): UseListBranchResult => {
     };
 
     fetchData();
-  }, [refreshFlag]); // refresh ketika flag berubah
+  }, [refreshFlag]);
 
   return { data, isLoading, error };
 };

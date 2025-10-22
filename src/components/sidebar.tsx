@@ -1,4 +1,4 @@
-  // components/sidebar.tsx
+// components/sidebar.tsx
   "use client";
 
   import Image from "next/image";
