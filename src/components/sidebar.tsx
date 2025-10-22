@@ -140,6 +140,11 @@
             path: "periode",
             icon: <BookOpen size={18} />,
           },
+          {
+            name: "UPPS/KC",
+            path: "kampus-cabang",
+            icon: <BookOpen size={18} />,
+          },
         ],
       },
       {
