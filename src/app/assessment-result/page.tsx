@@ -4,11 +4,10 @@ import React, { useMemo, useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { FiChevronDown } from 'react-icons/fi';
 import Button from '@/components/button';
-import { getPeriodeLabel } from "@/utils/periode";
+import { getPeriodeLabel } from '@/utils/periode';
 import { getAssessmentResult } from '@/lib/api-assessment-result';
 import { useListPeriode } from '@/hooks/usePeriode';
 import { BRANCHES } from '@/interfaces/branch';
-import domtoimage from 'dom-to-image';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -21,6 +20,9 @@ import {
   Legend,
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
+
+import { toPng } from 'dom-to-image-more';
+import jsPDF from 'jspdf';
 
 ChartJS.register(
   RadialLinearScale,
@@ -251,6 +253,8 @@ export default function AssessmentResultPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false); 
 
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [reportsByUPPS, setReportsByUPPS] = useState<Record<string, VariableReport[]>>({});
@@ -259,7 +263,7 @@ export default function AssessmentResultPage() {
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
   const [radarLabels, setRadarLabels] = useState<string[]>([
-    'Mutu', 'Akademik', 'SDM', 'SPI', 'Kemahasiswaan', 'PPM, Publikasi, Abdimas'
+    'Budaya Mutu', 'Relevansi Pengabdian Pada Masyarakat', 'Akuntabilitas', 'Diferensiasi Misi', 'Relevansi Pendidikan', 'Relevansi Penelitian'
   ]);
 
   const allBranchIds = useMemo(() => {
@@ -411,32 +415,38 @@ export default function AssessmentResultPage() {
       return;
     }
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+    setIsDownloading(true);
+    setIsExporting(true);
 
-      const blob = await domtoimage.toBlob(element, {
-        bgcolor: '#ffffff',
-        quality: 1,
-        style: {
-          backgroundColor: 'white',
-          color: 'black',
-          fontSize: '14px',
-        },
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
       });
 
-      if (!blob) {
-        console.error('Gagal membuat blob');
-        return;
-      }
+      const img = new Image();
+      img.src = dataUrl;
+      await img.decode();
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = `Laporan_Assessment_${filterPeriode || 'semua_periode'}.png`;
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
+      const imgWidth = img.width;
+      const imgHeight = img.height + 20;
+
+      const orientation = imgWidth > imgHeight ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'px',
+        format: [imgWidth, imgHeight],
+      });
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Laporan_Assessment_${filterPeriode || 'semua_periode'}.pdf`);
     } catch (err) {
-      console.error('Gagal generate laporan:', err);
+      console.error('Gagal generate PDF:', err);
+    } finally {
+      setIsDownloading(false);
+      setIsExporting(false);
     }
   };
 
@@ -500,9 +510,16 @@ export default function AssessmentResultPage() {
               <p className="text-sm text-gray-500 italic">Belum ada UPPS/KC yang dipilih.</p>
             ) : (
               <>
-                <div id="download-content" className="space-y-6">
+                <div
+                  id="download-content"
+                  className={clsx(
+                    "space-y-6",
+                    isExporting && "whitespace-nowrap min-w-max"
+                  )}
+                  style={isExporting ? { display: 'inline-block' } : {}}
+                >
                   <div className="overflow-x-auto border rounded">
-                    <table className="w-full table-auto text-sm ">
+                    <table className="w-full table-auto text-sm">
                       <thead>
                         <tr>
                           <th className="px-4 py-3 min-w-[280px] text-left font-semibold bg-[#12263A]/90 text-white border-r border-[#12263A]/70">
@@ -581,7 +598,7 @@ export default function AssessmentResultPage() {
                       </div>
 
                       <div className="flex-1 overflow-x-auto">
-                        <table className="w-full table-auto text-sm ">
+                        <table className="w-full table-auto text-sm">
                           <thead className="bg-[#12263A]/90 text-black">
                             <tr>
                               {columns.map((c, i) => {
@@ -664,9 +681,10 @@ export default function AssessmentResultPage() {
                   <Button
                     variant="primary"
                     onClick={handleDownloadAll}
+                    disabled={isDownloading}
                     className="px-6 py-2 text-sm"
                   >
-                    Download Semua
+                    {isDownloading ? 'Mengunduh...' : 'Download'}
                   </Button>
                 </div>
               </>
