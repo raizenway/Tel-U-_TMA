@@ -140,6 +140,11 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
           path: "periode",
           icon: <BookOpen size={18} />,
         },
+        {
+          name: "Kampus Cabang",
+          path: "kampus-cabang",
+          icon: <BookOpen size={18} />,
+        },
       ],
     },
     {
