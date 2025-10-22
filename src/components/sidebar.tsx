@@ -140,6 +140,75 @@ export default function Sidebar({ onItemClick }: SidebarProps) {
           path: "periode",
           icon: <BookOpen size={18} />,
         },
+        ],
+      },
+      {
+        name: "User Management",
+        path: "user-management",
+        icon: <Users size={20} />,
+      },
+    ];
+
+<<<<<<< HEAD
+  const handleItemClick = (item: NavItem) => {
+    if (item.path) {
+      setActiveItem(item);
+      onItemClick(item);
+    }
+  };
+
+  // 💡 SEMUA NAV ITEMS — akan difilter berdasarkan role
+  const allNavItems: NavItem[] = [
+    {
+      name: "Home",
+      path: "welcome",
+      icon: <Home size={20} />,
+    },
+    {
+      name: "Start Assessment",
+      path: "assessment",
+      icon: <FileText size={20} />,
+    },
+    {
+      name: "Assessment Result",
+      icon: <ChartLine size={20} />,
+      submenu: [
+        {
+          name: "Approval Assessment",
+          path: "approval",
+          icon: <ClipboardList size={18} className="text-gray-600" />,
+        },
+        {
+          name: "Assessment Result",
+          path: "assessment-result",
+          icon: <ChartLine size={18} className="text-gray-600" />,
+        },
+      ],
+    },
+    {
+      name: "About TMA",
+      icon: <Info size={20} />,
+      submenu: [
+        {
+          name: "Daftar Assessment",
+          path: "daftar-assessment",
+          icon: <ClipboardList size={18} />,
+        },
+        {
+          name: "Maturity Level",
+          path: "maturity-level",
+          icon: <ChartLine size={18} />,
+        },
+        {
+          name: "Transformation Variable",
+          path: "transformation-variable",
+          icon: <BookOpen size={18} />,
+        },
+        {
+          name: "Assessment Period",
+          path: "periode",
+          icon: <BookOpen size={18} />,
+        },
         {
           name: "Kampus Cabang",
           path: "kampus-cabang",
