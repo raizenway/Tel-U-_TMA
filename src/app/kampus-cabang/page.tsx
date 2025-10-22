@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef} from 'react';
 import { useRouter } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
@@ -31,6 +31,8 @@ export default function KampusCabangPage() {
 
   // ✅ State untuk data di modal (editable)
   const [modalData, setModalData] = useState<BranchDetail[]>([]);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const columns = [
     { header: 'No', key: 'id', width: '60px', sortable: true },
@@ -166,6 +168,12 @@ const handleSave = async () => {
   }
 };
 
+useEffect(() => {
+  if (scrollContainerRef.current && modalData.length > 0) {
+    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+  }
+}, [modalData]);
+
   const dataForExport = currentBranches.map(b => ({
     No: b.id,
     'Nama UPPS/KC': b.name,
@@ -269,7 +277,7 @@ const handleSave = async () => {
           header="Ubah Data Mahasiswa"
           // ❌ HAPUS confirmLabel & cancelLabel karena kita render sendiri di footer
           footer={
-            <div className="flex justify-center gap-4 mt-4">
+            <div className="flex justify-center gap-4 mt-2">
               {/* ✅ Tombol Batal — pakai Button */}
               <Button
                 variant="ghost"
@@ -283,63 +291,66 @@ const handleSave = async () => {
                 variant="primary"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-6 py-2 text-sm font-medium"
+                className="px-8 py-2 text-sm font-medium"
               >
                 {isSaving ? 'Menyimpan...' : 'Simpan'}
               </Button>
             </div>
           }
         >
-          <div className="space-y-4">
+          <div className="space-y-4">  
             {/* ✅ Tombol Tambah Tahun — pakai Button yang sama */}
             <div className="flex justify-end">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleAddYear}
-                className="px-4 py-1.5  font-medium"
+                className="px-4 py-2  font-medium"
               >
                 + Tambah Tahun
               </Button>
             </div>
 
-            {/* 🟢 Tabel Editable */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-2 py-1 text-left text-xs">Tahun</th>
-                    <th className="border px-2 py-1 text-left text-xs">Jumlah Prodi</th>
-                    <th className="border px-2 py-1 text-left text-xs">Jumlah Prodi Terakreditasi Unggul</th>
+            {/* 🟢 Tabel Editable*/}
+            <div
+              ref={scrollContainerRef}
+              className="overflow-x-auto max-h-[350px] overflow-y-auto border rounded-lg"
+            >
+              <table className="min-w-full border-collapse border-gray-300">
+                <thead className="sticky top-0 bg-gray-100 z-10">
+                  <tr>
+                    <th className="border px-3 py-2 text-left text-sm font-medium">Tahun</th>
+                    <th className="border px-3 py-2 text-left text-sm font-medium">Jumlah Prodi</th>
+                    <th className="border px-3 py-2 text-left text-sm font-medium">Jumlah Prodi Terakreditasi Unggul</th>
                   </tr>
                 </thead>
                 <tbody>
                   {modalData.map((row) => (
                     <tr key={row.id ?? row.year}>
-                      <td className="border px-2 py-1 text-xs">
+                      <td className="border px-3 py-2">
                         <input
                           type="text"
                           value={row.year || ''}
                           onInput={(e) => handleInputChange(row.id ?? row.year, 'year', e.currentTarget.value)}
-                          className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                          className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-base"
                           placeholder="Tahun"
                         />
                       </td>
-                      <td className="border px-2 py-1 text-xs">
+                      <td className="border px-3 py-2">
                         <input
                           type="text"
                           value={row.studyProgramCount || ''}
                           onInput={(e) => handleInputChange(row.id ?? row.year, 'studyProgramCount', e.currentTarget.value)}
-                          className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                          className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-base"
                           placeholder="Jumlah Prodi"
                         />
                       </td>
-                      <td className="border px-2 py-1 text-xs">
+                      <td className="border px-3 py-2">
                         <input
                           type="text"
                           value={row.superiorAccreditedStudyProgramCount || ''}
                           onInput={(e) => handleInputChange(row.id ?? row.year, 'superiorAccreditedStudyProgramCount', e.currentTarget.value)}
-                          className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs"
+                          className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-base"
                           placeholder="Jumlah Prodi Terakreditasi Unggul"
                         />
                       </td>
