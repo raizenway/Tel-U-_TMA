@@ -86,6 +86,7 @@ export interface CreateAssessmentDetail {
   textAnswer3: string;
   textAnswer4: string;
   textAnswer5: string;
+  evidenceLink: string;
 }
 
 export interface FinishAssessment {
