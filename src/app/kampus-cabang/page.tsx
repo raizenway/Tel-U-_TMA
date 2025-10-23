@@ -174,11 +174,57 @@ useEffect(() => {
   }
 }, [modalData]);
 
-  const dataForExport = currentBranches.map(b => ({
-    No: b.id,
-    'Nama UPPS/KC': b.name,
-    Email: b.email,
-  }));
+const dataForExport = branches.flatMap(branch => {
+  const rows: any[] = [];
+
+  if (branch.branchDetails && branch.branchDetails.length > 0) {
+    // 🔹 Baris pertama: isi semua kolom (No, Nama, Email, Tahun, Prodi)
+    const firstDetail = branch.branchDetails[0];
+    rows.push({
+      No: branch.id,
+      'Nama UPPS/KC': branch.name,
+      Email: branch.email,
+      Tahun: firstDetail.year,
+      'Jumlah Prodi': firstDetail.studyProgramCount,
+      'Jumlah Prodi Terakreditasi Unggul': firstDetail.superiorAccreditedStudyProgramCount,
+    });
+
+    // 🔹 Baris kedua dan seterusnya: kosongkan No, Nama, Email — isi hanya Tahun & Prodi
+    for (let i = 1; i < branch.branchDetails.length; i++) {
+      const detail = branch.branchDetails[i];
+      rows.push({
+        No: "", // Kosongkan
+        'Nama UPPS/KC': "", // Kosongkan
+        Email: "", // Kosongkan
+        Tahun: detail.year,
+        'Jumlah Prodi': detail.studyProgramCount,
+        'Jumlah Prodi Terakreditasi Unggul': detail.superiorAccreditedStudyProgramCount,
+      });
+    }
+  } else {
+    // Jika tidak ada detail, tambahkan satu baris info
+    rows.push({
+      No: branch.id,
+      'Nama UPPS/KC': branch.name,
+      Email: branch.email,
+      Tahun: "Tidak ada data",
+      'Jumlah Prodi': "",
+      'Jumlah Prodi Terakreditasi Unggul': "",
+    });
+  }
+
+  // 🔹 Tambahkan baris kosong sebagai pemisah antar kampus
+  rows.push({
+    No: "",
+    'Nama UPPS/KC': "",
+    Email: "",
+    Tahun: "",
+    'Jumlah Prodi': "",
+    'Jumlah Prodi Terakreditasi Unggul': "",
+  });
+
+  return rows;
+});
 
   const [isSaving, setIsSaving] = useState(false);
 

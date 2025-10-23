@@ -14,6 +14,8 @@
     Users,
     FileText,
     Info,
+    Calendar,
+    Building,      
   } from "lucide-react";
   import { BRANCH_NAMES } from "@/interfaces/branch";
 
@@ -138,12 +140,12 @@
           {
             name: "Assessment Period",
             path: "periode",
-            icon: <BookOpen size={18} />,
+            icon: <Calendar size={18} />,
           },
           {
             name: "UPPS/KC",
             path: "kampus-cabang",
-            icon: <BookOpen size={18} />,
+            icon: <Building size={18} />,
           },
         ],
       },
