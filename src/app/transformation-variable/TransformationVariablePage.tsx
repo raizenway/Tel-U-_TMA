@@ -271,39 +271,108 @@ if (!currentItem) {
     };
 
     // Kolom tabel
-    const columns = [
-      { header: 'Nomor', key: 'nomor_urut', width: '100px', className: 'text-center', sortable: false},
-      { header: 'Nama Variable', key: 'nama', width: '150px', sortable: true },
-      { header: 'Bobot', key: 'bobot', width: '100px', className: 'text-center', sortable: false},
-      { header: 'Deskripsi', key: 'deskripsi', width: '300px', sortable: true },
-     { header: 'Level Deskripsi', key: 'viewdescription', width: '150px', className: 'text-center', sortable: false },
-      { header: 'Referensi', key: 'referensi', width: '100px', sortable: true },
-      {
-        header: 'Logo UPPS/KC',
-        key: 'logo',
-        width: '80px',
-        className: 'text-center',
-        sortable: false,
-      },
-      ...(roleId === 1
-      ? [
-      {
-        header: 'Aksi',
-        key: 'action',
-        width: '150px',
-        className: 'text-center sticky right-0 z-10 bg-gray-100',
-      },
-    ]
+   const columns = [
+  { 
+    header: 'Nomor', 
+    key: 'nomor_urut', 
+    width: '100px', 
+    className: 'text-center', 
+    sortable: false 
+  },
+  { 
+    header: 'Nama Variable', 
+    key: 'nama', 
+    width: '150px', 
+    sortable: true 
+  },
+  { 
+    header: 'Bobot', 
+    key: 'bobot', 
+    width: '100px', 
+    className: 'text-center', 
+    sortable: false 
+  },
+  { 
+    header: 'Deskripsi', 
+    key: 'deskripsi', 
+    width: '300px', 
+    sortable: true 
+  },
+  {
+    header: 'Level Deskripsi',
+    key: 'viewdescription',
+    width: '150px',
+    className: 'text-center',
+    sortable: false,
+    renderCell: (item: TableItem) => (
+      <button
+        onClick={() => openDescriptionModal(item)}
+        className="flex items-center gap-1 text-gray-600 hover:text-gray-800 text-sm font-medium"
+        title="Lihat Deskripsi Level"
+      >
+        <LucideEye size={16} />
+        Lihat Deskripsi
+      </button>
+    ),
+  },
+  { 
+    header: 'Referensi', 
+    key: 'referensi', 
+    width: '100px', 
+    sortable: true 
+  },
+  {
+    header: 'Logo UPPS/KC',
+    key: 'logo',
+    width: '80px',
+    className: 'text-center',
+    sortable: false,
+    renderCell: (item: TableItem) => 
+      item.LogoUrl ? (
+        <img
+          src={item.LogoUrl}
+          alt="Logo"
+          className="w-8 h-8 object-contain mx-auto"
+        />
+      ) : (
+        <span className="text-gray-400">-</span>
+      ),
+  },
+  ...(roleId === 1
+    ? [
+        {
+          header: 'Aksi',
+          key: 'action',
+          width: '150px',
+          className: 'text-center sticky right-0 z-10 bg-gray-100',
+        },
+      ]
     : [
-      {
-            header: 'Status',
-            key: 'status',
-            width: '150px',
-            className: 'text-center sticky right-0 z-10 bg-white-100',
-            sortable: false,
-          },
-    ]),
-    ];
+        {
+          header: 'Status',
+          key: 'status',
+          width: '150px',
+          className: 'text-center sticky right-0 z-10 bg-white-100',
+          sortable: false,
+          renderCell: (item: TableItem) => (
+            <RoleBasedStatusCell
+              status={item.status}
+              id={item.id}
+              roleId={roleId ?? 0}
+              onEdit={(id) => router.push(`/transformation-variable/edit/${id}`)}
+              onToggleStatus={(id, action) => {
+                if (action === 'deactivate') {
+                  openConfirmModal(id, 'deactivate');
+                } else {
+                  openConfirmModal(id, 'activate');
+                }
+              }}
+            />
+          ),
+        },
+      ]
+  ),
+];
 
     // Data untuk export
     const dataForExport = currentData.map((item, index) => ({
@@ -388,52 +457,7 @@ if (!currentItem) {
             onReactivate={(index) => openConfirmModal(currentData[index].id, 'activate')}
             onSort={handleSort}
             sortConfig={sortConfig}
-            renderCell={(columnKey, item) => {
-              if (columnKey === 'status') {
-                return (
-                  <RoleBasedStatusCell
-                    status={item.status}
-                    id={item.id}
-                    roleId={roleId ?? 0}
-                    onEdit={(id) => router.push(`/transformation-variable/edit/${id}`)}
-                    onToggleStatus={(id, action) => {
-                      if (action === 'deactivate') {
-                        openConfirmModal(id, 'deactivate');
-                      } else {
-                        openConfirmModal(id, 'activate');
-                      }
-                    }}
-                  />
-                );
-              }
-
-          // ✅ Tambahkan ini: render logo
-          if (columnKey === 'logo') {
-            return item.LogoUrl ? (
-              <img
-                src={item.LogoUrl}
-                alt="Logo"
-                className="w-8 h-8 object-contain mx-auto"
-              />
-            ) : (
-              <span className="text-gray-400">-</span>
-            );
-          }
-
-                            if (columnKey === 'viewdescription') {
-                    return (
-                      <button
-                      onClick={() => openDescriptionModal(item)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-gray-800 text-sm font-medium"
-                      title="Lihat Deskripsi Level"
-                    >
-                      <LucideEye size={16} />
-                      Lihat Deskripsi
-                    </button>
-                    );
-                  }
-                  return null;
-                }}
+            
                 />
               </div>
             )}
