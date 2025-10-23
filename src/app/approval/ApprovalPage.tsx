@@ -120,48 +120,24 @@ const TablePage = () => {
 
       const rawData = res.data.data || [];
 
-      const getJawabanFromAnswer = (answer: any, question: any): string => {
-  if (!answer || !question) return "-";
-
-  if (question.type === 'multitext') {
-    for (let i = 1; i <= 5; i++) {
-      const value = answer[`textAnswer${i}`];
-      // ✅ Handle semua bentuk true: "1", 1, true, "yes", dll
-      if (value === "1" || value === 1 || value === true || value === "true" || value === "yes") {
-        const textKey = `answerText${i}`;
-        const textValue = question[textKey];
-        return textValue || `Opsi ${i}`;
-      }
-    }
-    return "-"; // jika tidak ada yang diisi
-  }
-
-  return "-";
-};
-
-  const getCombinedTextQuestion = (question: any, answer: any): { pertanyaan: string; jawaban: string } => {
+      const getCombinedTextQuestion = (question: any, answer: any): { pertanyaan: string; jawaban: string } => {
   const pertanyaanLines: string[] = [];
   const jawabanLines: string[] = [];
 
-  // Pertanyaan 1
   if (question.questionText && answer.textAnswer1 !== undefined && answer.textAnswer1 !== "") {
     pertanyaanLines.push(question.questionText);
     jawabanLines.push(String(answer.textAnswer1));
   }
-
-  // Pertanyaan 2
   if (question.questionText2 && answer.textAnswer2 !== undefined && answer.textAnswer2 !== "") {
-    pertanyaanLines.push( question.questionText2); // ✅ tambah - hanya jika ada Q2
-    jawabanLines.push(String(answer.textAnswer2)); // ✅ tambah - hanya jika ada Q2
+    pertanyaanLines.push(question.questionText2);
+    jawabanLines.push(String(answer.textAnswer2));
   }
-
-  // Pertanyaan 3-5 (opsional)
   for (let i = 3; i <= 5; i++) {
     const qText = question[`questionText${i}`];
     const aText = answer[`textAnswer${i}`];
     if (qText && aText !== undefined && aText !== "") {
-      pertanyaanLines.push(qText); // ✅ tambah - hanya jika ada Q3+
-      jawabanLines.push(String(aText)); // ✅ tambah - hanya jika ada Q3+
+      pertanyaanLines.push(qText);
+      jawabanLines.push(String(aText));
     }
   }
 
@@ -169,12 +145,20 @@ const TablePage = () => {
     return { pertanyaan: "-", jawaban: "-" };
   }
 
-  // Gabungkan dengan newline
-  return {
-    pertanyaan: pertanyaanLines.join("\n"),
-    jawaban: jawabanLines.join("\n"),
-  };
+  // ✅ Jika lebih dari 1, tambahkan bullet (•)
+  if (pertanyaanLines.length > 1) {
+    const pertanyaan = pertanyaanLines.map(q => `• ${q}`).join("\n");
+    const jawaban = jawabanLines.map(a => `• ${a}`).join("\n");
+    return { pertanyaan, jawaban };
+  } else {
+    // ✅ Jika hanya 1, tampilkan biasa
+    return {
+      pertanyaan: pertanyaanLines[0],
+      jawaban: jawabanLines[0],
+    };
+  }
 };
+
       const transformedData = rawData.map((item: any, index: number) => {
         const question = item.question || {};
         const assessment = item.assessment || {};
@@ -182,24 +166,43 @@ const TablePage = () => {
 
         let pertanyaan = "-";
         let jawaban = "-";
+        let skor = "-";
 
         if (question.type === 'text') {
-          // Gabungkan semua pertanyaan dan jawaban
           const combined = getCombinedTextQuestion(question, answer);
           pertanyaan = combined.pertanyaan;
           jawaban = combined.jawaban;
+          skor = item.submissionValue !== undefined && item.submissionValue !== ""
+            ? String(item.submissionValue)
+            : "-";
         } else if (question.type === 'multitext') {
-          // Untuk multitext, tampilkan teks jawaban lengkap
           pertanyaan = question.questionText || "-";
-          jawaban = getJawabanFromAnswer(answer, question);
+
+          const submissionValue = item.submissionValue;
+          if (submissionValue !== undefined && submissionValue !== "") {
+            const scoreNum = Number(submissionValue);
+            skor = String(scoreNum);
+
+            if (scoreNum >= 0 && scoreNum <= 4) {
+              const optionIndex = scoreNum + 1;
+              const textKey = `answerText${optionIndex}`;
+              const textValue = question[textKey];
+              // ✅ TIDAK TAMBAH PREFIX — karena sudah ada di textValue
+              jawaban = textValue || `Opsi ${optionIndex}`;
+            } else {
+              jawaban = "-";
+            }
+          } else {
+            jawaban = "-";
+            skor = "-";
+          }
         } else {
           pertanyaan = question.questionText || "-";
-          jawaban = getJawabanFromAnswer(answer, question);
+          jawaban = "-";
+          skor = item.submissionValue !== undefined && item.submissionValue !== ""
+            ? String(item.submissionValue)
+            : "-";
         }
-
-        const skor = item.submissionValue !== undefined && item.submissionValue !== ""
-          ? String(item.submissionValue)
-          : "-";
 
         const tipeSoal = question.type === 'text'
           ? 'Jawaban Singkat'
@@ -246,7 +249,7 @@ const TablePage = () => {
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
-  // ✅ Handle konfirmasi untuk 1 assessment saja
+  // ✅ Handle konfirmasi
   const handleConfirm = async () => {
     if (!modalType || !selectedAssessmentId) {
       setShowModal(false);
@@ -273,7 +276,6 @@ const TablePage = () => {
       
       setSuccessMessage(message);
       setShowSuccess(true);
-
       fetchData();
     } catch (error: any) {
       console.error("Gagal melakukan aksi:", error);
@@ -343,7 +345,7 @@ const TablePage = () => {
                 )}
               </div>
 
-              {/* Dropdown Kampus — hanya 4 pilihan */}
+              {/* Dropdown Kampus */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -453,7 +455,7 @@ const TablePage = () => {
             cancelLabel="Batal"
           />
 
-          {/* ✅ Notifikasi Sukses */}
+          {/* Notifikasi Sukses */}
           <SuccessNotification
             isOpen={showSuccess}
             onClose={() => setShowSuccess(false)}
