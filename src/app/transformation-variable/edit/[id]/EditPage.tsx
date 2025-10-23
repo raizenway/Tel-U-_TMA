@@ -60,7 +60,7 @@ useEffect(() => {
   setLevelDescription4(item.levelDescription4 || '');
   setReferensi(item.reference || '');
   setStatus(item.status === 'active' ? 'Active' : 'Inactive');
-  setUrutan( item.sortOrder || '');
+  setUrutan(String(item.sortOrder ?? ''));
 
 }, [data, variableId]);
   // 🚫 Loading
@@ -279,7 +279,7 @@ useEffect(() => {
 
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 1
+             Very Low Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
@@ -292,7 +292,7 @@ useEffect(() => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 2
+             Low Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
@@ -305,7 +305,7 @@ useEffect(() => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 3
+             Medium Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
@@ -318,7 +318,7 @@ useEffect(() => {
 
            <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 4
+             High Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
