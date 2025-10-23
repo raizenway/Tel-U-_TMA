@@ -105,7 +105,7 @@ const [successMessage, setSuccessMessage] = useState("User berhasil ditambahkan!
   { header: 'Nama User', key: 'fullname', width: '200px', sortable: true },
   { header: 'Role', key: 'roleId', width: '140px', sortable: true },
   { header: 'Kampus Cabang', key: 'branchId', width: '180px', sortable: true },
-  { header: 'Email', key: 'email', width: '285px', sortable: true },
+  { header: 'Email', key: 'email', width: '290px', sortable: true },
   { header: 'Status', key: 'status', width: '100px', sortable: true },
   { 
     header: 'Aksi', 
@@ -251,6 +251,7 @@ const dataForExport = processedUsers.map((user) => ({
   'User ID': user.id,
   'User Name': user.username,
   'Nama User': user.fullname,
+  'Email': user.email,
   Role: user.roleId, // sudah berupa string dari processedUsers
   'Kampus Cabang': user.branchId, // sudah berupa string dari processedUsers
   Status: user.status,
