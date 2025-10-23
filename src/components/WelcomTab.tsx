@@ -52,30 +52,20 @@ const WelcomeTab = () => {
             />
           </div>
 
-        <div className="flex flex-col items-end space-y-4 ml-auto max-w-xs">
-  {/* Logo: geser 6px ke atas, 8px ke kiri */}
+   <div className="flex flex-col items-end space-y-4 ml-auto max-w-xs">
+  {/* Logo: TETAP TIDAK DIUBAH */}
   <div className="relative -top-8 -right-2 -left-11 z-10">
     <Image src="/Frame.png" alt="Telkom" width={160} height={40} className="object-contain" />
   </div>
 
-  {/* Teks: geser 4px ke bawah */}
-   <div className="text-right text-center">
-    <h2 
-      className="text-xl lg:text-2xl font-semibold text-white relative -translate-x-150"
-      style={{ 
-        transform: 'translateX(10px) translateY(4px)' 
-      }}
-    >
-      Hallo, {userName} {/* ⬅️ NAMA DIGANTI DENGAN STATE */}
-    </h2>
-
-    <p className="text-sm lg:text-base text-white relative -translate-x-150 mt-4 text-center"
-    style={{ 
-      transform: 'translateX(90px)', // Bisa berbeda dari h2
-    }}>
-  Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
-</p>
-  </div>
+  <div className="text-left max-w-[380px] relative left-[-700px]">
+  <h2 className="text-xl lg:text-2xl font-semibold text-white">
+    Hallo, {userName}
+  </h2>
+  <p className="text-sm lg:text-base text-white mt-4 whitespace-nowrap">
+    Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
+  </p>
+</div>
 </div>
         </div>
       </div>
