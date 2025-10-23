@@ -12,24 +12,21 @@ import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList'; 
 import { useCreateAssessmentDetail, useFinishAssessment } from '@/hooks/useAssessment';
-import {  CreateAssessmentDetail } from '@/interfaces/assessment'
-
-
+import { CreateAssessmentDetail } from '@/interfaces/assessment';
 
 interface QuestionItem {
   id: number;
   section: string;
   number: number;
   question: string;
+  questionParts: string[];
   indicator?: string;
   options: string[];
   transformationVariableId?: number;
   type: 'text' | 'multitext';
 }
 
-// GANTI JADI:
-export default function AssessmentFormTab() { // ❌ Tidak terima props
-  // ✅ Tambahkan state lokal
+export default function AssessmentFormTab() {
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [rawQuestions, setRawQuestions] = useState<QuestionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,76 +47,81 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
     }
   }, [transformationVariables]);
 
-  const getSectionTitle = (sectionCode: string, transformationVariableId?: number) => {
+  const getSectionTitle = (_sectionCode: string, transformationVariableId?: number) => {
     if (transformationVariableId !== undefined && transformationVariableId !== null) {
       const variableName = variableMap[transformationVariableId];
       if (variableName) {
-        return `${sectionCode} - ${variableName}`;
+        return variableName;
       }
     }
-    return `${sectionCode} (Mutu)`;
+    return "Pertanyaan Mutu";
   };
 
   useEffect(() => {
-  const fetchAllQuestions = async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      console.error("NEXT_PUBLIC_API_URL belum diatur di .env.local");
-      setLoading(false);
-      return;
-    }
+    const fetchAllQuestions = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        console.error("NEXT_PUBLIC_API_URL belum diatur di .env.local");
+        setLoading(false);
+        return;
+      }
 
-    const tempQuestions: QuestionItem[] = [];
-    for (let i = 0; i < 30; i++) {
-      const id = i + 1;
-      try {
-        const response = await fetch(`${apiUrl}/question/${id}`);
-        if (!response.ok) continue;
-        const result = await response.json();
-        if (result.data && result.data.questionText && result.data.indicator) {
-          const section = `V${Math.floor(i / 5) + 1}`;
-          const options = [];
-          if (result.data.answerText1) options.push(result.data.answerText1);
-          if (result.data.answerText2) options.push(result.data.answerText2);
-          if (result.data.answerText3) options.push(result.data.answerText3);
-          if (result.data.answerText4) options.push(result.data.answerText4);
-          if (result.data.answerText5) options.push(result.data.answerText5);
-          const finalOptions = options.length > 0 
-            ? options 
-            : (id === 30 ? [] : ["0", "1", "2", "3", "Lebih dari 3"]);
+      const tempQuestions: QuestionItem[] = [];
+      for (let i = 0; i < 30; i++) {
+        const id = i + 1;
+        try {
+          const response = await fetch(`${apiUrl}/question/${id}`);
+          if (!response.ok) continue;
+          const result = await response.json();
+          if (result.data && result.data.questionText && result.data.indicator) {
+            const options = [];
+            if (result.data.answerText1) options.push(result.data.answerText1);
+            if (result.data.answerText2) options.push(result.data.answerText2);
+            if (result.data.answerText3) options.push(result.data.answerText3);
+            if (result.data.answerText4) options.push(result.data.answerText4);
+            if (result.data.answerText5) options.push(result.data.answerText5);
+            const finalOptions = options.length > 0 
+              ? options 
+              : ["0", "1", "2", "3", "Lebih dari 3"];
 
-          const type = result.data.type === 'text' ? 'text' : 'multitext';
+            const type = result.data.type === 'text' ? 'text' : 'multitext';
 
-          tempQuestions.push({
-            id,
-            section,
-            number: id,
-            question: [
+            // ✅ FILTER KETAT: hanya ambil bagian yang benar-benar berisi teks
+            const questionParts = [
               result.data.questionText,
               result.data.questionText2,
               result.data.questionText3,
-              result.data.questionText4
+              result.data.questionText4,
             ]
-              .filter(part => part && typeof part === 'string' && part.trim() !== '')
-              .join(' | '),
-            indicator: result.data.indicator,
-            options: finalOptions,
-            transformationVariableId: result.data.transformationVariableId 
-              ? Number(result.data.transformationVariableId) 
-              : undefined,
-            type,
-          });
-        }
-      } catch (err) {
-        console.error(`❌ Error fetching question ${id}:`, err);
-      }
-    }
-    setRawQuestions(tempQuestions);
-    setLoading(false);
-  };
+              .filter(p => p != null && String(p).trim() !== '')
+              .map(p => String(p).trim());
 
-  fetchAllQuestions();
-}, []);
+            const question = questionParts.join(' | ');
+
+            tempQuestions.push({
+              id,
+              section: "",
+              number: id,
+              question,
+              questionParts,
+              indicator: result.data.indicator,
+              options: finalOptions,
+              transformationVariableId: result.data.transformationVariableId 
+                ? Number(result.data.transformationVariableId) 
+                : undefined,
+              type,
+            });
+          }
+        } catch (err) {
+          console.error(`❌ Error fetching question ${id}:`, err);
+        }
+      }
+      setRawQuestions(tempQuestions);
+      setLoading(false);
+    };
+
+    fetchAllQuestions();
+  }, []);
 
   const questions = useMemo(() => {
     return rawQuestions.map(q => ({
@@ -183,170 +185,230 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const data = new Uint8Array(event.target?.result as ArrayBuffer);
-      const workbook = XLSX.read(data, { type: "array" });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      const rows = jsonData.slice(1);
-      const updatedAnswers: { [key: string]: string } = {};
-      const modalDataArray: any[] = [];
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
 
-      (rows as any[][]).forEach((row) => {
-        const id = row?.[0];
-        const jawaban = row?.[3];
-        if (id !== undefined && jawaban !== undefined && jawaban !== "") {
-          const idStr = String(id).trim();
-          const questionItem = questions.find((q) => q.id.toString() === idStr);
-          let jawabanStr = String(jawaban).trim();
-          if (!isNaN(Number(jawabanStr))) {
-            const optionIndex = parseInt(jawabanStr);
-            if (questionItem && questionItem.options[optionIndex]) {
-              jawabanStr = questionItem.options[optionIndex];
-            } else if (jawabanStr === "4") {
-              jawabanStr = "Lebih dari 3";
+        const sheetName = "Rumus 2.1";
+        if (!workbook.SheetNames.includes(sheetName)) {
+          throw new Error(`Sheet "${sheetName}" tidak ditemukan di file Excel.`);
+        }
+
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (string | number | null)[][];
+
+        let headerRowIndex = -1;
+        for (let i = 0; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          if (Array.isArray(row) && String(row[0]).trim() === "No") {
+            headerRowIndex = i;
+            break;
+          }
+        }
+
+        if (headerRowIndex === -1) {
+          throw new Error("Header 'No' tidak ditemukan di sheet Rumus 2.1.");
+        }
+
+        const rows = jsonData.slice(headerRowIndex + 1);
+        let currentQuestionId: number | null = null;
+        const updatedAnswers: { [key: string]: string } = {};
+        const questionCounter: Record<number, number> = {}; // ✅ Counter per soal
+
+        for (const row of rows) {
+          if (!Array.isArray(row) || row.length < 7) continue;
+
+          const noCell = row[0]; 
+          const inputDesc = row[5]; 
+          const valueCell = row[6]; 
+
+          if (
+            noCell != null &&
+            (typeof noCell === 'number' || (/^\d+$/.test(String(noCell).trim())))
+          ) {
+            const id = Number(noCell);
+            if (id >= 1 && id <= 19) {
+              currentQuestionId = id;
+            } else {
+              currentQuestionId = null;
             }
           }
-          updatedAnswers[idStr] = jawabanStr;
-          modalDataArray.push({
-            no: idStr,
-            kode: questionItem?.section,
-            pertanyaan: questionItem?.question,
-            jawaban: jawabanStr,
-            options: questionItem?.options ?? [],
-          });
-        }
-      });
 
-      setAnswers((prev) => ({ ...prev, ...updatedAnswers }));
-      setModalData(modalDataArray);
-      setCurrentIndex(29);
+          if (
+            currentQuestionId === null ||
+            valueCell == null ||
+            String(valueCell).trim() === "" ||
+            inputDesc == null ||
+            String(inputDesc).trim() === ""
+          ) {
+            continue;
+          }
+
+          const questionItem = questions.find(q => q.id === currentQuestionId);
+          if (!questionItem) continue;
+
+          const valueStr = String(valueCell).trim();
+
+          if (questionItem.type === 'multitext') {
+            const letterToIndex: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4 };
+            const lowerVal = valueStr.toLowerCase();
+            if (letterToIndex.hasOwnProperty(lowerVal)) {
+              const optionIndex = letterToIndex[lowerVal];
+              if (optionIndex < questionItem.options.length) {
+                updatedAnswers[String(currentQuestionId)] = questionItem.options[optionIndex];
+              }
+            }
+          } else if (questionItem.type === 'text') {
+            // ✅ Gunakan counter yang andal
+            if (questionCounter[currentQuestionId!] === undefined) {
+              questionCounter[currentQuestionId!] = 0;
+            }
+
+            const index = questionCounter[currentQuestionId!];
+            // Pastikan tidak melebihi jumlah bagian yang valid
+            if (index < questionItem.questionParts.length) {
+              const answerKey = index === 0 
+                ? String(currentQuestionId) 
+                : `${currentQuestionId}${String.fromCharCode(97 + index - 1)}`;
+              updatedAnswers[answerKey] = valueStr;
+            }
+            questionCounter[currentQuestionId!]++; // increment
+          }
+        }
+
+        console.log("✅ Jawaban dari Excel:", updatedAnswers);
+        setAnswers(prev => ({ ...prev, ...updatedAnswers }));
+        setCurrentIndex(questions.length - 1);
+        alert(`✅ Berhasil memuat ${Object.keys(updatedAnswers).length} jawaban dari Excel!`);
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("❌ Error membaca file Excel:", err);
+        alert(`Gagal membaca file Excel.\n\nPastikan file memiliki sheet "Rumus 2.1".\nError: ${msg}`);
+      }
     };
     reader.readAsArrayBuffer(file);
   };
 
   const handleConfirm = async () => {
-  if (selectedAssessmentId === null) {
-    alert("Periode tidak valid.");
-    return;
-  }
-
-  try {
-    let successCount = 0;
-    let totalCount = 0;
-
-    for (const q of questions) {
-      const baseKey = String(q.id);
-      const parts = q.question.split('|').filter(p => p.trim() !== '');
-
-      // ✅ Gunakan tipe eksplisit
-      const answerData: CreateAssessmentDetail = {
-        assessmentId: selectedAssessmentId,
-        questionId: q.id,
-        textAnswer1: "0",
-        textAnswer2: "0",
-        textAnswer3: "0",
-        textAnswer4: "0",
-        textAnswer5: "0",
-      };
-
-      let hasValidAnswer = false;
-
-   if (q.type === 'multitext') {
-  const userAnswer = answers[baseKey];
-  if (userAnswer != null && userAnswer !== "") {
-    const optionIndex = q.options.findIndex(opt => opt === userAnswer);
-    if (optionIndex !== -1) {
-      answerData.textAnswer1 = String(optionIndex);
-      hasValidAnswer = true;
-    }
-  }
-}else if (q.type === 'text') {
-        for (let i = 0; i < parts.length && i < 5; i++) {
-          const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
-          const rawValue = answers[key];
-          if (rawValue != null && rawValue !== "" && !isNaN(Number(rawValue))) {
-            const numValue = Number(rawValue);
-            if (numValue >= 0) {
-              // ✅ Set jawaban teks berdasarkan indeks
-              if (i === 0) answerData.textAnswer1 = String(numValue);
-              else if (i === 1) answerData.textAnswer2 = String(numValue);
-              else if (i === 2) answerData.textAnswer3 = String(numValue);
-              else if (i === 3) answerData.textAnswer4 = String(numValue);
-              else if (i === 4) answerData.textAnswer5 = String(numValue);
-              hasValidAnswer = true;
-            }
-          }
-        }
-      }
-
-      if (!hasValidAnswer) continue;
-      totalCount++;
-
-      try {
-        await saveAssessmentDetail(answerData);
-        successCount++;
-      } catch (error) {
-        console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
-      }
-    }
-
-    if (successCount === 0 && totalCount > 0) {
-      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!");
+    if (selectedAssessmentId === null) {
+      alert("Periode tidak valid.");
       return;
-    }
-
-    if (successCount < totalCount) {
-      alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
     }
 
     try {
-      await finishAssessment({ assessmentId: selectedAssessmentId });
-    } catch (err) {
-      console.error("❌ Gagal menyelesaikan assessment:", err);
-      alert(`Gagal menyelesaikan assessment: ${err instanceof Error ? err.message : "Error tidak dikenal"}`);
-      return;
-    }
+      let successCount = 0;
+      let totalCount = 0;
 
-    const resultData = questions.map((q) => {
-      const baseKey = String(q.id);
-      const parts = q.question.split('|').filter(p => p.trim() !== '');
-      let jawaban = "";
-      if (q.type === 'multitext') {
-        jawaban = answers[baseKey] || "-";
-      } else {
-        const answersArr = parts.map((_, i) => {
-          const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
-          return answers[key] || "-";
-        });
-        jawaban = answersArr.join(" | ");
+      for (const q of questions) {
+        const baseKey = String(q.id);
+        const answerData: CreateAssessmentDetail = {
+          assessmentId: selectedAssessmentId,
+          questionId: q.id,
+          textAnswer1: "0",
+          textAnswer2: "0",
+          textAnswer3: "0",
+          textAnswer4: "0",
+          textAnswer5: "0",
+          evidenceLink: answers[`evidence-${q.id}`] || "",
+        };
+
+        let hasValidAnswer = false;
+
+        if (q.type === 'multitext') {
+          const userAnswer = answers[baseKey];
+          if (userAnswer != null && userAnswer !== "") {
+            const optionIndex = q.options.findIndex(opt => opt === userAnswer);
+            if (optionIndex !== -1) {
+              answerData.textAnswer1 = String(optionIndex);
+              hasValidAnswer = true;
+            }
+          }
+        } else if (q.type === 'text') {
+          for (let i = 0; i < q.questionParts.length && i < 5; i++) {
+            const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
+            const rawValue = answers[key];
+            if (rawValue != null && rawValue !== "" && !isNaN(Number(rawValue))) {
+              const numValue = Number(rawValue);
+              if (numValue >= 0) {
+                if (i === 0) answerData.textAnswer1 = String(numValue);
+                else if (i === 1) answerData.textAnswer2 = String(numValue);
+                else if (i === 2) answerData.textAnswer3 = String(numValue);
+                else if (i === 3) answerData.textAnswer4 = String(numValue);
+                else if (i === 4) answerData.textAnswer5 = String(numValue);
+                hasValidAnswer = true;
+              }
+            }
+          }
+        }
+
+        if (!hasValidAnswer) continue;
+        totalCount++;
+
+        try {
+          await saveAssessmentDetail(answerData);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
+        }
       }
 
-      return {
-        no: q.id,
-        kode: q.section,
-        pertanyaan: q.question,
-        jawaban,
-        evidence: answers[`evidence-${q.id}`] || "-",
-        status: jawaban.split(" | ").every(a => a === "-") ? "Kosong" : "Terisi",
-      };
-    });
+      if (successCount === 0 && totalCount > 0) {
+        alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!");
+        return;
+      }
 
-    const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
-    const newEntry = {
-      id: Date.now(),
-      unit: "Tel-U Purwokerto",
-      tanggal: new Date().toLocaleDateString("id-ID"),
-      totalTerisi: Object.keys(answers).length,
-      resultData,
-    };
-    localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
-    localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
-    router.push("/assessment/assessmenttable");
-  } catch (err) {
-    console.error("❌ Gagal menyimpan jawaban ke API:", err);
-    alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
-  }
-};
+      if (successCount < totalCount) {
+        alert(`⚠️ PERINGATAN: Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount} soal`);
+      }
+
+      try {
+        await finishAssessment({ assessmentId: selectedAssessmentId });
+      } catch (err) {
+        console.error("❌ Gagal menyelesaikan assessment:", err);
+        alert(`Gagal menyelesaikan assessment: ${err instanceof Error ? err.message : "Error tidak dikenal"}`);
+        return;
+      }
+
+      const resultData = questions.map((q) => {
+        const baseKey = String(q.id);
+        let jawaban = "";
+        if (q.type === 'multitext') {
+          jawaban = answers[baseKey] || "-";
+        } else {
+          const answersArr = q.questionParts.map((_, i) => {
+            const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
+            return answers[key] || "-";
+          });
+          jawaban = answersArr.join(" | ");
+        }
+
+        return {
+          no: q.id,
+          kode: q.section,
+          pertanyaan: q.question,
+          jawaban,
+          evidence: answers[`evidence-${q.id}`] || "-",
+          status: jawaban.split(" | ").every(a => a === "-") ? "Kosong" : "Terisi",
+        };
+      });
+
+      const existingResults = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
+      const newEntry = {
+        id: Date.now(),
+        unit: "Tel-U Purwokerto",
+        tanggal: new Date().toLocaleDateString("id-ID"),
+        totalTerisi: Object.keys(answers).length,
+        resultData,
+      };
+      localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
+      localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+      router.push("/assessment/assessmenttable");
+    } catch (err) {
+      console.error("❌ Gagal menyimpan jawaban ke API:", err);
+      alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!\nError: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -359,11 +421,10 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [formBelumDisimpan]);
 
-  const allAnswered = questions.slice(0, -1).every((q) => {
+  const allAnswered = questions.every((q) => {
     if (q.type === 'text') {
       const baseKey = String(q.id);
-      const parts = q.question.split('|').filter(p => p.trim() !== '').length;
-      for (let i = 0; i < parts; i++) {
+      for (let i = 0; i < q.questionParts.length; i++) {
         const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
         const val = answers[key];
         if (val == null || val === "" || isNaN(Number(val)) || Number(val) < 0) {
@@ -413,37 +474,31 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
 
-            {current.type === 'text' && (
+            {/* ✅ GUNAKAN questionParts */}
+            {current.type === 'text' ? (
               <div className="space-y-4">
-                {current.question
-                  .split('|')
-                  .map((part, index) => {
-                    const text = part.trim();
-                    if (!text) return null;
-                    const answerKey = index === 0 ? String(current.id) : `${current.id}${String.fromCharCode(97 + index - 1)}`;
-                    return (
-                      <div key={index}>
-                        <label className="block text-sm text-gray-800 mb-1">{text}</label>
-                        <input
-                          type="number"
-                          className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-                          value={answers[answerKey] ?? ""}
-                          onChange={(e) => {
-                            setAnswers(prev => ({ ...prev, [answerKey]: e.target.value }));
-                            setIsFormDirty(true);
-                            setFormBelumDisimpan(true);
-                          }}
-                          placeholder="Masukkan angka"
-                          min="0"
-                        />
-                      </div>
-                    );
-                  })
-                  .filter(Boolean)}
+                {current.questionParts.map((part, index) => {
+                  const answerKey = index === 0 ? String(current.id) : `${current.id}${String.fromCharCode(97 + index - 1)}`;
+                  return (
+                    <div key={index}>
+                      <label className="block text-sm text-gray-800 mb-1">{part}</label>
+                      <input
+                        type="number"
+                        className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+                        value={String(answers[answerKey] ?? "")}
+                        onChange={(e) => {
+                          setAnswers(prev => ({ ...prev, [answerKey]: e.target.value }));
+                          setIsFormDirty(true);
+                          setFormBelumDisimpan(true);
+                        }}
+                        placeholder="Masukkan angka"
+                        min="0"
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            )}
-
-            {current.type === 'multitext' && current.options.length > 0 && (
+            ) : current.type === 'multitext' && current.options.length > 0 ? (
               <div className="space-y-3">
                 {current.options.map((option, index) => (
                   <label key={index} className="flex items-center space-x-3">
@@ -463,9 +518,10 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
                   </label>
                 ))}
               </div>
-            )}
+            ) : null}
 
-            {current.id && (
+            {/* Evidence */}
+            {!isLast && current.id && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-800 mb-1">Link Evidence</label>
                 <input
@@ -482,6 +538,42 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
                     setFormBelumDisimpan(true);
                   }}
                 />
+              </div>
+            )}
+
+            {/* Upload/Download */}
+            {isLast && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
+                  <p className="text-sm text-gray-600">Download template jawaban</p>
+                  <Button
+                    type="link"
+                    variant="primary"
+                    href="/files/template_jawaban_tunch.xlsx"
+                    download
+                    icon={Download}
+                    iconPosition="left"
+                  >
+                    Download di sini
+                  </Button>
+                </div>
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
+                  <p className="text-sm text-gray-600">Upload file Excel</p>
+                  <Button
+                    type="button"
+                    onClick={handleBrowseClick}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm"
+                  >
+                    Browse File
+                  </Button>
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
               </div>
             )}
 
@@ -530,7 +622,12 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
             <div className="grid grid-cols-4 gap-3">
               {questions.map((q, i) => {
                 const isActive = i === currentIndex;
-                const isAnswered = !!answers[q.id];
+                const isAnswered = q.type === 'text'
+                  ? q.questionParts.every((_, idx) => {
+                      const key = idx === 0 ? String(q.id) : `${q.id}${String.fromCharCode(97 + idx - 1)}`;
+                      return answers[key] != null && answers[key] !== "";
+                    })
+                  : !!answers[q.id];
                 return (
                   <button
                     key={q.id}
@@ -557,7 +654,12 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
                 if (!allAnswered) return;
                 const summaryData = questions.map((q) => ({
                   no: q.id,
-                  answered: !!answers[q.id],
+                  answered: q.type === 'text'
+                    ? q.questionParts.every((_, idx) => {
+                        const key = idx === 0 ? String(q.id) : `${q.id}${String.fromCharCode(97 + idx - 1)}`;
+                        return answers[key] != null && answers[key] !== "";
+                      })
+                    : !!answers[q.id],
                 }));
                 setModalData(summaryData);
                 setShowPreConfirmModal(true);
@@ -657,7 +759,15 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
           if (resetQuestionId !== null) {
             setAnswers((prev) => {
               const updated = { ...prev };
-              delete updated[resetQuestionId];
+              if (questions.find(q => q.id === resetQuestionId)?.type === 'text') {
+                const parts = questions.find(q => q.id === resetQuestionId)!.questionParts;
+                parts.forEach((_, i) => {
+                  const key = i === 0 ? String(resetQuestionId) : `${resetQuestionId}${String.fromCharCode(97 + i - 1)}`;
+                  delete updated[key];
+                });
+              } else {
+                delete updated[resetQuestionId];
+              }
               return updated;
             });
           }
@@ -684,7 +794,15 @@ export default function AssessmentFormTab() { // ❌ Tidak terima props
                 if (resetQuestionId !== null) {
                   setAnswers((prev) => {
                     const updated = { ...prev };
-                    delete updated[resetQuestionId];
+                    if (questions.find(q => q.id === resetQuestionId)?.type === 'text') {
+                      const parts = questions.find(q => q.id === resetQuestionId)!.questionParts;
+                      parts.forEach((_, i) => {
+                        const key = i === 0 ? String(resetQuestionId) : `${resetQuestionId}${String.fromCharCode(97 + i - 1)}`;
+                        delete updated[key];
+                      });
+                    } else {
+                      delete updated[resetQuestionId];
+                    }
                     return updated;
                   });
                 }
