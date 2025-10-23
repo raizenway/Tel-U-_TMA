@@ -506,19 +506,19 @@ if (!currentItem) {
               {selectedItem && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">Level Deskripsi 1</h4>
+                <h4 className="font-semibold mb-2">Very Low Maturity</h4>
                 <p className="text-sm text-gray-700">{selectedItem.levelDescription1 || '-'}</p>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">Level Deskripsi 2</h4>
+                <h4 className="font-semibold mb-2">Low Maturity</h4>
                 <p className="text-sm text-gray-700">{selectedItem.levelDescription2 || '-'}</p>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">Level Deskripsi 3</h4>
+                <h4 className="font-semibold mb-2">Medium Maturity</h4>
                 <p className="text-sm text-gray-700">{selectedItem.levelDescription3 || '-'}</p>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">Level Deskripsi 4</h4>
+                <h4 className="font-semibold mb-2">High Maturity</h4>
                 <p className="text-sm text-gray-700">{selectedItem.levelDescription4 || '-'}</p>
               </div>
             </div>
