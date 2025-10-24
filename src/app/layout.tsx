@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.className} ${inter.variable} font-sans antialiased`}>
         <div className="flex min-h-screen bg-white relative">
           {/* Sidebar */}
           {showSidebar && <Sidebar onItemClick={handleItemClick} />}
