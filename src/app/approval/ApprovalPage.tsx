@@ -57,10 +57,33 @@ const TablePage = () => {
       className: "whitespace-pre-line break-words"
     },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
-    { header: "Tipe Soal", key: "tipeSoal", width: "150px", sortable: true },
+    {
+  header: "Link Evidence", 
+  key: "linkEvidence", 
+  width: "250px", 
+  sortable: true,
+  renderCell: (item: any) => {
+  if (!item || typeof item.linkEvidence !== 'string') {
+    return "-";
+  }
+
+  const link = item.linkEvidence.trim();
+  if (!link) return "-";
+
+  return (
+  <a 
+    href={link} 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="text-blue-600 hover:text-blue-800 underline break-all text-xs"
+  >
+    {link}
+  </a>
+);
+}
+},
   ];
 
-  // 🔁 Fetch periode
   useEffect(() => {
     const fetchPeriodeOptions = async () => {
       try {
@@ -93,7 +116,7 @@ const TablePage = () => {
     fetchPeriodeOptions();
   }, []);
 
-  // 🔁 Fetch data approval
+
   const fetchData = async () => {
     if (selectedPeriodeId === null) {
       setLoading(false);
@@ -121,48 +144,54 @@ const TablePage = () => {
       const rawData = res.data.data || [];
 
       const getCombinedTextQuestion = (question: any, answer: any): { pertanyaan: string; jawaban: string } => {
-  const pertanyaanLines: string[] = [];
-  const jawabanLines: string[] = [];
+        const pertanyaanLines: string[] = [];
+        const jawabanLines: string[] = [];
 
-  if (question.questionText && answer.textAnswer1 !== undefined && answer.textAnswer1 !== "") {
-    pertanyaanLines.push(question.questionText);
-    jawabanLines.push(String(answer.textAnswer1));
-  }
-  if (question.questionText2 && answer.textAnswer2 !== undefined && answer.textAnswer2 !== "") {
-    pertanyaanLines.push(question.questionText2);
-    jawabanLines.push(String(answer.textAnswer2));
-  }
-  for (let i = 3; i <= 5; i++) {
-    const qText = question[`questionText${i}`];
-    const aText = answer[`textAnswer${i}`];
-    if (qText && aText !== undefined && aText !== "") {
-      pertanyaanLines.push(qText);
-      jawabanLines.push(String(aText));
-    }
-  }
+        if (question.questionText && answer.textAnswer1 !== undefined && answer.textAnswer1 !== "") {
+          pertanyaanLines.push(question.questionText);
+          jawabanLines.push(String(answer.textAnswer1));
+        }
+        if (question.questionText2 && answer.textAnswer2 !== undefined && answer.textAnswer2 !== "") {
+          pertanyaanLines.push(question.questionText2);
+          jawabanLines.push(String(answer.textAnswer2));
+        }
+        for (let i = 3; i <= 5; i++) {
+          const qText = question[`questionText${i}`];
+          const aText = answer[`textAnswer${i}`];
+          if (qText && aText !== undefined && aText !== "") {
+            pertanyaanLines.push(qText);
+            jawabanLines.push(String(aText));
+          }
+        }
 
-  if (pertanyaanLines.length === 0) {
-    return { pertanyaan: "-", jawaban: "-" };
-  }
+        if (pertanyaanLines.length === 0) {
+          return { pertanyaan: "-", jawaban: "-" };
+        }
 
-  // ✅ Jika lebih dari 1, tambahkan bullet (•)
-  if (pertanyaanLines.length > 1) {
-    const pertanyaan = pertanyaanLines.map(q => `• ${q}`).join("\n");
-    const jawaban = jawabanLines.map(a => `• ${a}`).join("\n");
-    return { pertanyaan, jawaban };
-  } else {
-    // ✅ Jika hanya 1, tampilkan biasa
-    return {
-      pertanyaan: pertanyaanLines[0],
-      jawaban: jawabanLines[0],
-    };
-  }
-};
+        if (pertanyaanLines.length > 1) {
+          const pertanyaan = pertanyaanLines.map(q => `• ${q}`).join("\n");
+          const jawaban = jawabanLines.map(a => `• ${a}`).join("\n");
+          return { pertanyaan, jawaban };
+        } else {
+          return {
+            pertanyaan: pertanyaanLines[0],
+            jawaban: jawabanLines[0],
+          };
+        }
+      };
 
       const transformedData = rawData.map((item: any, index: number) => {
         const question = item.question || {};
         const assessment = item.assessment || {};
         const answer = item.answer || {};
+
+        let linkEvidence = "-";
+        if (item.evidenceLink && typeof item.evidenceLink === "string") {
+          const trimmed = item.evidenceLink.trim();
+          if (trimmed !== "") {
+            linkEvidence = trimmed;
+          }
+        }
 
         let pertanyaan = "-";
         let jawaban = "-";
@@ -187,7 +216,6 @@ const TablePage = () => {
               const optionIndex = scoreNum + 1;
               const textKey = `answerText${optionIndex}`;
               const textValue = question[textKey];
-              // ✅ TIDAK TAMBAH PREFIX — karena sudah ada di textValue
               jawaban = textValue || `Opsi ${optionIndex}`;
             } else {
               jawaban = "-";
@@ -204,12 +232,6 @@ const TablePage = () => {
             : "-";
         }
 
-        const tipeSoal = question.type === 'text'
-          ? 'Jawaban Singkat'
-          : question.type === 'multitext'
-            ? 'Pilihan Jawaban'
-            : question.type || "-";
-
         return {
           nomor: index + 1,
           variable: question.transformationVariable?.name || "-",
@@ -217,7 +239,7 @@ const TablePage = () => {
           pertanyaan: pertanyaan,
           jawaban: jawaban,
           skor: skor,
-          tipeSoal: tipeSoal,
+          linkEvidence: linkEvidence, 
           assessmentId: assessment.id,
           detailId: item.id,
           assessment: assessment,
@@ -249,7 +271,7 @@ const TablePage = () => {
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
-  // ✅ Handle konfirmasi
+  
   const handleConfirm = async () => {
     if (!modalType || !selectedAssessmentId) {
       setShowModal(false);
