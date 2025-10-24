@@ -169,17 +169,17 @@
       item = { ...item, submenu: filteredSubmenu };
     }
 
-    // 🔥 Filter submenu "About TMA": sembunyikan "Assessment Period" untuk kampus cabang (roleId === 2)
+    // 🔥 Filter submenu "About TMA": sembunyikan "Assessment Period" dan "UPPS/KC" untuk kampus cabang (roleId === 2)
     if (item.name === "About TMA" && item.submenu) {
       const filteredSubmenu = item.submenu.filter((subItem) => {
-        if (subItem.name === "Assessment Period") {
-          return roleId !== 2; // Sembunyikan jika roleId === 2
+        if (subItem.name === "Assessment Period" || subItem.name === "UPPS/KC") {
+          return roleId !== 2; // Sembunyikan kedua menu ini jika roleId === 2
         }
         return true;
       });
       item = { ...item, submenu: filteredSubmenu };
     }
-
+    
     // Filter item utama berdasarkan roleId
     if (roleId === 2) {
       return (
