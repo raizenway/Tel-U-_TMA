@@ -12,6 +12,7 @@ export default function AddUserPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || '';
+  const isNonSSO = role === 'Non SSO';
 
   const [logoFileName, setLogoFileName] = useState('Cari Lampiran...');
   const [logoPreview, setLogoPreview] = useState<string>(''); // base64 image
@@ -90,7 +91,7 @@ const isValidEmail = (email: string) => {
   form.nomorHp.length >= 10 &&
   form.nomorHp.length <= 13 &&
   form.status.trim() !== '' &&
-  form.branchId !== ''; 
+  (isNonSSO || form.branchId !== '');
   
 
 const handleSave = async () => {
@@ -135,10 +136,10 @@ const body: CreateUserRequest = {
   roleId: role === 'UPPS/KC' ? 2 : 4,
   email: form.email,
   phoneNumber: form.nomorHp,
-  branchId: Number(form.branchId),
   status: form.status,
   picName: picName,
   ...(logoFile && { logo: logoFile }),
+  ...(role !== 'Non SSO' && { branchId: Number(form.branchId) }), // ✅ Hanya kirim jika bukan Non SSO
 };
  try {
     await createUser(body);
@@ -169,7 +170,11 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTab(path || "welcome");
   }, [pathname]);
    
-
+useEffect(() => {
+  if (isNonSSO) {
+    setForm(prev => ({ ...prev, branchId: '' }));
+  }
+}, [isNonSSO]);
 
   return (
     <div>
@@ -318,24 +323,26 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               />
             </div>           
             
-            {/* Kampus Cabang */}
-            <div>
-              <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
-              <select
-                name="branchId"
-                value={form.branchId}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
-                required
-              >
-                <option value="">Pilih Kampus Cabang</option>
-                {BRANCHES.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-            </div> 
+            {/* Kampus Cabang - Hanya tampil jika BUKAN Non SSO */}
+            {!isNonSSO && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
+                <select
+                  name="branchId"
+                  value={form.branchId}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
+                  required
+                >
+                  <option value="">Pilih Kampus Cabang</option>
+                  {BRANCHES.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div> 
+            )}
           </form>
 
           {/* ❗️ Tambahkan ini: Peringatan inline */}

@@ -335,6 +335,7 @@ export default function EditUserPage() {
               />
             </div>
 
+            {data?.data?.roleId === 2 && (
             <div>
               <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
               <select
@@ -352,6 +353,7 @@ export default function EditUserPage() {
                 ))}
               </select>
             </div>
+          )}
           </form>
 
           {errorMessage && (
