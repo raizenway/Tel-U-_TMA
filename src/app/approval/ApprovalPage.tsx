@@ -57,10 +57,33 @@ const TablePage = () => {
       className: "whitespace-pre-line break-words"
     },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
-    { header: "Tipe Soal", key: "tipeSoal", width: "150px", sortable: true },
+    {
+  header: "Link Evidence", 
+  key: "linkEvidence", 
+  width: "250px", 
+  sortable: true,
+  renderCell: (item: any) => {
+  if (!item || typeof item.linkEvidence !== 'string') {
+    return "-";
+  }
+
+  const link = item.linkEvidence.trim();
+  if (!link) return "-";
+
+  return (
+  <a 
+    href={link} 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="text-blue-600 hover:text-blue-800 underline break-all text-xs"
+  >
+    {link}
+  </a>
+);
+}
+},
   ];
 
-  // 🔁 Fetch periode
   useEffect(() => {
     const fetchPeriodeOptions = async () => {
       try {
@@ -93,7 +116,7 @@ const TablePage = () => {
     fetchPeriodeOptions();
   }, []);
 
-  // 🔁 Fetch data approval
+
   const fetchData = async () => {
     if (selectedPeriodeId === null) {
       setLoading(false);
@@ -120,92 +143,94 @@ const TablePage = () => {
 
       const rawData = res.data.data || [];
 
-      const getJawabanFromAnswer = (answer: any, question: any): string => {
-  if (!answer || !question) return "-";
+      const getCombinedTextQuestion = (question: any, answer: any): { pertanyaan: string; jawaban: string } => {
+        const pertanyaanLines: string[] = [];
+        const jawabanLines: string[] = [];
 
-  if (question.type === 'multitext') {
-    for (let i = 1; i <= 5; i++) {
-      const value = answer[`textAnswer${i}`];
-      // ✅ Handle semua bentuk true: "1", 1, true, "yes", dll
-      if (value === "1" || value === 1 || value === true || value === "true" || value === "yes") {
-        const textKey = `answerText${i}`;
-        const textValue = question[textKey];
-        return textValue || `Opsi ${i}`;
-      }
-    }
-    return "-"; // jika tidak ada yang diisi
-  }
+        if (question.questionText && answer.textAnswer1 !== undefined && answer.textAnswer1 !== "") {
+          pertanyaanLines.push(question.questionText);
+          jawabanLines.push(String(answer.textAnswer1));
+        }
+        if (question.questionText2 && answer.textAnswer2 !== undefined && answer.textAnswer2 !== "") {
+          pertanyaanLines.push(question.questionText2);
+          jawabanLines.push(String(answer.textAnswer2));
+        }
+        for (let i = 3; i <= 5; i++) {
+          const qText = question[`questionText${i}`];
+          const aText = answer[`textAnswer${i}`];
+          if (qText && aText !== undefined && aText !== "") {
+            pertanyaanLines.push(qText);
+            jawabanLines.push(String(aText));
+          }
+        }
 
-  return "-";
-};
+        if (pertanyaanLines.length === 0) {
+          return { pertanyaan: "-", jawaban: "-" };
+        }
 
-  const getCombinedTextQuestion = (question: any, answer: any): { pertanyaan: string; jawaban: string } => {
-  const pertanyaanLines: string[] = [];
-  const jawabanLines: string[] = [];
+        if (pertanyaanLines.length > 1) {
+          const pertanyaan = pertanyaanLines.map(q => `• ${q}`).join("\n");
+          const jawaban = jawabanLines.map(a => `• ${a}`).join("\n");
+          return { pertanyaan, jawaban };
+        } else {
+          return {
+            pertanyaan: pertanyaanLines[0],
+            jawaban: jawabanLines[0],
+          };
+        }
+      };
 
-  // Pertanyaan 1
-  if (question.questionText && answer.textAnswer1 !== undefined && answer.textAnswer1 !== "") {
-    pertanyaanLines.push(question.questionText);
-    jawabanLines.push(String(answer.textAnswer1));
-  }
-
-  // Pertanyaan 2
-  if (question.questionText2 && answer.textAnswer2 !== undefined && answer.textAnswer2 !== "") {
-    pertanyaanLines.push( question.questionText2); // ✅ tambah - hanya jika ada Q2
-    jawabanLines.push(String(answer.textAnswer2)); // ✅ tambah - hanya jika ada Q2
-  }
-
-  // Pertanyaan 3-5 (opsional)
-  for (let i = 3; i <= 5; i++) {
-    const qText = question[`questionText${i}`];
-    const aText = answer[`textAnswer${i}`];
-    if (qText && aText !== undefined && aText !== "") {
-      pertanyaanLines.push(qText); // ✅ tambah - hanya jika ada Q3+
-      jawabanLines.push(String(aText)); // ✅ tambah - hanya jika ada Q3+
-    }
-  }
-
-  if (pertanyaanLines.length === 0) {
-    return { pertanyaan: "-", jawaban: "-" };
-  }
-
-  // Gabungkan dengan newline
-  return {
-    pertanyaan: pertanyaanLines.join("\n"),
-    jawaban: jawabanLines.join("\n"),
-  };
-};
       const transformedData = rawData.map((item: any, index: number) => {
         const question = item.question || {};
         const assessment = item.assessment || {};
         const answer = item.answer || {};
 
+        let linkEvidence = "-";
+        if (item.evidenceLink && typeof item.evidenceLink === "string") {
+          const trimmed = item.evidenceLink.trim();
+          if (trimmed !== "") {
+            linkEvidence = trimmed;
+          }
+        }
+
         let pertanyaan = "-";
         let jawaban = "-";
+        let skor = "-";
 
         if (question.type === 'text') {
-          // Gabungkan semua pertanyaan dan jawaban
           const combined = getCombinedTextQuestion(question, answer);
           pertanyaan = combined.pertanyaan;
           jawaban = combined.jawaban;
+          skor = item.submissionValue !== undefined && item.submissionValue !== ""
+            ? String(item.submissionValue)
+            : "-";
         } else if (question.type === 'multitext') {
-          // Untuk multitext, tampilkan teks jawaban lengkap
           pertanyaan = question.questionText || "-";
-          jawaban = getJawabanFromAnswer(answer, question);
+
+          const submissionValue = item.submissionValue;
+          if (submissionValue !== undefined && submissionValue !== "") {
+            const scoreNum = Number(submissionValue);
+            skor = String(scoreNum);
+
+            if (scoreNum >= 0 && scoreNum <= 4) {
+              const optionIndex = scoreNum + 1;
+              const textKey = `answerText${optionIndex}`;
+              const textValue = question[textKey];
+              jawaban = textValue || `Opsi ${optionIndex}`;
+            } else {
+              jawaban = "-";
+            }
+          } else {
+            jawaban = "-";
+            skor = "-";
+          }
         } else {
           pertanyaan = question.questionText || "-";
-          jawaban = getJawabanFromAnswer(answer, question);
+          jawaban = "-";
+          skor = item.submissionValue !== undefined && item.submissionValue !== ""
+            ? String(item.submissionValue)
+            : "-";
         }
-
-        const skor = item.submissionValue !== undefined && item.submissionValue !== ""
-          ? String(item.submissionValue)
-          : "-";
-
-        const tipeSoal = question.type === 'text'
-          ? 'Jawaban Singkat'
-          : question.type === 'multitext'
-            ? 'Pilihan Jawaban'
-            : question.type || "-";
 
         return {
           nomor: index + 1,
@@ -214,7 +239,7 @@ const TablePage = () => {
           pertanyaan: pertanyaan,
           jawaban: jawaban,
           skor: skor,
-          tipeSoal: tipeSoal,
+          linkEvidence: linkEvidence, 
           assessmentId: assessment.id,
           detailId: item.id,
           assessment: assessment,
@@ -246,7 +271,7 @@ const TablePage = () => {
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
-  // ✅ Handle konfirmasi untuk 1 assessment saja
+  
   const handleConfirm = async () => {
     if (!modalType || !selectedAssessmentId) {
       setShowModal(false);
@@ -273,7 +298,6 @@ const TablePage = () => {
       
       setSuccessMessage(message);
       setShowSuccess(true);
-
       fetchData();
     } catch (error: any) {
       console.error("Gagal melakukan aksi:", error);
@@ -343,7 +367,7 @@ const TablePage = () => {
                 )}
               </div>
 
-              {/* Dropdown Kampus — hanya 4 pilihan */}
+              {/* Dropdown Kampus */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -453,7 +477,7 @@ const TablePage = () => {
             cancelLabel="Batal"
           />
 
-          {/* ✅ Notifikasi Sukses */}
+          {/* Notifikasi Sukses */}
           <SuccessNotification
             isOpen={showSuccess}
             onClose={() => setShowSuccess(false)}

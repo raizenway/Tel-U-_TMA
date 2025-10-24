@@ -287,52 +287,52 @@ export default function VariabelFormPage() {
             
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 1
+             Very Low Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
               value={levelDescription1}
               onChange={(e) => setLevelDescription1(e.target.value)}
-              placeholder="Masukkan Level Deskripsi 1"
+              placeholder="Masukkan Level Deskripsi "
               rows={4}
             />
           </div>
 
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 2
+             Low Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
               value={levelDescription2}
               onChange={(e) => setLevelDescription2(e.target.value)}
-              placeholder="Masukkan Level Deskripsi 2"
+              placeholder="Masukkan Level Deskripsi "
               rows={4}
             />
           </div>
 
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 3
+             Medium Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
               value={levelDescription3}
               onChange={(e) => setLevelDescription3(e.target.value)}
-              placeholder="Masukkan Level Deskripsi 3"
+              placeholder="Masukkan Level Deskripsi "
               rows={4}
             />
           </div>
 
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-             Level Deskripsi 4
+             High Maturity
             </label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3"
               value={levelDescription4}
               onChange={(e) => setLevelDescription4(e.target.value)}
-              placeholder="Masukkan Level Deskripsi 4"
+              placeholder="Masukkan Level Deskripsi "
               rows={4}
             />
           </div>

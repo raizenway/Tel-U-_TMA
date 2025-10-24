@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   RadarChart,
   Radar,
@@ -24,6 +24,11 @@ import AssessmentTable from './AssessmentTable';
 import ModalConfirm from './StarAssessment/ModalConfirm';
 import Button from './button';
 import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
+import { useStudentBodyData } from '@/hooks/useStudentBody';
+import { useAccreditationData } from '@/hooks/useAccreditation';
+
+// ✅ Rentang tetap untuk grafik: 2021–2027
+const FIXED_YEARS = Array.from({ length: 7 }, (_, i) => String(2021 + i));
 
 const CAMPUS_LIST = [
   "Tel-U Jakarta",
@@ -90,43 +95,28 @@ interface DashboardApiResponse {
   branches: Branch[];
 }
 
-// === FUNGSI DI LUAR KOMPONEN (pure functions) ===
-const CURRENT_YEAR = new Date().getFullYear(); // 2025
-
 const cleanYearlyData = (rawData: YearlyData[]): YearlyData[] => {
   if (!Array.isArray(rawData)) return [];
   return rawData
-    .map(item => ({
-      ...item,
-      year: item.year > CURRENT_YEAR ? CURRENT_YEAR : item.year,
-    }))
-    .filter(
-      item =>
-        typeof item.year === 'number' &&
-        item.year <= CURRENT_YEAR &&
-        item.year >= 2000 &&
-        typeof item.total === 'number'
-    );
+    .map(item => {
+      let year = item.year;
+      if (typeof year === 'number') {
+        const parsed = Number(year);
+        if (isNaN(parsed)) return null;
+        year = parsed;
+      }
+      if (typeof year !== 'number' || typeof item.total !== 'number') {
+        return null;
+      }
+      return { ...item, year };
+    })
+    .filter((item): item is YearlyData => item !== null);
 };
 
-const getAllYearsFromBranches = (branches: Branch[]): string[] => {
-  const years = new Set<string>();
-  branches.forEach(branch => {
-    const cleanedStudent = cleanYearlyData(branch.yearlyStudentBody);
-    const cleanedAccred = cleanYearlyData(branch.yearlyAccreditationGrowth);
-    [...cleanedStudent, ...cleanedAccred].forEach(d => {
-      years.add(String(d.year));
-    });
-  });
-  return Array.from(years).sort((a, b) => Number(a) - Number(b));
-};
-
-// === FORMAT PERIOD NAME ===
 const formatPeriodName = (period: string): string => {
   return period.replace(/^:\s*/, '');
 };
 
-// === GET PERIOD COLOR ===
 const getPeriodColor = (period: string, allPeriods: string[]): string => {
   const colors = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
@@ -134,6 +124,24 @@ const getPeriodColor = (period: string, allPeriods: string[]): string => {
   ];
   const idx = allPeriods.indexOf(period);
   return colors[idx >= 0 ? idx % colors.length : 0];
+};
+
+const studentColors = ["#A966FF", "#FF0000", "#5D77ff", "#FFB930", "#10B981", "#00C896", "#FF6B6B"];
+
+type StudentBodyRow = {
+  year: string;
+  "Tel-U Jakarta": number;
+  "Tel-U Surabaya": number;
+  "Tel-U Purwokerto": number;
+  "Tel-U Bandung": number;
+};
+
+type AccreditationRow = {
+  year: string;
+  "Tel-U Jakarta": number;
+  "Tel-U Surabaya": number;
+  "Tel-U Purwokerto": number;
+  "Tel-U Bandung": number;
 };
 
 export default function DashboardTab() {
@@ -153,27 +161,22 @@ export default function DashboardTab() {
     },
   });
 
-  const [studentBodyData, setStudentBodyData] = useState<{
-    year: string;
-    "Tel-U Jakarta": number;
-    "Tel-U Surabaya": number;
-    "Tel-U Purwokerto": number;
-    "Tel-U Bandung": number;
-  }[]>([]);
+  // 📊 Student Body
+  const [studentBodyData, setStudentBodyData] = useState<StudentBodyRow[]>([]);
 
+  // 📈 Accreditation
   const [accreditationInputData, setAccreditationInputData] = useState<{
     "Tel-U Jakarta": number[];
     "Tel-U Surabaya": number[];
     "Tel-U Purwokerto": number[];
     "Tel-U Bandung": number[];
   }>({
-    "Tel-U Jakarta": [],
-    "Tel-U Surabaya": [],
-    "Tel-U Purwokerto": [],
-    "Tel-U Bandung": [],
+    "Tel-U Jakarta": Array(7).fill(0),
+    "Tel-U Surabaya": Array(7).fill(0),
+    "Tel-U Purwokerto": Array(7).fill(0),
+    "Tel-U Bandung": Array(7).fill(0),
   });
 
-  const [accreditationYears, setAccreditationYears] = useState<string[]>([]);
   const [radarData, setRadarData] = useState<{ subject: string; A: number }[]>([]);
   const [apiVariables, setApiVariables] = useState<string[]>([]);
   const [variableGrowthData, setVariableGrowthData] = useState<
@@ -185,7 +188,26 @@ export default function DashboardTab() {
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
 
-  // Close dropdown on outside click
+  // Modal Prodi state lokal
+  const [localAccreditationYears, setLocalAccreditationYears] = useState<string[]>(FIXED_YEARS);
+  const [localAccreditationData, setLocalAccreditationData] = useState<{
+    "Tel-U Jakarta": number[];
+    "Tel-U Surabaya": number[];
+    "Tel-U Purwokerto": number[];
+    "Tel-U Bandung": number[];
+  }>({
+    "Tel-U Jakarta": Array(7).fill(0),
+    "Tel-U Surabaya": Array(7).fill(0),
+    "Tel-U Purwokerto": Array(7).fill(0),
+    "Tel-U Bandung": Array(7).fill(0),
+  });
+
+  // ✅ Hook untuk simpan Student Body
+  const { saveToApi: saveStudentBody, isSaving: isSavingStudent, error: studentSaveError } = useStudentBodyData();
+
+  // ✅ Hook untuk simpan Accreditation
+  const { saveToApi: saveAccreditation, isSaving: isSavingAccreditation, error: accreditationSaveError } = useAccreditationData();
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -197,14 +219,12 @@ export default function DashboardTab() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Auto-select first variable
   useEffect(() => {
     if (apiVariables.length > 0 && selectedVariables.length === 0) {
       setSelectedVariables([apiVariables[0]]);
     }
   }, [apiVariables, selectedVariables]);
 
-  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -227,20 +247,8 @@ export default function DashboardTab() {
           assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
         });
 
-        const DEFAULT_YEARS = ['2021', '2022', '2023', '2024', '2025'];
-        const apiYears = getAllYearsFromBranches(apiData.branches);
-        const allYearsSet = new Set([...DEFAULT_YEARS, ...apiYears]);
-        const yearStrings = Array.from(allYearsSet).sort((a, b) => Number(a) - Number(b));
-
-        type StudentBodyRow = {
-          year: string;
-          "Tel-U Jakarta": number;
-          "Tel-U Surabaya": number;
-          "Tel-U Purwokerto": number;
-          "Tel-U Bandung": number;
-        };
-
-        const studentBodyFormatted: StudentBodyRow[] = yearStrings.map(yearStr => {
+        // ✅ Student Body: selalu 2021–2027
+        const studentBodyFormatted = FIXED_YEARS.map(yearStr => {
           const yearNum = Number(yearStr);
           const row: StudentBodyRow = {
             year: yearStr,
@@ -265,15 +273,15 @@ export default function DashboardTab() {
 
         setStudentBodyData(studentBodyFormatted);
 
-        const accreditationFormatted = yearStrings.map(yearStr => {
+        // Accreditation
+        const accreditationFormatted = FIXED_YEARS.map(yearStr => {
           const yearNum = Number(yearStr);
           const row = {
             "Tel-U Jakarta": 0,
             "Tel-U Surabaya": 0,
             "Tel-U Purwokerto": 0,
-            "Tel-U Bandung": 0,
+            "Tel-U Bandung": 0, 
           } as Record<CampusKey, number>;
-
           for (const branch of apiData.branches) {
             const campusName = branch.name;
             const cleanedData = cleanYearlyData(branch.yearlyAccreditationGrowth);
@@ -285,14 +293,23 @@ export default function DashboardTab() {
           return row;
         });
 
-        setAccreditationYears(yearStrings);
-        setAccreditationInputData({
+        const accInput = {
           "Tel-U Jakarta": accreditationFormatted.map(r => r["Tel-U Jakarta"]),
           "Tel-U Surabaya": accreditationFormatted.map(r => r["Tel-U Surabaya"]),
           "Tel-U Purwokerto": accreditationFormatted.map(r => r["Tel-U Purwokerto"]),
           "Tel-U Bandung": accreditationFormatted.map(r => r["Tel-U Bandung"]),
+        };
+
+        setAccreditationInputData(accInput);
+        // ✅ Clone saat inisialisasi modal
+        setLocalAccreditationData({
+          'Tel-U Jakarta': [...accInput['Tel-U Jakarta']],
+          'Tel-U Surabaya': [...accInput['Tel-U Surabaya']],
+          'Tel-U Purwokerto': [...accInput['Tel-U Purwokerto']],
+          'Tel-U Bandung': [...accInput['Tel-U Bandung']],
         });
 
+        // Radar
         const tmiRaw = apiData.transformationMaturityIndex || [];
         const validTmi = (tmiRaw as TransformationMaturityItem[])
           .filter((item) => 
@@ -352,11 +369,11 @@ export default function DashboardTab() {
     fetchData();
   }, []);
 
-  // === MODAL & INPUT HANDLERS ===
+  // === Student Body Handlers ===
   const handleAddYear = () => {
     const lastYearStr = studentBodyData.length > 0 
       ? studentBodyData[studentBodyData.length - 1].year 
-      : String(CURRENT_YEAR);
+      : "2027";
     const nextYear = String(Number(lastYearStr) + 1);
     setStudentBodyData(prev => [...prev, {
       year: nextYear,
@@ -365,13 +382,6 @@ export default function DashboardTab() {
       "Tel-U Purwokerto": 0,
       "Tel-U Bandung": 0,
     }]);
-    setAccreditationYears(prev => [...prev, nextYear]);
-    (Object.keys(accreditationInputData) as CampusKey[]).forEach((campus) => {
-      setAccreditationInputData(prev => ({
-        ...prev,
-        [campus]: [...prev[campus], 0],
-      }));
-    });
   };
 
   const handleInputChange = (campus: CampusKey, yearIndex: number, value: string) => {
@@ -384,33 +394,69 @@ export default function DashboardTab() {
     }
   };
 
+  // === Accreditation Modal Handlers ===
   const handleAddAccreditationYear = () => {
-    const lastYearStr = accreditationYears.length > 0 
-      ? accreditationYears[accreditationYears.length - 1] 
-      : String(CURRENT_YEAR);
-    const nextYear = String(Number(lastYearStr) + 1);
-    setAccreditationYears(prev => [...prev, nextYear]);
-    (Object.keys(accreditationInputData) as CampusKey[]).forEach((campus) => {
-      setAccreditationInputData(prev => ({
-        ...prev,
-        [campus]: [...prev[campus], 0],
-      }));
-    });
+    const lastYear = localAccreditationYears[localAccreditationYears.length - 1];
+    const nextYear = String(Number(lastYear) + 1);
+    setLocalAccreditationYears(prev => [...prev, nextYear]);
+    setLocalAccreditationData(prev => ({
+      ...prev,
+      "Tel-U Jakarta": [...prev["Tel-U Jakarta"], 0],
+      "Tel-U Surabaya": [...prev["Tel-U Surabaya"], 0],
+      "Tel-U Purwokerto": [...prev["Tel-U Purwokerto"], 0],
+      "Tel-U Bandung": [...prev["Tel-U Bandung"], 0],
+    }));
   };
 
   const handleAccreditationChange = (campus: CampusKey, yearIndex: number, value: string) => {
     const num = value === '' ? 0 : Math.max(0, Math.min(100, Number(value)));
     if (isNaN(num)) return;
-    setAccreditationInputData(prev => ({
+    setLocalAccreditationData(prev => ({
       ...prev,
       [campus]: prev[campus].map((val, i) => (i === yearIndex ? num : val)),
     }));
   };
 
-  const handleGenerate = () => setShowModal(false);
+  // ✅ Handle Simpan (Student & Prodi)
+  const handleGenerate = async () => {
+    if (modalMode === 'prodi') {
+      const accreditationRows: AccreditationRow[] = FIXED_YEARS.map((year, idx) => ({
+        year,
+        "Tel-U Jakarta": localAccreditationData["Tel-U Jakarta"][idx] ?? 0,
+        "Tel-U Surabaya": localAccreditationData["Tel-U Surabaya"][idx] ?? 0,
+        "Tel-U Purwokerto": localAccreditationData["Tel-U Purwokerto"][idx] ?? 0,
+        "Tel-U Bandung": localAccreditationData["Tel-U Bandung"][idx] ?? 0,
+      }));
+
+const success = await saveAccreditation(accreditationRows, selectedCampus);
+      if (success) {
+        // ✅ Update state global dengan deep clone
+        setAccreditationInputData({
+          'Tel-U Jakarta': localAccreditationData['Tel-U Jakarta'].slice(0, 7),
+          'Tel-U Surabaya': localAccreditationData['Tel-U Surabaya'].slice(0, 7),
+          'Tel-U Purwokerto': localAccreditationData['Tel-U Purwokerto'].slice(0, 7),
+          'Tel-U Bandung': localAccreditationData['Tel-U Bandung'].slice(0, 7),
+        });
+        setShowModal(false);
+        alert('✅ Data akreditasi berhasil disimpan!');
+      }
+      return;
+    }
+
+    if (modalMode === 'student') {
+      const success = await saveStudentBody(studentBodyData);
+      if (success) {
+        setShowModal(false);
+        alert('✅ Data mahasiswa berhasil disimpan!');
+      }
+      return;
+    }
+
+    setShowModal(false);
+  };
 
   const handleDownload = () => {
-    const dataToDownload = accreditationYears.map((year, idx) => ({
+    const dataToDownload = FIXED_YEARS.map((year, idx) => ({
       tahun: year,
       Jakarta: accreditationInputData["Tel-U Jakarta"][idx] ?? 0,
       Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
@@ -452,13 +498,18 @@ export default function DashboardTab() {
 
   const openProdiModal = () => {
     setModalMode('prodi');
+    // ✅ Deep clone saat buka modal → perbaikan utama!
+    setLocalAccreditationData({
+      'Tel-U Jakarta': [...accreditationInputData['Tel-U Jakarta']],
+      'Tel-U Surabaya': [...accreditationInputData['Tel-U Surabaya']],
+      'Tel-U Purwokerto': [...accreditationInputData['Tel-U Purwokerto']],
+      'Tel-U Bandung': [...accreditationInputData['Tel-U Bandung']],
+    });
+    setLocalAccreditationYears(FIXED_YEARS);
     setShowModal(true);
   };
 
-  const studentColors = ["#A966FF", "#FF0000", "#5D77ff", "#FFB930", "#10B981"];
-
-  const studentYears = accreditationYears;
-
+  const studentYears = studentBodyData.map(row => row.year);
   const studentDataByCampus = CAMPUS_LIST.map((campus) => {
     const data: { [key: string]: string | number } = { kampus: campus.replace("Tel-U ", "") };
     studentYears.forEach((year) => {
@@ -468,7 +519,6 @@ export default function DashboardTab() {
     return data;
   });
 
-  // === RENDER ===
   return (
     <div className="space-y-8 px-4 py-6">
       {/* Stat Cards */}
@@ -589,7 +639,7 @@ export default function DashboardTab() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={accreditationYears.map((year, idx) => ({
+            <LineChart data={FIXED_YEARS.map((year, idx) => ({
               tahun: year,
               Jakarta: accreditationInputData["Tel-U Jakarta"][idx] ?? 0,
               Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
@@ -710,7 +760,6 @@ export default function DashboardTab() {
               labelStyle={{ color: '#fff' }}
             />
 
-            {/* ✅ CUSTOM LEGEND CONTENT */}
             <Legend
               iconType="circle"
               iconSize={8}
@@ -767,22 +816,7 @@ export default function DashboardTab() {
         onConfirm={handleGenerate}
         header={modalMode === 'student' ? 'Ubah Data Mahasiswa' : 'Ubah Data Prodi'}
         title=""
-        footer={
-          <div className="flex justify-end gap-4 pt-4">
-            <button
-              onClick={() => setShowModal(false)}
-              className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 font-medium"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleGenerate}
-              className="px-6 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 font-medium"
-            >
-              Simpan
-            </button>
-          </div>
-        }
+        footer={null}
       >
         {modalMode === 'student' ? (
           <>
@@ -824,6 +858,28 @@ export default function DashboardTab() {
                 </tbody>
               </table>
             </div>
+            {studentSaveError && (
+              <div className="text-red-500 text-sm mt-2">{studentSaveError}</div>
+            )}
+            <div className="flex justify-end gap-4 pt-4">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 font-medium"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={isSavingStudent}
+                className={`px-6 py-2 rounded-md font-medium ${
+                  isSavingStudent
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-blue-900 text-white hover:bg-blue-800'
+                }`}
+              >
+                {isSavingStudent ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
           </>
         ) : (
           <>
@@ -840,7 +896,7 @@ export default function DashboardTab() {
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="text-left pl-2">Kampus</th>
-                    {accreditationYears.map((year, i) => (
+                    {localAccreditationYears.map((year, i) => (
                       <th key={i} className="px-2 py-1">{year}</th>
                     ))}
                   </tr>
@@ -849,7 +905,7 @@ export default function DashboardTab() {
                   {CAMPUS_LIST.map((campus) => (
                     <tr key={campus} className="border-b border-gray-200">
                       <td className="text-left pl-2 py-2 font-medium">{campus}</td>
-                      {accreditationInputData[campus].map((value, j) => (
+                      {localAccreditationData[campus].map((value, j) => (
                         <td key={j} className="px-2 py-1">
                           <input
                             type="number"
@@ -866,6 +922,28 @@ export default function DashboardTab() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            {accreditationSaveError && (
+              <div className="text-red-500 text-sm mt-2">{accreditationSaveError}</div>
+            )}
+            <div className="flex justify-end gap-4 pt-4">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 font-medium"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={isSavingAccreditation}
+                className={`px-6 py-2 rounded-md font-medium ${
+                  isSavingAccreditation
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-blue-900 text-white hover:bg-blue-800'
+                }`}
+              >
+                {isSavingAccreditation ? 'Menyimpan...' : 'Simpan'}
+              </button>
             </div>
           </>
         )}
