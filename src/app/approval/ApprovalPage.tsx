@@ -37,7 +37,7 @@ const TablePage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const rowsPerPage = 10;
+  const rowsPerPage = 25;
 
   const columns = [
     { header: "Nomor", key: "nomor", width: "100px", sortable: true },
@@ -57,31 +57,49 @@ const TablePage = () => {
       className: "whitespace-pre-line break-words"
     },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
-    {
-  header: "Link Evidence", 
-  key: "linkEvidence", 
-  width: "250px", 
+   {
+  header: "Link Evidence",
+  key: "linkEvidence",
+  width: "150px",
   sortable: true,
-  renderCell: (item: any) => {
-  if (!item || typeof item.linkEvidence !== 'string') {
-    return "-";
+ renderCell: (item: any) => {
+  // Cek apakah linkEvidence null atau bukan string
+  if (!item || item.linkEvidence == null || item.linkEvidence === "") {
+    return (
+      <span 
+        className="text-gray-400 pointer-events-none select-none"
+        style={{ cursor: 'default' }}
+      >
+        -
+      </span>
+    );
   }
 
   const link = item.linkEvidence.trim();
-  if (!link) return "-";
+  if (!link) {
+    return (
+      <span 
+        className="text-gray-400 pointer-events-none select-none"
+        style={{ cursor: 'default' }}
+      >
+        -
+      </span>
+    );
+  }
 
   return (
-  <a 
-    href={link} 
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="text-blue-600 hover:text-blue-800 underline break-all text-xs"
-  >
-    {link}
-  </a>
-);
+    <a 
+      href={link} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:text-blue-800 underline break-all text-xs"
+      title={link}
+    >
+      {link.length > 30 ? `${link.substring(0, 30)}...` : link}
+    </a>
+  );
 }
-},
+}
   ];
 
   useEffect(() => {
@@ -185,13 +203,13 @@ const TablePage = () => {
         const assessment = item.assessment || {};
         const answer = item.answer || {};
 
-        let linkEvidence = "-";
-        if (item.evidenceLink && typeof item.evidenceLink === "string") {
-          const trimmed = item.evidenceLink.trim();
-          if (trimmed !== "") {
-            linkEvidence = trimmed;
-          }
-        }
+      let linkEvidence: string | null = null;
+if (item.evidenceLink && typeof item.evidenceLink === "string") {
+  const trimmed = item.evidenceLink.trim();
+  if (trimmed !== "") {
+    linkEvidence = trimmed;
+  }
+}
 
         let pertanyaan = "-";
         let jawaban = "-";
