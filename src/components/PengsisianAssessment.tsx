@@ -73,7 +73,8 @@ export default function AssessmentFormTab() {
           const response = await fetch(`${apiUrl}/question/${id}`);
           if (!response.ok) continue;
           const result = await response.json();
-          if (result.data && result.data.questionText && result.data.indicator) {
+          if (result.data && result.data.questionText && result.data.indicator &&  result.data.status === 'active'
+          ) {
             const options = [];
             if (result.data.answerText1) options.push(result.data.answerText1);
             if (result.data.answerText2) options.push(result.data.answerText2);

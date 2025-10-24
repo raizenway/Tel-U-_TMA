@@ -10,7 +10,7 @@ import TableButton from '@/components/TableButton';
 import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info } from 'lucide-react';
-import { useQuestionList } from '@/hooks/useDaftarAssessment';
+import { useQuestionList,useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
 import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
@@ -24,6 +24,7 @@ export default function AssessmentPage() {
   const [localData, setData] = useState<any[]>([]);
   const { data: variablesData, loading: loadingVariables } = useTransformationVariableList();
    const { mutate: saveAnswer, loading: saving, error: saveError } = useCreateAssessmentDetail();
+   const { mutate: updateQuestionMutate, loading: updating } = useUpdateQuestion();
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -149,17 +150,31 @@ export default function AssessmentPage() {
     setShowModal(true);
   };
 
-  const handleConfirm = () => {
-    if (pendingToggleIndex !== null) {
-      const updated = [...localData];
-      updated[pendingToggleIndex].status =
-        updated[pendingToggleIndex].status === 'active' ? 'inactive' : 'active';
-      setData(updated);
-    }
-    setShowModal(false);
-    setPendingToggleIndex(null);
-    setTargetStatus(null);
-  };
+  const handleConfirm = async () => {
+  if (pendingToggleIndex === null) return;
+
+  const item = localData[pendingToggleIndex];
+  const newStatus = item.status === 'active' ? 'inactive' : 'active';
+
+  // ❌ HAPUS optimistic update
+  // const updatedLocal = [...localData];
+  // updatedLocal[pendingToggleIndex] = { ...item, status: newStatus };
+  // setData(updatedLocal);
+
+  // Kirim ke server
+  const result = await updateQuestionMutate(item.id, { status: newStatus });
+
+  if (result) {
+    // ✅ Hanya refetch → data dari server pasti akurat
+    await refetch();
+  } else {
+    // Error sudah ditangani di hook
+  }
+
+  setShowModal(false);
+  setPendingToggleIndex(null);
+  setTargetStatus(null);
+};
 
   const handleCancel = () => {
     setShowModal(false);
