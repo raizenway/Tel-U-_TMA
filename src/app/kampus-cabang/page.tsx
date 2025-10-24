@@ -38,13 +38,21 @@ export default function KampusCabangPage() {
     { header: 'No', key: 'id', width: '60px', sortable: true },
     { header: 'Nama UPPS/KC', key: 'name', width: '250px', sortable: true },
     { header: 'Email', key: 'email', width: '300px', sortable: true },
-    {
-      header: 'Detail',
-      key: 'detail',
-      width: '100px',
-      sortable: false,
-      className: 'sticky right-0 bg-gray-100 z-10'
-    },
+     {
+    header: 'Detail',
+    key: 'detail',
+    width: '100px',
+    sortable: false,
+    className: 'sticky right-0 bg-gray-100 z-10',
+    renderCell: (item: Branch) => (
+      <button
+        onClick={() => handleDetailClick(item)}
+        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+      >
+        Detail
+      </button>
+    ),
+  },
   ];
 
   const filteredBranches = useMemo(() => {
@@ -288,19 +296,7 @@ const dataForExport = branches.flatMap(branch => {
             rowsPerPage={itemsPerPage}
             onSort={requestSort}
             sortConfig={sortConfig}
-            renderCell={(columnKey, item) => {
-              if (columnKey === 'detail') {
-                return (
-                  <button
-                    onClick={() => handleDetailClick(item)} // 👈 lewatkan item (kampus)
-                    className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                  >
-                    Detail
-                  </button>
-                );
-              }
-              return undefined;
-            }}
+           
           />
 
           <Pagination

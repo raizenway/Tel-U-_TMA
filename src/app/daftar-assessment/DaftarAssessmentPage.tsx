@@ -10,7 +10,7 @@ import TableButton from '@/components/TableButton';
 import SearchTable from '@/components/SearchTable';
 import Pagination from '@/components/Pagination';
 import { Info } from 'lucide-react';
-import { useQuestionList } from '@/hooks/useDaftarAssessment';
+import { useQuestionList,useUpdateQuestion } from '@/hooks/useDaftarAssessment';
 import type { ApiResponse } from '@/interfaces/api-response';// Sesuaikan path
 import type{ Question } from '@/interfaces/daftar-assessment'; // Sesuaikan path
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
@@ -24,6 +24,7 @@ export default function AssessmentPage() {
   const [localData, setData] = useState<any[]>([]);
   const { data: variablesData, loading: loadingVariables } = useTransformationVariableList();
    const { mutate: saveAnswer, loading: saving, error: saveError } = useCreateAssessmentDetail();
+   const { mutate: updateQuestionMutate, loading: updating } = useUpdateQuestion();
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -149,17 +150,31 @@ export default function AssessmentPage() {
     setShowModal(true);
   };
 
-  const handleConfirm = () => {
-    if (pendingToggleIndex !== null) {
-      const updated = [...localData];
-      updated[pendingToggleIndex].status =
-        updated[pendingToggleIndex].status === 'active' ? 'inactive' : 'active';
-      setData(updated);
-    }
-    setShowModal(false);
-    setPendingToggleIndex(null);
-    setTargetStatus(null);
-  };
+  const handleConfirm = async () => {
+  if (pendingToggleIndex === null) return;
+
+  const item = localData[pendingToggleIndex];
+  const newStatus = item.status === 'active' ? 'inactive' : 'active';
+
+  // ❌ HAPUS optimistic update
+  // const updatedLocal = [...localData];
+  // updatedLocal[pendingToggleIndex] = { ...item, status: newStatus };
+  // setData(updatedLocal);
+
+  // Kirim ke server
+  const result = await updateQuestionMutate(item.id, { status: newStatus });
+
+  if (result) {
+    // ✅ Hanya refetch → data dari server pasti akurat
+    await refetch();
+  } else {
+    // Error sudah ditangani di hook
+  }
+
+  setShowModal(false);
+  setPendingToggleIndex(null);
+  setTargetStatus(null);
+};
 
   const handleCancel = () => {
     setShowModal(false);
@@ -195,13 +210,20 @@ export default function AssessmentPage() {
     },
   ]
   : [
-     {
-          header: 'Status',
-          key: 'status',
-          width: '150px',
-          className: 'text-center  right-0 z-10 bg-white-100',
-          sortable: false,
-        },
+    {
+  header: 'Status',
+  key: 'status',
+  width: '150px',
+  className: 'text-center right-0 z-10 bg-white-100',
+  sortable: false,
+  renderCell: (item) => {
+    if ([2, 3, 4].includes(Number(roleId))) {
+      return <RoleBasedStatusCell status={item.status} id={item.id} roleId={roleId ?? 0} />;
+    }
+    // fallback ke tampilan default seperti di TableUpdate
+    return item.status === 'active' ? 'Aktif' : 'Nonaktif';
+  },
+}
   ]),
 ];
 
@@ -230,105 +252,99 @@ export default function AssessmentPage() {
   }
 
   return (
-    <div className="flex">
-      <div className="w-full flex-1">
-        <SuccessNotification
-          isOpen={showSuccess}
-          onClose={() => setShowSuccess(false)}
-          message="Assessment baru berhasil ditambahkan!"
-        />
+  <div className="flex">
+    <div className="w-full flex-1">
+      <SuccessNotification
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Assessment baru berhasil ditambahkan!"
+      />
 
-        {showModal && roleId === 1 && (
-          <ModalConfirm
-            isOpen={showModal}
-            onCancel={handleCancel}
-            onConfirm={handleConfirm}
-            header={targetStatus === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Kembali Data'}
-            title={
-              targetStatus === 'deactivate'
-                ? 'Apakah kamu yakin, kamu akan mengaktifkan kembali data ini? '
-                : 'Apakah kamu yakin, kamu akan menonaktifkan data ini?'
-            }
-            confirmLabel="Ya, lakukan"
-            cancelLabel="Batal"
-          >
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md text-sm flex items-start gap-3 mt-2">
-              <Info size={20} className="mt-0.5 text-blue-500" />
-              <div>
-                <div className="font-semibold">Informasi</div>
-                <div className="text-sm">
-                  {targetStatus === 'deactivate'
-                    ? 'Kamu bisa mengembalikan kembali data yang sudah dihilangkan.'
-                    : 'Kamu bisa menampilkan kembali data yang sudah disembunyikan.'}
-                </div>
+      {showModal && roleId === 1 && (
+        <ModalConfirm
+          isOpen={showModal}
+          onCancel={handleCancel}
+          onConfirm={handleConfirm}
+          header={targetStatus === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Kembali Data'}
+          title={
+            targetStatus === 'deactivate'
+              ? 'Apakah kamu yakin, kamu akan mengaktifkan kembali data ini? '
+              : 'Apakah kamu yakin, kamu akan menonaktifkan data ini?'
+          }
+          confirmLabel="Ya, lakukan"
+          cancelLabel="Batal"
+        >
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md text-sm flex items-start gap-3 mt-2">
+            <Info size={20} className="mt-0.5 text-blue-500" />
+            <div>
+              <div className="font-semibold">Informasi</div>
+              <div className="text-sm">
+                {targetStatus === 'deactivate'
+                  ? 'Kamu bisa mengembalikan kembali data yang sudah dihilangkan.'
+                  : 'Kamu bisa menampilkan kembali data yang sudah disembunyikan.'}
               </div>
             </div>
-          </ModalConfirm>
-        )}
-
-        <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto">
-          <div className="p-0">
-            <div className="p-4 border-b border-gray-200 mb-6">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
-                  <SearchTable
-                    value={search}
-                    onChange={setSearch}
-                    placeholder="Cari Daftar Assesment..."
-                    className="mb-4"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap bg-white">
-                  <TableButton data={currentData} />
-                  {roleId === 1 && (
-                    <Button variant="primary" onClick={handleTambah}>
-                      Tambah Assessment
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              {currentData.length > 0 ? (
-             <TableUpdate
-                      columns={columns}
-                      data={currentData}
-                      currentPage={page}
-                      rowsPerPage={itemsPerPage}
-                      onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
-                      onDeactivate={(index) => toggleStatus(index)}
-                      onReactivate={(index) => toggleStatus(index)}
-                      onSort={handleSort}
-                      sortConfig={sortConfig}
-                      renderCell={(columnKey, item) => {
-                        if (columnKey === 'status' && [2, 3, 4].includes(Number(roleId))) {
-                          return <RoleBasedStatusCell status={item.status} id={item.id} roleId={roleId ?? 0} />;
-                        }
-
-                        return undefined; // <-- INI KUNCI: biar fallback ke default
-                      }}
-                    />
-              ) : (
-                <div className="p-6 text-center text-gray-500 border-t">
-                  {loading ? "Loading..." : "Tidak ada data assessment untuk ditampilkan."}
-                </div>
-              )}
-            </div>
-
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              totalItems={totalData}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={setItemsPerPage}
-              showItemsPerPage={true}
-              showTotalItems={true}
-            />
           </div>
+        </ModalConfirm>
+      )}
+
+      <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto">
+        <div className="p-0">
+          <div className="p-4 border-b border-gray-200 mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
+                <SearchTable
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Cari Daftar Assesment..."
+                  className="mb-4"
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap bg-white">
+                <TableButton data={currentData} />
+                {roleId === 1 && (
+                  <Button variant="primary" onClick={handleTambah}>
+                    Tambah Assessment
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            {currentData.length > 0 ? (
+              <TableUpdate
+                columns={columns}
+                data={currentData}
+                currentPage={page}
+                rowsPerPage={itemsPerPage}
+                onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
+                onDeactivate={(index) => toggleStatus(index)}
+                onReactivate={(index) => toggleStatus(index)}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+              />
+            ) : (
+              <div className="p-6 text-center text-gray-500 border-t">
+                {loading ? "Loading..." : "Tidak ada data assessment untuk ditampilkan."}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination ditempatkan DI LUAR overflow-x-auto, tapi masih di dalam card */}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={totalData}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={setItemsPerPage}
+            showItemsPerPage={true}
+            showTotalItems={true}
+          />
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

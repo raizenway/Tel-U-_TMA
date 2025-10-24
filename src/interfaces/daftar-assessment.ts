@@ -69,7 +69,7 @@ export interface CreateQuestionRequest {
 }
 
 export interface UpdateQuestionRequest {
-  transformationVariable: { connect: { id: number } };
+  transformationVariable?: { connect: { id: number } };
   type?: QuestionType;
   indicator?: string;
   questionText?: string;
