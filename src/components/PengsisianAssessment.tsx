@@ -34,6 +34,7 @@ export default function AssessmentFormTab() {
   const transformationVariables = hookResult.data;
   const variablesLoading = hookResult.loading;
   const [variableMap, setVariableMap] = useState<Record<number, string>>({});
+  const [savedAssessmentDetails, setSavedAssessmentDetails] = useState<any[]>([]);
 
   useEffect(() => {
     if (Array.isArray(transformationVariables) && transformationVariables.length > 0) {
@@ -73,8 +74,7 @@ export default function AssessmentFormTab() {
           const response = await fetch(`${apiUrl}/question/${id}`);
           if (!response.ok) continue;
           const result = await response.json();
-          if (result.data && result.data.questionText && result.data.indicator &&  result.data.status === 'active'
-          ) {
+          if (result.data && result.data.questionText && result.data.indicator && result.data.status === 'active') {
             const options = [];
             if (result.data.answerText1) options.push(result.data.answerText1);
             if (result.data.answerText2) options.push(result.data.answerText2);
@@ -87,7 +87,6 @@ export default function AssessmentFormTab() {
 
             const type = result.data.type === 'text' ? 'text' : 'multitext';
 
-            // ✅ FILTER KETAT: hanya ambil bagian yang benar-benar berisi teks
             const questionParts = [
               result.data.questionText,
               result.data.questionText2,
@@ -164,7 +163,41 @@ export default function AssessmentFormTab() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const assessmentIdFromUrl = searchParams.get('assessmentId');
-  const selectedAssessmentId = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
+  const fromEdit = searchParams.get('from') === 'edit';
+
+  // ✅ Ambil assessmentId dari localStorage jika mode edit
+  const selectedAssessmentId = useMemo(() => {
+    if (fromEdit) {
+      const savedItem = localStorage.getItem('currentAssessmentForEdit');
+      if (savedItem) {
+        try {
+          const parsed = JSON.parse(savedItem);
+          return parsed.id;
+        } catch (e) {
+          console.warn("Gagal parse currentAssessmentForEdit:", e);
+          return null;
+        }
+      }
+    }
+    return assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
+  }, [fromEdit, assessmentIdFromUrl]);
+
+  // ✅ Muat jawaban lama dari localStorage
+  useEffect(() => {
+    if (selectedAssessmentId) {
+      const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
+      if (savedAnswers) {
+        try {
+          const parsed = JSON.parse(savedAnswers);
+          setAnswers(parsed);
+          setIsFormDirty(false);
+          setFormBelumDisimpan(false);
+        } catch (e) {
+          console.warn("Gagal parse saved answers:", e);
+        }
+      }
+    }
+  }, [selectedAssessmentId]);
 
   useEffect(() => {
     if (selectedAssessmentId === null || isNaN(selectedAssessmentId) || selectedAssessmentId <= 0) {
@@ -214,7 +247,7 @@ export default function AssessmentFormTab() {
         const rows = jsonData.slice(headerRowIndex + 1);
         let currentQuestionId: number | null = null;
         const updatedAnswers: { [key: string]: string } = {};
-        const questionCounter: Record<number, number> = {}; // ✅ Counter per soal
+        const questionCounter: Record<number, number> = {};
 
         for (const row of rows) {
           if (!Array.isArray(row) || row.length < 7) continue;
@@ -260,20 +293,18 @@ export default function AssessmentFormTab() {
               }
             }
           } else if (questionItem.type === 'text') {
-            // ✅ Gunakan counter yang andal
             if (questionCounter[currentQuestionId!] === undefined) {
               questionCounter[currentQuestionId!] = 0;
             }
 
             const index = questionCounter[currentQuestionId!];
-            // Pastikan tidak melebihi jumlah bagian yang valid
             if (index < questionItem.questionParts.length) {
               const answerKey = index === 0 
                 ? String(currentQuestionId) 
                 : `${currentQuestionId}${String.fromCharCode(97 + index - 1)}`;
               updatedAnswers[answerKey] = valueStr;
             }
-            questionCounter[currentQuestionId!]++; // increment
+            questionCounter[currentQuestionId!]++; 
           }
         }
 
@@ -371,6 +402,13 @@ export default function AssessmentFormTab() {
         return;
       }
 
+      // ✅ Simpan untuk edit berikutnya
+      localStorage.setItem(
+        `assessment-${selectedAssessmentId}-answers`,
+        JSON.stringify(answers)
+      );
+
+      // Simpan ke riwayat
       const resultData = questions.map((q) => {
         const baseKey = String(q.id);
         let jawaban = "";
@@ -404,6 +442,10 @@ export default function AssessmentFormTab() {
       };
       localStorage.setItem("assessmentResults", JSON.stringify([...existingResults, newEntry]));
       localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
+
+      // ✅ Bersihkan data edit
+      localStorage.removeItem('currentAssessmentForEdit');
+
       router.push("/assessment/assessmenttable");
     } catch (err) {
       console.error("❌ Gagal menyimpan jawaban ke API:", err);
@@ -455,6 +497,13 @@ export default function AssessmentFormTab() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 min-h-screen bg-gray-50">
+      {/* Tampilkan badge mode edit (opsional) */}
+      {fromEdit && (
+        <div className="mb-4 p-2 bg-blue-100 text-blue-800 rounded-md text-sm font-medium text-center">
+          Mode Edit — Data akan diperbarui
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-6">
           <div className="text-center font-semibold text-lg text-black bg-white py-2 rounded-md border shadow">
@@ -475,7 +524,6 @@ export default function AssessmentFormTab() {
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
 
-            {/* ✅ GUNAKAN questionParts */}
             {current.type === 'text' ? (
               <div className="space-y-4">
                 {current.questionParts.map((part, index) => {
@@ -521,8 +569,7 @@ export default function AssessmentFormTab() {
               </div>
             ) : null}
 
-            {/* Evidence */}
-            {!isLast && current.id && (
+            {current.id && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-800 mb-1">Link Evidence</label>
                 <input
@@ -542,7 +589,6 @@ export default function AssessmentFormTab() {
               </div>
             )}
 
-            {/* Upload/Download */}
             {isLast && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                 <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
@@ -558,12 +604,12 @@ export default function AssessmentFormTab() {
                     Download di sini
                   </Button>
                 </div>
-                <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
+                <div className="border-2 border-dashed border-blue-800 rounded-lg p-6 text-center space-y-2">
                   <p className="text-sm text-gray-600">Upload file Excel</p>
                   <Button
                     type="button"
                     onClick={handleBrowseClick}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm"
+                    className="bg-gray-700 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm"
                   >
                     Browse File
                   </Button>
