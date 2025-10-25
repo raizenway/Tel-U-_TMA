@@ -52,17 +52,20 @@ const WelcomeTab = () => {
             />
           </div>
 
-   <div className="flex flex-col items-end space-y-4 ml-auto max-w-xs">
+  <div className="flex flex-col items-end space-y-4 ml-auto max-w-xs">
   {/* Logo: TETAP TIDAK DIUBAH */}
   <div className="relative -top-8 -right-2 -left-11 z-10">
     <Image src="/Frame.png" alt="Telkom" width={160} height={40} className="object-contain" />
   </div>
 
-  <div className="text-left max-w-[380px] relative left-[-700px]">
+
+
+{/* Teks baru: dipisahkan, absolute, di tengah */}
+<div className="absolute left-1/2 top-[100px] transform -translate-x-1/2 text-left max-w-[800px] z-10">
   <h2 className="text-xl lg:text-2xl font-semibold text-white">
     Hallo, {userName}
   </h2>
-  <p className="text-sm lg:text-base text-white mt-4 whitespace-nowrap">
+  <p className="text-sm lg:text-base text-white mt-2 whitespace-nowrap">
     Selamat datang di aplikasi Transformation Maturity Assessment (TMA)
   </p>
 </div>

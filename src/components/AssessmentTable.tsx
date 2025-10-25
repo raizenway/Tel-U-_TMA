@@ -37,6 +37,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   const { data: apiData, loading, error } = useListAssessment();
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [approveAssessmentId, setApproveAssessmentId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
@@ -50,52 +51,60 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   }, []);
 
   // Transform data API ke format tabel
-const data = apiData.map((item) => {
-  const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
-  const { status, aksi } = mapStatusToUI(item.approvalStatus);
+  const data = apiData.map((item) => {
+    const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
+    const { status, aksi } = mapStatusToUI(item.approvalStatus);
 
-  // ✅ Ambil skor langsung dari field API
-  const skor = [
-    typeof item.countScore1 === 'number' ? item.countScore1 : '-',
-    typeof item.countScore2 === 'number' ? item.countScore2 : '-',
-    typeof item.countScore3 === 'number' ? item.countScore3 : '-',
-    typeof item.countScore4 === 'number' ? item.countScore4 : '-',
-  ];
-  const hasil = typeof item.tmiScore === 'number' ? item.tmiScore : '-';
+    const skor = [
+      typeof item.countScore1 === 'number' ? item.countScore1 : '-',
+      typeof item.countScore2 === 'number' ? item.countScore2 : '-',
+      typeof item.countScore3 === 'number' ? item.countScore3 : '-',
+      typeof item.countScore4 === 'number' ? item.countScore4 : '-',
+    ];
+    const hasil = typeof item.tmiScore === 'number' ? item.tmiScore : '-';
 
-  const periode = item.assessmentPeriod
-    ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
-    : '–';
+    const periode = item.assessmentPeriod
+      ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
+      : '–';
 
-  return {
-    id: item.id,
-    logo: <FaSchool className="text-blue-600 text-xl" />,
-    nama: campusName,
-    periode,
-    skor,
-    hasil,
-    status,
-    aksi,
-  };
-});
+    return {
+      id: item.id,
+      logo: <FaSchool className="text-blue-600 text-xl" />,
+      nama: campusName,
+      periode,
+      skor,
+      hasil,
+      status,
+      aksi,
+      approvalStatus: item.approvalStatus,
+    };
+  });
 
   const filteredData = data.filter((item) =>
     item.nama.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // ✏️ Edit
-  const handleEdit = (id: number) => {
-    console.log('Edit item:', id);
-    // router.push(`/assessment/edit/${id}`);
-  };
-
-  // 👁️ Lihat Detail
+ const handleEdit = (id: number) => {
+  const item = apiData.find((item) => item.id === id);
+  if (item && ['submitted', 'edit_requested'].includes(item.approvalStatus)) {
+    localStorage.setItem('currentAssessmentForEdit', JSON.stringify(item));
+    const campusName = item.branch?.name || 'Unknown';
+    const city = campusName.split(' ').pop() || 'Unknown';
+    router.push(`/assessment/${city}?from=edit`);
+  }
+};
+  // 👁️ VIEW: hanya untuk approved
   const handleView = (id: number) => {
-    console.log('View item:', id);
-    // router.push(`/assessment/view/${id}`);
+    const item = apiData.find((item) => item.id === id);
+    if (item && item.approvalStatus === 'approved') {
+      localStorage.setItem('currentAssessmentForView', JSON.stringify(item));
+      const campusName = item.branch?.name || 'Unknown';
+      const city = campusName.split(' ').pop() || 'Unknown';
+     router.push(`/assessment/${city}?viewOnly=true`);
+    }
   };
 
-  // ✅ Approve
+  // ✅ Approve (dummy, ganti dengan API call jika ada)
   const handleApprove = (id: number) => {
     setShowModal(false);
     setShowSuccess(true);
@@ -114,7 +123,7 @@ const data = apiData.map((item) => {
     { header: 'Skor 4', key: 'skor4', width: '80px' },
     { header: 'Hasil', key: 'hasil', width: '80px' },
     { header: 'Status', key: 'status', width: '120px' },
-    { header: 'Aksi', key: 'aksi', width: '100px' },
+    { header: 'Aksi', key: 'aksi', width: '120px' },
   ];
 
   // 🗂️ Data untuk tabel
@@ -124,10 +133,13 @@ const data = apiData.map((item) => {
     nama: (
       <div className="flex items-center gap-2 relative group">
         <span>{item.nama}</span>
-        {item.nama === 'Tel-U Purwokerto' && item.aksi !== 'edit' && (
+        {item.approvalStatus === 'edit_requested' && (
           <div className="relative">
             <MessageCircleWarning
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setApproveAssessmentId(item.id);
+                setShowModal(true);
+              }}
               className="text-yellow-500 cursor-pointer"
               size={18}
             />
@@ -164,30 +176,17 @@ const data = apiData.map((item) => {
     ),
     statusText: item.status,
     aksi: (
-      <div className="flex items-center justify-between w-full max-w-[120px] mx-auto">
-        {item.aksi !== 'progress' && (
-          <>
-            <button
-              className="text-blue-600 hover:text-blue-800 transition"
-              onClick={() => handleEdit(item.id)}
-              title="Edit"
-            >
-              <Pencil size={20} />
-            </button>
-            <div className="w-2" />
-          </>
-        )}
-
-        {item.aksi === 'edit' && (
+      <div className="flex items-center justify-start gap-2">
+        {['submitted', 'edit_requested'].includes(item.approvalStatus) && (
           <button
-            className="text-green-600 hover:text-green-800 transition"
-            onClick={() => handleApprove(item.id)}
-            title="Approve"
+            className="text-blue-600 hover:text-blue-800 transition"
+            onClick={() => handleEdit(item.id)}
+            title="Edit"
           >
-            <BookOpenCheck size={20} />
+            <Pencil size={20} />
           </button>
         )}
-        {item.aksi === 'view' && (
+        {item.approvalStatus === 'approved' && (
           <button
             className="text-gray-600 hover:text-green-800 transition"
             onClick={() => handleView(item.id)}
@@ -196,7 +195,19 @@ const data = apiData.map((item) => {
             <Eye size={20} />
           </button>
         )}
-        {item.aksi === 'progress' && (
+        {item.approvalStatus === 'edit_requested' && (
+          <button
+            className="text-green-600 hover:text-green-800 transition"
+            onClick={() => {
+              setApproveAssessmentId(item.id);
+              setShowModal(true);
+            }}
+            title="Approve"
+          >
+            <BookOpenCheck size={20} />
+          </button>
+        )}
+        {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && (
           <div className="text-red-600">
             <Play size={20} />
           </div>
@@ -344,12 +355,16 @@ const data = apiData.map((item) => {
         confirmLabel="Approve"
         cancelLabel="Tolak"
         onConfirm={() => {
-          const purwokerto = data.find(
-            (item) => item.nama === 'Tel-U Purwokerto'
-          );
-          if (purwokerto) handleApprove(purwokerto.id);
+          if (approveAssessmentId !== null) {
+            handleApprove(approveAssessmentId);
+          }
+          setShowModal(false);
+          setApproveAssessmentId(null);
         }}
-        onCancel={() => setShowModal(false)}
+        onCancel={() => {
+          setShowModal(false);
+          setApproveAssessmentId(null);
+        }}
       />
 
       {/* Header Section */}
