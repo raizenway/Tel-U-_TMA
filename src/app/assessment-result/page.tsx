@@ -1,6 +1,6 @@
- 'use client';
- 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+'use client';
+
+import React, { useMemo, useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { FiChevronDown } from 'react-icons/fi';
 import Button from '@/components/button';
@@ -33,6 +33,8 @@ ChartJS.register(
   Legend
 );
 
+const normalizeLabel = (str: string) => str.trim().toLowerCase();
+
 interface Assessment {
   id: string;
   name: string;
@@ -41,12 +43,16 @@ interface Assessment {
   studentBody: number;
   jumlahProdi: number;
   jumlahProdiUnggul: number;
-  maturityLevel: string;
+  maturityLevel: {
+    name: string;
+    description: string;
+  };
 }
 
 interface VariableReport {
   code: string;
   name: string;
+  normalized: string;
   point: number;
   maturityLevel: string;
   desc: string;
@@ -255,6 +261,7 @@ export default function AssessmentResultPage() {
   const [filterIds, setFilterIds] = useState<string[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [radarImageUrls, setRadarImageUrls] = useState<Record<string, string>>({});
 
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [reportsByUPPS, setReportsByUPPS] = useState<Record<string, VariableReport[]>>({});
@@ -324,7 +331,7 @@ export default function AssessmentResultPage() {
         studentBody: branch.studentBody,
         jumlahProdi: branch.totalProdi,
         jumlahProdiUnggul: branch.totalProdiUnggul,
-        maturityLevel: overallMaturity?.name || 'Unknown',
+        maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
       };
 
       const reports = tmiData.map((item: any) => {
@@ -332,6 +339,7 @@ export default function AssessmentResultPage() {
         return {
           code: item.code || item.name,
           name: item.name,
+          normalized: normalizeLabel(item.name),
           point: parseFloat(item.value.toFixed(2)),
           maturityLevel: ml.name || 'Unknown',
           desc: ml.description || item.description || 'Tidak ada deskripsi.',
@@ -414,9 +422,17 @@ export default function AssessmentResultPage() {
     return `${count} UPPS${periodePart}`;
   }, [filterIds, filterPeriode, assessments]);
 
+  const captureRadarAsImage = () => {
+  const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null; 
+   if (canvas) {
+      const url = canvas.toDataURL('image/png');
+      setRadarImageUrls({ radar: url });
+    }
+  };
+
   const handleDownloadAll = async () => {
-    const element = document.getElementById('download-content');
-    if (!element) {
+    const original = document.getElementById('download-content');
+    if (!original) {
       console.warn('Elemen #download-content tidak ditemukan');
       return;
     }
@@ -424,37 +440,80 @@ export default function AssessmentResultPage() {
     setIsDownloading(true);
     setIsExporting(true);
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((r) => setTimeout(r, 600));
+    captureRadarAsImage();
+    await new Promise((r) => setTimeout(r, 300)); 
 
-      const dataUrl = await toPng(element, {
+    const clone = original.cloneNode(true) as HTMLElement;
+    clone.id = 'temp-clone-for-pdf';
+
+    Object.assign(clone.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: 'fit-content',
+      minWidth: '100%',
+      overflow: 'visible',
+      whiteSpace: 'nowrap',
+      backgroundColor: 'white',
+      padding: '24px',
+      zIndex: '-1000',
+      transform: 'scale(1)',
+      transformOrigin: 'top left',
+    });
+
+    document.body.appendChild(clone);
+    clone.getBoundingClientRect();
+
+    try {
+      await new Promise((r) => setTimeout(r, 500));
+
+      const dataUrl = await toPng(clone, {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
+        width: clone.scrollWidth,
+        height: clone.scrollHeight,
+        cacheBust: true,
+      });
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
       });
 
       const img = new Image();
       img.src = dataUrl;
       await img.decode();
 
-      const imgWidth = img.width;
-      const imgHeight = img.height;
+      const px2mm = 25.4 / 96;
+      const imgW = img.width * px2mm;
+      const imgH = img.height * px2mm;
+      const pageW = 297;
+      const pageH = 210;
 
-      const orientation = imgWidth > imgHeight ? 'landscape' : 'portrait';
-      const pdf = new jsPDF({
-        orientation,
-        unit: 'px',
-        format: [imgWidth, imgHeight],
-      });
+      const scale = Math.min(pageW / imgW, pageH / imgH, 1);
+      const finalW = imgW * scale;
+      const finalH = imgH * scale;
 
-      pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.addImage(
+        dataUrl,
+        'PNG',
+        (pageW - finalW) / 2,
+        (pageH - finalH) / 2,
+        finalW,
+        finalH
+      );
+
       pdf.save(`Laporan_Assessment_${filterPeriode || 'semua_periode'}.pdf`);
     } catch (err) {
       console.error('Gagal generate PDF:', err);
+      alert('Gagal membuat PDF. Coba lagi.');
     } finally {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
       setIsDownloading(false);
       setIsExporting(false);
+      setRadarImageUrls({}); 
     }
   };
 
@@ -525,14 +584,12 @@ export default function AssessmentResultPage() {
                       'inline-block min-w-full space-y-6 p-4 bg-white',
                       isExporting && 'whitespace-nowrap'
                     )}
-                    style={{
-                      ...(isExporting ? { display: 'inline-block' } : {}),
-                    }}
                   >
                     <table className="w-full table-auto text-sm border-collapse">
                       <thead>
                         <tr>
-                         <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">                            Nama UPPS/KC
+                          <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">
+                            Nama UPPS/KC
                           </th>
                           {columns.map((c, i) => {
                             const pal = getPalette(i);
@@ -558,17 +615,26 @@ export default function AssessmentResultPage() {
                           { label: 'Student Body', render: (c: Assessment) => c.studentBody },
                           { label: 'Jumlah Prodi', render: (c: Assessment) => c.jumlahProdi },
                           { label: 'Jumlah Prodi Terakreditasi Unggul', render: (c: Assessment) => c.jumlahProdiUnggul },
-                          { label: 'Maturity Level', render: (c: Assessment) => c.maturityLevel },
+                          { label: 'Maturity Level', render: (c: Assessment) => c.maturityLevel.name },
+                          { 
+                            label: 'Deskripsi', 
+                            render: (c: Assessment) => c.maturityLevel.description || '-' 
+                          },
                         ].map((row, idx) => (
                           <tr key={row.label} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">                              {row.label}
+                            <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">
+                              {row.label}
                             </th>
                             {columns.map((c, i) => {
                               const pal = getPalette(i);
                               return (
                                 <td
                                   key={c.id}
-                                  className={clsx('px-4 py-2 border-l-2 min-w-[220px]', pal.border)}
+                                  className={clsx(
+                                    'px-4 py-2 border-l-2 min-w-[220px]',
+                                    row.label === 'Deskripsi' ? 'whitespace-pre-line text-xs' : '',
+                                    pal.border
+                                  )}
                                 >
                                   {row.render(c)}
                                 </td>
@@ -578,16 +644,26 @@ export default function AssessmentResultPage() {
                         ))}
 
                         <tr className="border-t">
-                        <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">                            Transformation Maturity Index
+                          <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">
+                            Transformation Maturity Index
                           </th>
                           <td className="px-4 py-4 border-l-2 border-gray-200" colSpan={columns.length}>
-                            <div className="w-full h-[420px]">
-                              <RadarChart
-                                selectedIds={columns.map((c) => c.id)}
-                                radarDataByUPPS={radarDataByUPPS}
-                                assessments={assessments}
-                                radarLabels={radarLabels}
-                              />
+                            <div className="w-full h-[420px] flex items-center justify-center">
+                              {isExporting && radarImageUrls.radar ? (
+                                <img
+                                  src={radarImageUrls.radar}
+                                  alt="Radar Chart"
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <RadarChart
+                                  key={`radar-${isExporting ? 'export' : 'view'}`} 
+                                  selectedIds={columns.map((c) => c.id)}
+                                  radarDataByUPPS={radarDataByUPPS}
+                                  assessments={assessments}
+                                  radarLabels={radarLabels}
+                                />
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -595,11 +671,10 @@ export default function AssessmentResultPage() {
                     </table>
 
                     <table className="w-full table-auto text-sm border-collapse">
-                  <thead>
+                      <thead>
                         <tr>
-                      <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10"
-                        style={{ width: '280px' }}>                            
-                        Report
+                          <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10" style={{ width: '280px' }}>
+                            Report
                           </th>
                           {columns.map((c, i) => {
                             const pal = getPalette(i);
@@ -619,7 +694,7 @@ export default function AssessmentResultPage() {
                           })}
                         </tr>
                         <tr>
-                      <th className="p-3 text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10"></th>
+                          <th className="p-3 text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10"></th>
                           {columns.map((c, i) => {
                             const pal = getPalette(i);
                             return (
@@ -633,7 +708,7 @@ export default function AssessmentResultPage() {
                                 <th className={clsx('p-3 text-center min-w-[160px] whitespace-nowrap font-medium', pal.header, pal.border)}>
                                   Maturity Level
                                 </th>
-                                <th className={clsx('p-3 text-center min-w-[200px] whitespace-nowrap font-medium', pal.header, pal.border)}>
+                                <th className={clsx('p-3 text-center max-w-[200px] whitespace-nowrap font-medium', pal.header, pal.border)}>
                                   Deskripsi
                                 </th>
                               </React.Fragment>
@@ -642,37 +717,35 @@ export default function AssessmentResultPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(() => {
-                          const sampleId = columns[0]?.id;
-                          const sampleReports = sampleId ? reportsByUPPS[sampleId] || [] : [];
-                          return sampleReports.map((v, idx) => (
-                            <tr key={idx} className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                        {radarLabels.map((label, idx) => (
+                          <tr key={idx} className="odd:bg-white even:bg-gray-50 hover:bg-blue-50 transition-colors">
                             <th className="p-3 text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">
-                                &nbsp;
-                              </th>
-                              {columns.map((c, i) => {
-                                const pal = getPalette(i);
-                                const report = (reportsByUPPS[c.id] || []).find((r) => r.code === v.code);
-                                return (
-                                  <React.Fragment key={`${c.id}-${v.code}`}>
-                                    <td className={clsx('p-3 text-center border-l min-w-[150px] whitespace-pre-line', pal.border)}>
-                                      {report?.name ?? '-'}
-                                    </td>
-                                    <td className={clsx('p-3 text-center border-l min-w-[90px]', pal.border)}>
-                                      {report?.point ?? '-'}
-                                    </td>
-                                    <td className={clsx('p-3 text-center border-l min-w-[160px]', pal.border)}>
-                                      {report?.maturityLevel ?? '-'}
-                                    </td>
-                                    <td className={clsx('p-3 text-center border-l max-w-[200px] whitespace-pre-line text-xs', pal.border)}>
-                                      {report?.desc || '-'}
-                                    </td>
-                                  </React.Fragment>
-                                );
-                              })}
-                            </tr>
-                          ));
-                        })()}
+                              &nbsp;
+                            </th>
+                            {columns.map((c, i) => {
+                              const pal = getPalette(i);
+                              const report = (reportsByUPPS[c.id] || []).find(
+                                (r) => r.normalized === normalizeLabel(label)
+                              );
+                              return (
+                                <React.Fragment key={`${c.id}-${label}`}>
+                                  <td className={clsx('p-3 text-center border-l min-w-[150px] whitespace-pre-line', pal.border)}>
+                                    {report?.name ?? label}
+                                  </td>
+                                  <td className={clsx('p-3 text-center border-l min-w-[90px]', pal.border)}>
+                                    {report?.point ?? 0}
+                                  </td>
+                                  <td className={clsx('p-3 text-center border-l min-w-[160px]', pal.border)}>
+                                    {report?.maturityLevel ?? 'Unknown'}
+                                  </td>
+                                  <td className={clsx('p-3 text-center border-l max-w-[200px] whitespace-pre-line text-xs', pal.border)}>
+                                    {report?.desc || 'Tidak ada deskripsi.'}
+                                  </td>
+                                </React.Fragment>
+                              );
+                            })}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>

@@ -234,10 +234,13 @@ const processedUsers = currentUsers.map(user => {
     (user.roleId != null ? roleNames[user.roleId] : '') || 
     'Role tidak ditemukan';
 
+  // ❗️ Perbaikan: Jika branchId null atau undefined, tampilkan "-"
   const branchName = 
-    branchNames[user.branchId] || 
-    BRANCH_NAMES[user.branchId] || 
-    `Cabang ${user.branchId}`;
+    user.branchId == null || user.branchId === 0
+      ? '-'
+      : branchNames[user.branchId] || 
+        BRANCH_NAMES[user.branchId] || 
+        `Cabang ${user.branchId}`;
 
   return {
     ...user,

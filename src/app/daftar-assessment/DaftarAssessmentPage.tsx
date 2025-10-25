@@ -188,22 +188,27 @@ export default function AssessmentPage() {
     { header: 'Deskripsi Skor 3', key: 'deskripsiSkor3', width: '200px', sortable: false },
     { header: 'Deskripsi Skor 4', key: 'deskripsiSkor4', width: '200px', sortable: false },
     { header: 'Tipe Soal', key: 'tipeSoal', width: '140px', className: 'text-center', sortable: true },
-    ...(roleId === 1
-      ? [{
-          header: 'Aksi',
-          key: 'action',
-          width: '150px',
-          className: 'text-center sticky right-0 z-10 bg-gray-100',
-        }]
-      : [{
+  ...(roleId === 1
+    ? [
+    {
+      header: 'Aksi',
+      key: 'action',
+      width: '150px',
+      className: 'text-center sticky right-0 z-10 bg-gray-100',
+    },
+  ]
+  : [
+     {
           header: 'Status',
           key: 'status',
           width: '150px',
-          className: 'text-center right-0 z-10 bg-white',
+          className: 'text-center  right-0 z-10 bg-white-100',
           sortable: false,
-        }]
-    ),
-  ];
+        },
+  ]),
+];
+
+
 
   if (loading || loadingVariables) {
     return (
@@ -228,13 +233,13 @@ export default function AssessmentPage() {
   }
 
   return (
-    <div className="flex">
-      <div className="w-full flex-1">
-        <SuccessNotification
-          isOpen={showSuccess}
-          onClose={() => setShowSuccess(false)}
-          message="Assessment baru berhasil ditambahkan!"
-        />
+  <div className="flex">
+    <div className="w-full flex-1">
+      <SuccessNotification
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Assessment baru berhasil ditambahkan!"
+      />
 
         {showModal && roleId === 1 && (
           <ModalConfirm
@@ -244,8 +249,8 @@ export default function AssessmentPage() {
             header={targetStatus === 'deactivate' ? 'Non Aktifkan Data' : 'Aktifkan Kembali Data'}
             title={
               targetStatus === 'deactivate'
-                ? 'Apakah kamu yakin ingin menonaktifkan data ini?'
-                : 'Apakah kamu yakin ingin mengaktifkan kembali data ini?'
+                ? 'Apakah kamu yakin, kamu akan mengaktifkan kembali data ini? '
+                : 'Apakah kamu yakin, kamu akan menonaktifkan data ini?'
             }
             confirmLabel="Ya, lakukan"
             cancelLabel="Batal"
@@ -256,76 +261,78 @@ export default function AssessmentPage() {
                 <div className="font-semibold">Informasi</div>
                 <div className="text-sm">
                   {targetStatus === 'deactivate'
-                    ? 'Data ini akan disembunyikan dari daftar.'
-                    : 'Data ini akan ditampilkan kembali di daftar.'}
+                    ? 'Kamu bisa mengembalikan kembali data yang sudah dihilangkan.'
+                    : 'Kamu bisa menampilkan kembali data yang sudah disembunyikan.'}
                 </div>
               </div>
             </div>
           </ModalConfirm>
         )}
 
-        <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto">
-          <div className="p-0">
-            <div className="p-4 border-b border-gray-200 mb-6">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
-                  <SearchTable
-                    value={search}
-                    onChange={setSearch}
-                    placeholder="Cari Daftar Assesment..."
-                    className="mb-4"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap bg-white">
-                  <TableButton data={currentData} />
-                  {roleId === 1 && (
-                    <Button variant="primary" onClick={handleTambah}>
-                      Tambah Assessment
-                    </Button>
-                  )}
-                </div>
+      <div className="bg-white rounded-lg border-gray-200 overflow-hidden mx-auto">
+        <div className="p-0">
+          <div className="p-4 border-b border-gray-200 mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div className="flex items-center gap-2 rounded-lg sm:w-64 bg-white">
+                <SearchTable
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Cari Daftar Assesment..."
+                  className="mb-4"
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap bg-white">
+                <TableButton data={currentData} />
+                {roleId === 1 && (
+                  <Button variant="primary" onClick={handleTambah}>
+                    Tambah Assessment
+                  </Button>
+                )}
               </div>
             </div>
+          </div>
 
             <div className="overflow-x-auto">
               {currentData.length > 0 ? (
-                <TableUpdate
-                  columns={columns}
-                  data={currentData}
-                  currentPage={page}
-                  rowsPerPage={itemsPerPage}
-                  onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
-                  onDeactivate={(index) => toggleStatus(index)}
-                  onReactivate={(index) => toggleStatus(index)}
-                  onSort={handleSort}
-                  sortConfig={sortConfig}
-                  renderCell={(columnKey, item) => {
-                    if (columnKey === 'status' && [2, 3, 4].includes(Number(roleId))) {
-                      return <RoleBasedStatusCell status={item.status} id={item.id} roleId={roleId ?? 0} />;
-                    }
-                    return undefined;
-                  }}
-                />
+             <TableUpdate
+                      columns={columns}
+                      data={currentData}
+                      currentPage={page}
+                      rowsPerPage={itemsPerPage}
+                      onEdit={(item) => router.push(`/daftar-assessment/edit-assessment/${item.id}`)}
+                      onDeactivate={(index) => toggleStatus(index)}
+                      onReactivate={(index) => toggleStatus(index)}
+                      onSort={handleSort}
+                      sortConfig={sortConfig}
+                      renderCell={(columnKey, item) => {
+                        if (columnKey === 'status' && [2, 3, 4].includes(Number(roleId))) {
+                          return <RoleBasedStatusCell status={item.status} id={item.id} roleId={roleId ?? 0} />;
+                        }
+
+                        return undefined; // <-- INI KUNCI: biar fallback ke default
+                      }}
+                    />
               ) : (
                 <div className="p-6 text-center text-gray-500 border-t">
-                  Tidak ada data assessment untuk ditampilkan.
+                  {loading ? "Loading..." : "Tidak ada data assessment untuk ditampilkan."}
                 </div>
               )}
             </div>
 
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              totalItems={totalData}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={setItemsPerPage}
-              showItemsPerPage={true}
-              showTotalItems={true}
-            />
-          </div>
+          {/* Pagination ditempatkan DI LUAR overflow-x-auto, tapi masih di dalam card */}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={totalData}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={setItemsPerPage}
+            showItemsPerPage={true}
+            showTotalItems={true}
+          />
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

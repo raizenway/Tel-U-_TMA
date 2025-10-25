@@ -27,7 +27,6 @@ import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'luc
 import { useStudentBodyData } from '@/hooks/useStudentBody';
 import { useAccreditationData } from '@/hooks/useAccreditation';
 
-// ✅ Rentang tetap untuk grafik: 2021–2027
 const FIXED_YEARS = Array.from({ length: 7 }, (_, i) => String(2021 + i));
 
 const CAMPUS_LIST = [
@@ -52,7 +51,6 @@ interface Branch {
   id: number;
   name: CampusKey;
   email: string;
-  branchDetails: unknown[];
   yearlyStudentBody: YearlyData[];
   yearlyAccreditationGrowth: YearlyData[];
 }
@@ -77,6 +75,11 @@ interface BranchGrowth {
   growth: VariableGrowth[];
 }
 
+interface TmiEntry {
+  branch: { id: number; name: CampusKey };
+  tmi: TransformationMaturityItem[];
+}
+
 interface DashboardApiResponse {
   totalBranches: number;
   totalVariable: number;
@@ -90,7 +93,7 @@ interface DashboardApiResponse {
     approved: number;
     rejected: number;
   };
-  transformationMaturityIndex: TransformationMaturityItem[];
+  transformationMaturityIndex: TmiEntry[];
   transformationVariableBranchGrowth: BranchGrowth[];
   branches: Branch[];
 }
@@ -161,10 +164,7 @@ export default function DashboardTab() {
     },
   });
 
-  // 📊 Student Body
   const [studentBodyData, setStudentBodyData] = useState<StudentBodyRow[]>([]);
-
-  // 📈 Accreditation
   const [accreditationInputData, setAccreditationInputData] = useState<{
     "Tel-U Jakarta": number[];
     "Tel-U Surabaya": number[];
@@ -177,18 +177,20 @@ export default function DashboardTab() {
     "Tel-U Bandung": Array(7).fill(0),
   });
 
-  const [radarData, setRadarData] = useState<{ subject: string; A: number }[]>([]);
+  // ✅ State untuk TMI multi-cabang
+  const [tmiRadarData, setTmiRadarData] = useState<{ subject: string; [key: string]: number }[]>([]);
+
   const [apiVariables, setApiVariables] = useState<string[]>([]);
   const [variableGrowthData, setVariableGrowthData] = useState<
     { branch: CampusKey; variable: string; period: string; score: number }[]
   >([]);
   const [loading, setLoading] = useState(true);
 
+  // Tetap gunakan selectedCampus hanya untuk bagian growth
   const [selectedCampus, setSelectedCampus] = useState<CampusKey>("Tel-U Bandung");
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
 
-  // Modal Prodi state lokal
   const [localAccreditationYears, setLocalAccreditationYears] = useState<string[]>(FIXED_YEARS);
   const [localAccreditationData, setLocalAccreditationData] = useState<{
     "Tel-U Jakarta": number[];
@@ -202,11 +204,10 @@ export default function DashboardTab() {
     "Tel-U Bandung": Array(7).fill(0),
   });
 
-  // ✅ Hook untuk simpan Student Body
   const { saveToApi: saveStudentBody, isSaving: isSavingStudent, error: studentSaveError } = useStudentBodyData();
-
-  // ✅ Hook untuk simpan Accreditation
   const { saveToApi: saveAccreditation, isSaving: isSavingAccreditation, error: accreditationSaveError } = useAccreditationData();
+
+  const apiDataRef = useRef<DashboardApiResponse | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -221,7 +222,7 @@ export default function DashboardTab() {
 
   useEffect(() => {
     if (apiVariables.length > 0 && selectedVariables.length === 0) {
-      setSelectedVariables([apiVariables[0]]);
+      setSelectedVariables(apiVariables);
     }
   }, [apiVariables, selectedVariables]);
 
@@ -238,6 +239,7 @@ export default function DashboardTab() {
 
         const result = await response.json();
         const apiData = result.data as DashboardApiResponse;
+        apiDataRef.current = apiData;
 
         setDashboardData({
           totalBranches: apiData.totalBranches || 0,
@@ -247,7 +249,7 @@ export default function DashboardTab() {
           assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
         });
 
-        // ✅ Student Body: selalu 2021–2027
+        // Student Body
         const studentBodyFormatted = FIXED_YEARS.map(yearStr => {
           const yearNum = Number(yearStr);
           const row: StudentBodyRow = {
@@ -257,7 +259,6 @@ export default function DashboardTab() {
             "Tel-U Purwokerto": 0,
             "Tel-U Bandung": 0,
           };
-
           for (const branch of apiData.branches) {
             const campusName = branch.name;
             if (campusName in row) {
@@ -270,7 +271,6 @@ export default function DashboardTab() {
           }
           return row;
         });
-
         setStudentBodyData(studentBodyFormatted);
 
         // Accreditation
@@ -301,7 +301,6 @@ export default function DashboardTab() {
         };
 
         setAccreditationInputData(accInput);
-        // ✅ Clone saat inisialisasi modal
         setLocalAccreditationData({
           'Tel-U Jakarta': [...accInput['Tel-U Jakarta']],
           'Tel-U Surabaya': [...accInput['Tel-U Surabaya']],
@@ -309,34 +308,32 @@ export default function DashboardTab() {
           'Tel-U Bandung': [...accInput['Tel-U Bandung']],
         });
 
-        // Radar
-        const tmiRaw = apiData.transformationMaturityIndex || [];
-        const validTmi = (tmiRaw as TransformationMaturityItem[])
-          .filter((item) => 
-            typeof item.name === 'string' && 
-            typeof item.value === 'number' && 
-            item.name.trim() !== ''
-          )
-          .map((item) => ({
-            subject: item.name.trim(),
-            A: Number(item.value.toFixed(2)),
-          }));
+        // ✅ Build TMI Radar Data (ALL CAMPUSES)
+        const { transformationMaturityIndex } = apiData;
+        const firstTmi = transformationMaturityIndex[0]?.tmi || [];
+        const rawNames = firstTmi.map(i => i.name.trim());
+        const uniqueNames = Array.from(new Set(rawNames)).filter(name => name !== '');
 
-        const uniqueRadar = Array.from(
-          new Map(validTmi.map(item => [item.subject, item])).values()
-        );
-        setRadarData(uniqueRadar.length > 0 ? uniqueRadar : [
-          { subject: "Mutu", A: 80 },
-          { subject: "Akademik", A: 60 },
-        ]);
+        const radarRows = uniqueNames.map(subject => {
+          const row: { subject: string; [key: string]: number } = { subject };
+          transformationMaturityIndex.forEach(entry => {
+            const campus = entry.branch.name;
+            const found = entry.tmi.find(item => item.name.trim() === subject);
+            row[campus] = found ? Number(found.value.toFixed(2)) : 0;
+          });
+          return row;
+        });
 
+        setTmiRadarData(radarRows);
+
+        // Variabel Growth
         const allVariablesSet = new Set<string>();
         const growthData: { branch: CampusKey; variable: string; period: string; score: number }[] = [];
 
         for (const branch of apiData.branches) {
           const branchName = branch.name;
           const growth = apiData.transformationVariableBranchGrowth.find(
-            (b) => b.branch.name === branchName
+            b => b.branch.name === branchName
           )?.growth || [];
 
           for (const variableEntry of growth) {
@@ -369,7 +366,7 @@ export default function DashboardTab() {
     fetchData();
   }, []);
 
-  // === Student Body Handlers ===
+  // === Handlers (Student Body, Accreditation, Modal, dll) ===
   const handleAddYear = () => {
     const lastYearStr = studentBodyData.length > 0 
       ? studentBodyData[studentBodyData.length - 1].year 
@@ -394,7 +391,6 @@ export default function DashboardTab() {
     }
   };
 
-  // === Accreditation Modal Handlers ===
   const handleAddAccreditationYear = () => {
     const lastYear = localAccreditationYears[localAccreditationYears.length - 1];
     const nextYear = String(Number(lastYear) + 1);
@@ -417,7 +413,6 @@ export default function DashboardTab() {
     }));
   };
 
-  // ✅ Handle Simpan (Student & Prodi)
   const handleGenerate = async () => {
     if (modalMode === 'prodi') {
       const accreditationRows: AccreditationRow[] = FIXED_YEARS.map((year, idx) => ({
@@ -428,9 +423,8 @@ export default function DashboardTab() {
         "Tel-U Bandung": localAccreditationData["Tel-U Bandung"][idx] ?? 0,
       }));
 
-const success = await saveAccreditation(accreditationRows, selectedCampus);
+      const success = await saveAccreditation(accreditationRows, selectedCampus);
       if (success) {
-        // ✅ Update state global dengan deep clone
         setAccreditationInputData({
           'Tel-U Jakarta': localAccreditationData['Tel-U Jakarta'].slice(0, 7),
           'Tel-U Surabaya': localAccreditationData['Tel-U Surabaya'].slice(0, 7),
@@ -498,7 +492,6 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
 
   const openProdiModal = () => {
     setModalMode('prodi');
-    // ✅ Deep clone saat buka modal → perbaikan utama!
     setLocalAccreditationData({
       'Tel-U Jakarta': [...accreditationInputData['Tel-U Jakarta']],
       'Tel-U Surabaya': [...accreditationInputData['Tel-U Surabaya']],
@@ -540,7 +533,7 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
             <div className="flex items-center justify-center w-12 h-12 bg-opacity-20 backdrop-blur-sm rounded-full border-2 border-white shadow-md">
               <BookOpenCheckIcon className="text-white w-6 h-6" />
             </div>
-            <span className="text-sm font-semibold text-center leading-tight">Jumlah Variabel & Pertanyaan</span>
+            <span className="text-sm font-semibold text-center leading-tight">Jumlah Variabel</span>
             <div className="text-xl font-bold">{loading ? '...' : dashboardData.totalVariable}</div>
           </div>
         </div>
@@ -581,11 +574,39 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Transformation Maturity Index</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <RadarChart data={radarData}>
+            <RadarChart data={tmiRadarData}>
               <PolarGrid />
               <PolarAngleAxis dataKey="subject" />
               <PolarRadiusAxis domain={[0, 100]} />
-              <Radar name="Score" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+              <Radar
+                name="Tel-U Bandung"
+                dataKey="Tel-U Bandung"
+                stroke="#FF6384"
+                fill="#FF6384"
+                fillOpacity={0.4}
+              />
+              <Radar
+                name="Tel-U Jakarta"
+                dataKey="Tel-U Jakarta"
+                stroke="#36A2EB"
+                fill="#36A2EB"
+                fillOpacity={0.4}
+              />
+              <Radar
+                name="Tel-U Surabaya"
+                dataKey="Tel-U Surabaya"
+                stroke="#4BC0C0"
+                fill="#4BC0C0"
+                fillOpacity={0.4}
+              />
+              <Radar
+                name="Tel-U Purwokerto"
+                dataKey="Tel-U Purwokerto"
+                stroke="#FF9F40"
+                fill="#FF9F40"
+                fillOpacity={0.4}
+              />
+              <Legend />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -694,7 +715,9 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
                 >
                   {selectedVariables.length === 0
                     ? "Pilih Variabel"
-                    : `${selectedVariables.length} variabel dipilih`}
+                    : selectedVariables.length === apiVariables.length
+                      ? "Semua variabel dipilih"
+                      : `${selectedVariables.length} variabel dipilih`}
                 </button>
 
                 {showVariableDropdown && (
@@ -731,18 +754,19 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
             data={(() => {
               if (selectedVariables.length === 0) return [];
 
-              const periods = Array.from(new Set(variableGrowthData.map(d => d.period))).sort();
+              const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
+              const formattedPeriods = rawPeriods.map(p => formatPeriodName(p)).sort();
 
               return selectedVariables.map(variable => {
                 const row: { [key: string]: any } = { variabel: variable };
 
-                periods.forEach(period => {
+                formattedPeriods.forEach(periodLabel => {
                   const matching = variableGrowthData.find(d => 
                     d.branch === selectedCampus &&
                     d.variable === variable &&
-                    d.period === period
+                    formatPeriodName(d.period) === periodLabel
                   );
-                  row[period] = matching ? matching.score : 0;
+                  row[periodLabel] = matching ? matching.score : 0;
                 });
 
                 return row;
@@ -781,7 +805,7 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
                             marginRight: 6,
                           }}
                         />
-                        {formatPeriodName(period)}
+                        {period}
                       </li>
                     ))}
                   </ul>
@@ -789,17 +813,25 @@ const success = await saveAccreditation(accreditationRows, selectedCampus);
               }}
             />
 
-            {Array.from(new Set(variableGrowthData.map(d => d.period))).sort().map(period => (
+            {(() => {
+              const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
+              const formattedPeriods = rawPeriods.map(p => formatPeriodName(p)).sort();
+              return formattedPeriods;
+            })().map(periodLabel => (
               <Bar
-                key={period}
-                dataKey={period}
-                fill={getPeriodColor(period, Array.from(new Set(variableGrowthData.map(d => d.period))).sort())}
-                name={period}
+                key={periodLabel}
+                dataKey={periodLabel}
+                fill={getPeriodColor(periodLabel, (() => {
+                  const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
+                  return rawPeriods.map(p => formatPeriodName(p)).sort();
+                })())}
+                name={periodLabel}
                 radius={[6, 6, 0, 0]}
                 animationDuration={600}
                 maxBarSize={60}
               />
             ))}
+
           </BarChart>
         </ResponsiveContainer>
       </div>

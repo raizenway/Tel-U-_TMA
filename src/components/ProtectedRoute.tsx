@@ -55,6 +55,8 @@ const roleAccess: Record<number, string[]> = {
     "/transformation-variable", 
     "/daftar-assessment",
     "/maturity-level",
+    "/periode",
+    "/kampus-cabang",
   ],
 };
 
