@@ -50,7 +50,7 @@ export default function EditUserPage() {
       email: user.email,
       nomorHp: String(user.phoneNumber) || '',
       status: user.status,
-      branchId: user.branchId.toString(),
+      branchId: user.branchId != null ? user.branchId.toString() : '', 
     });
 
     if (user.logoFile && user.logoFile.path) {
@@ -135,10 +135,10 @@ export default function EditUserPage() {
       email: form.email,
       phoneNumber: form.nomorHp,
       roleId: data.data.roleId,
-      branchId: Number(form.branchId),
       status: form.status as 'active' | 'inactive',
       picName: form.namaPIC,
       ...(logoFile && { logo: logoFile }),
+      ...(data?.data?.roleId === 2 && { branchId: Number(form.branchId) }),
     };
 
     if (form.password) {
@@ -166,7 +166,7 @@ export default function EditUserPage() {
     form.namaUser &&
     isValidEmail(form.email) &&
     form.status &&
-    form.branchId !== '' &&
+    (data?.data?.roleId === 2 ? form.branchId !== '' : true) && 
     form.nomorHp.length >= 10 &&
     form.nomorHp.length <= 13;
 
