@@ -182,22 +182,35 @@ export default function AssessmentFormTab() {
     return assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
   }, [fromEdit, assessmentIdFromUrl]);
 
-  // ✅ Muat jawaban lama dari localStorage
-  useEffect(() => {
-    if (selectedAssessmentId) {
-      const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
-      if (savedAnswers) {
-        try {
-          const parsed = JSON.parse(savedAnswers);
-          setAnswers(parsed);
-          setIsFormDirty(false);
-          setFormBelumDisimpan(false);
-        } catch (e) {
-          console.warn("Gagal parse saved answers:", e);
-        }
+useEffect(() => {
+  if (fromEdit && selectedAssessmentId) {
+    const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
+    if (savedAnswers) {
+      try {
+        const parsed = JSON.parse(savedAnswers);
+        console.log("✅ Answers yang dimuat:", parsed);
+
+        // ✅ Mapping untuk soal multitext
+        const mappedAnswers = { ...parsed };
+
+        questions.forEach(q => {
+          if (q.type === 'multitext' && parsed[String(q.id)]) {
+            const index = parseInt(parsed[String(q.id)], 10);
+            if (!isNaN(index) && index >= 0 && index < q.options.length) {
+              mappedAnswers[String(q.id)] = q.options[index];
+            }
+          }
+        });
+
+        setAnswers(mappedAnswers);
+        setIsFormDirty(false);
+        setFormBelumDisimpan(false);
+      } catch (e) {
+        console.warn("Gagal parse saved answers:", e);
       }
     }
-  }, [selectedAssessmentId]);
+  }
+}, [fromEdit, selectedAssessmentId, questions]);
 
   useEffect(() => {
     if (selectedAssessmentId === null || isNaN(selectedAssessmentId) || selectedAssessmentId <= 0) {

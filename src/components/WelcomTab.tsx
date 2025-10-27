@@ -54,7 +54,7 @@ const WelcomeTab = () => {
 
   <div className="flex flex-col items-end space-y-4 ml-auto max-w-xs">
   {/* Logo: TETAP TIDAK DIUBAH */}
-  <div className="relative -top-8 -right-2 -left-11 z-10">
+  <div className="relative -top-20 -right-2 -left-11 z-10">
     <Image src="/Frame.png" alt="Telkom" width={160} height={40} className="object-contain" />
   </div>
 

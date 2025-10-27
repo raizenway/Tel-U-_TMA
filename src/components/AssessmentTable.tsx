@@ -86,12 +86,44 @@ const AssessmentTable = ({ hideStartButton = false }) => {
 
  const handleEdit = (id: number) => {
   const item = apiData.find((item) => item.id === id);
-  if (item && ['submitted', 'edit_requested'].includes(item.approvalStatus)) {
-    localStorage.setItem('currentAssessmentForEdit', JSON.stringify(item));
-    const campusName = item.branch?.name || 'Unknown';
-    const city = campusName.split(' ').pop() || 'Unknown';
-    router.push(`/assessment/${city}?from=edit`);
+  if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) return;
+
+  const answers: { [key: string]: string } = {};
+
+  if (item.assessmentDetails && Array.isArray(item.assessmentDetails)) {
+    item.assessmentDetails.forEach(detail => {
+      const qId = detail.questionId;
+      const baseKey = String(qId);
+
+      // ✅ Ambil nilai dari kolom teks (bukan submissionValue)
+      const answer1 = detail.textAnswer1 != null ? String(detail.textAnswer1) : "0";
+      const answer2 = detail.textAnswer2 != null ? String(detail.textAnswer2) : "0";
+      const answer3 = detail.textAnswer3 != null ? String(detail.textAnswer3) : "0";
+      const answer4 = detail.textAnswer4 != null ? String(detail.textAnswer4) : "0";
+      const answer5 = detail.textAnswer5 != null ? String(detail.textAnswer5) : "0";
+
+      // Simpan bagian pertama
+      answers[baseKey] = answer1;
+
+      // Simpan sub-bagian
+      if (answer2 !== "0") answers[`${baseKey}a`] = answer2;
+      if (answer3 !== "0") answers[`${baseKey}b`] = answer3;
+      if (answer4 !== "0") answers[`${baseKey}c`] = answer4;
+      if (answer5 !== "0") answers[`${baseKey}d`] = answer5;
+
+      // Evidence
+      if (detail.evidenceLink) {
+        answers[`evidence-${qId}`] = detail.evidenceLink;
+      }
+    });
   }
+
+  localStorage.setItem('currentAssessmentForEdit', JSON.stringify(item));
+  localStorage.setItem(`assessment-${item.id}-answers`, JSON.stringify(answers));
+
+  const campusName = item.branch?.name || 'Unknown';
+  const city = campusName.split(' ').pop() || 'Unknown';
+  router.push(`/assessment/${city}?from=edit`);
 };
   // 👁️ VIEW: hanya untuk approved
   const handleView = (id: number) => {
