@@ -46,6 +46,12 @@ export interface AssessmentDetail {
   countScore3:  number;
   countScore4:  number;
   tmiScore: number;
+   textAnswer1: string;
+  textAnswer2: string;
+  textAnswer3: string;
+  textAnswer4: string;
+  textAnswer5: string;
+  evidenceLink: string;
   submissionValue: string;
 }
 
@@ -67,6 +73,7 @@ export interface Assessment {
   countScore3:  number;
   countScore4:  number;
   tmiScore: number;
+  evidenceLink: string;
  branch: Branch;
 }
 
