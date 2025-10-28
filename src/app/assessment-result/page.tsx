@@ -278,16 +278,36 @@ export default function AssessmentResultPage() {
     'Relevansi Penelitian',
   ]);
 
-  const allBranchIds = useMemo(() => {
-    if (!user) return [];
-    const roleId = user.role?.id ?? user.roleId;
-    if (roleId === 1) {
-      return BRANCHES.map((b) => b.id);
-    } else if (roleId === 2 && user.branchId) {
-      return [Number(user.branchId)];
-    }
+ const allBranchIds = useMemo(() => {
+  if (!user) return [];
+
+  const roleId = user.role?.id ?? user.roleId;
+  const branchId = user.branchId ? Number(user.branchId) : null;
+
+  // Daftar role yang diizinkan
+  const allowedRoles = [1, 2, 3, 4];
+  const allowedBranches = [1, 2, 3, 4];
+
+  // Pastikan roleId valid
+  if (!allowedRoles.includes(Number(roleId))) {
+    console.warn('RoleId tidak diizinkan:', roleId);
     return [];
-  }, [user]);
+  }
+
+  // Jika roleId === 1 → akses semua cabang
+  if (roleId === 1) {
+    return BRANCHES.map((b) => b.id);
+  }
+
+  // Jika roleId 2, 3, atau 4 → harus punya branchId yang valid
+  if (branchId && allowedBranches.includes(branchId)) {
+    return [branchId];
+  }
+
+  // Jika tidak punya branchId atau branchId tidak valid → tidak ada akses
+  console.warn('User tidak memiliki branchId yang valid:', branchId);
+  return [];
+}, [user]);
 
   const { data: periodeData } = useListPeriode(0);
 
