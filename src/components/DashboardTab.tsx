@@ -177,8 +177,7 @@ export default function DashboardTab() {
     "Tel-U Bandung": Array(7).fill(0),
   });
 
-  // ✅ State untuk TMI multi-cabang
-  const [tmiRadarData, setTmiRadarData] = useState<{ subject: string; [key: string]: number }[]>([]);
+  const [tmiRadarData, setTmiRadarData] = useState<{ subject: string; [key: string]: string | number }[]>([]);  
 
   const [apiVariables, setApiVariables] = useState<string[]>([]);
   const [variableGrowthData, setVariableGrowthData] = useState<
@@ -315,7 +314,7 @@ export default function DashboardTab() {
         const uniqueNames = Array.from(new Set(rawNames)).filter(name => name !== '');
 
         const radarRows = uniqueNames.map(subject => {
-          const row: { subject: string; [key: string]: number } = { subject };
+          const row: { subject: string; [key: string]: string | number } = { subject };
           transformationMaturityIndex.forEach(entry => {
             const campus = entry.branch.name;
             const found = entry.tmi.find(item => item.name.trim() === subject);
