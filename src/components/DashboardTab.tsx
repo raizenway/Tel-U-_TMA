@@ -166,13 +166,10 @@ export default function DashboardTab() {
     "Tel-U Purwokerto": Array(7).fill(0),
     "Tel-U Bandung": Array(7).fill(0),
   });
-  const [tmiRadarData, setTmiRadarData] = useState<Array<{
-    subject: string;
-    "Tel-U Bandung": number;
-    "Tel-U Jakarta": number;
-    "Tel-U Surabaya": number;
-    "Tel-U Purwokerto": number;
-  }>>([]);
+
+  // ✅ State untuk TMI multi-cabang
+  const [tmiRadarData, setTmiRadarData] = useState<{ subject: string; [key: string]: number }[]>([]);
+
   const [apiVariables, setApiVariables] = useState<string[]>([]);
   const [variableGrowthData, setVariableGrowthData] = useState<
     { branch: CampusKey; variable: string; period: string; score: number }[]
@@ -285,16 +282,15 @@ export default function DashboardTab() {
           'Tel-U Bandung': [...accInput['Tel-U Bandung']],
         });
 
-        // TMI Radar Data
-        const radarRows = TMI_DIMENSIONS_ORDER.map(subject => {
-          const row = {
-            subject,
-            "Tel-U Bandung": 0,
-            "Tel-U Jakarta": 0,
-            "Tel-U Surabaya": 0,
-            "Tel-U Purwokerto": 0,
-          };
-          apiData.transformationMaturityIndex.forEach(entry => {
+        // ✅ Build TMI Radar Data (ALL CAMPUSES)
+        const { transformationMaturityIndex } = apiData;
+        const firstTmi = transformationMaturityIndex[0]?.tmi || [];
+        const rawNames = firstTmi.map(i => i.name.trim());
+        const uniqueNames = Array.from(new Set(rawNames)).filter(name => name !== '');
+
+        const radarRows = uniqueNames.map(subject => {
+          const row: { subject: string; [key: string]: number } = { subject };
+          transformationMaturityIndex.forEach(entry => {
             const campus = entry.branch.name;
             const found = entry.tmi.find(item => item.name.trim() === subject);
             if (found) {
