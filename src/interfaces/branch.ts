@@ -1,4 +1,4 @@
-// src/constants/branches.ts
+// src/interface/branches.ts
 
 export const BRANCHES = [
   { id: 1, name: 'Telkom University Bandung' },
