@@ -9,11 +9,14 @@ import TableButton from '@/components/TableButton';
 import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
-import { useListBranch } from "@/hooks/useBranch";
+import { useListBranch, useCreateBranch } from "@/hooks/useBranch";
 import { Branch, BranchDetail} from '@/interfaces/branch.interface';
+import ModalAddBranch from '@/components/ModalAddBranch';
 
 export default function KampusCabangPage() {
   const router = useRouter();
+
+  const { mutate: createBranch, loading: creating } = useCreateBranch();
 
   const [refreshFlag, setRefreshFlag] = useState(0);
   const { data, isLoading, error } = useListBranch(refreshFlag); 
@@ -24,6 +27,8 @@ export default function KampusCabangPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // ✅ Simpan kampus yang dipilih
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
@@ -169,10 +174,34 @@ const handleSave = async () => {
     setIsDetailModalOpen(false);
     setRefreshFlag(prev => prev + 1);
   } catch (err) {
-    console.error('Error menyimpan:', err);
-    alert(`Gagal menyimpan data: ${(err as Error).message}`);
+    setErrorMessage('Gagal menyimpan data: ' + (err as Error).message);
+    setShowError(true);
+    setTimeout(() => setShowError(false), 3000);
   } finally {
     setIsSaving(false);
+  }
+};
+
+const handleAddSubmit = async (formData: { name: string; email: string }) => {
+  const isNameDuplicate = branches.some(branch => branch.name === formData.name);
+  if (isNameDuplicate) {
+    throw new Error(`Nama UPPS/KC "${formData.name}" sudah terdaftar!`);
+  }
+
+  const isEmailDuplicate = branches.some(branch => branch.email === formData.email);
+  if (isEmailDuplicate) {
+    throw new Error(`Email "${formData.email}" sudah digunakan oleh kampus lain!`);
+  }
+
+  try {
+    await createBranch(formData);
+    setRefreshFlag(f => f + 1);
+    setSuccessMessage('Kampus cabang berhasil ditambahkan!');
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+    setShowAddModal(false);
+  } catch (err) {
+    throw err; // lempar error ke modal
   }
 };
 
@@ -235,6 +264,7 @@ const dataForExport = branches.flatMap(branch => {
 });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   if (isLoading) {
     return (
@@ -274,6 +304,14 @@ const dataForExport = branches.flatMap(branch => {
             onClose={() => setShowSuccess(false)}
           />
         )}
+        {/* ✅ TAMBAHKAN INI UNTUK NOTIFIKASI ERROR */}
+        {showError && (
+          <SuccessNotification
+            isOpen={showError}
+            message={errorMessage}
+            onClose={() => setShowError(false)}
+          />
+        )}
 
         <div className="bg-white rounded-lg overflow-x-auto w-full p-10 mt-4">
           <div className="flex justify-between items-center mb-4 relative min-w-max">
@@ -284,6 +322,9 @@ const dataForExport = branches.flatMap(branch => {
             />
             <div className="flex gap-2">
               <TableButton data={dataForExport} showCopy={false} />
+              <Button onClick={() => setShowAddModal(true)} className="px-6">
+                Tambah Kampus Cabang
+              </Button>
             </div>
           </div>
 
@@ -403,6 +444,13 @@ const dataForExport = branches.flatMap(branch => {
             </div>
           </div>
         </ModalConfirm>
+
+        {/* Modal Tambah Kampus Cabang */}
+        <ModalAddBranch
+          isOpen={showAddModal}
+          onCancel={() => setShowAddModal(false)}
+          onConfirm={handleAddSubmit}
+        />
       </main>
     </div>
   );

@@ -256,6 +256,7 @@ export default function AssessmentResultPage() {
     }
   }, [user, router]);
 
+  const [isClient, setIsClient] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
@@ -443,8 +444,8 @@ export default function AssessmentResultPage() {
   }, [filterIds, filterPeriode, assessments]);
 
   const captureRadarAsImage = () => {
-  const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null; 
-   if (canvas) {
+    const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null;
+    if (canvas) {
       const url = canvas.toDataURL('image/png');
       setRadarImageUrls({ radar: url });
     }
@@ -462,7 +463,7 @@ export default function AssessmentResultPage() {
 
     await new Promise((r) => setTimeout(r, 600));
     captureRadarAsImage();
-    await new Promise((r) => setTimeout(r, 300)); 
+    await new Promise((r) => setTimeout(r, 300));
 
     const clone = original.cloneNode(true) as HTMLElement;
     clone.id = 'temp-clone-for-pdf';
@@ -533,9 +534,17 @@ export default function AssessmentResultPage() {
       if (clone.parentNode) clone.parentNode.removeChild(clone);
       setIsDownloading(false);
       setIsExporting(false);
-      setRadarImageUrls({}); 
+      setRadarImageUrls({});
     }
   };
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return <div className="p-6">Memuat...</div>;
+  }
 
   if (user && allBranchIds.length === 0) {
     return (
