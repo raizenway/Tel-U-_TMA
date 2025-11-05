@@ -17,7 +17,6 @@ const branchIdToCampus: Record<number, string> = {
   4: "Tel-U Purwokerto",
 };
 
-// Data kampus untuk tampilan gambar
 const allCampuses = [
   { name: "Tel-U Bandung", image: "/image 2.png" },
   { name: "Tel-U Jakarta", image: "/image 2.png" },
@@ -25,7 +24,6 @@ const allCampuses = [
   { name: "Tel-U Purwokerto", image: "/image 2.png" },
 ];
 
-// Mapping branchId → rute assessment
 const branchIdToRoute: Record<number, string> = {
   1: "Bandung",
   2: "Jakarta",
@@ -38,27 +36,32 @@ export default function AssessmentPage() {
   const { mutate, loading: isCreating, error } = useCreateAssessment();
   const { list, loading: loadingPeriodsFromHook } = useAssessmentPeriod();
 
+  const [user, setUser] = useState<any>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [submittingCampus, setSubmittingCampus] = useState<string | null>(null);
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
-  // Ambil user dari localStorage
-  const user = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    const stored = localStorage.getItem("user");
-    return stored ? JSON.parse(stored) : null;
+  // 💡 Baca user dari localStorage hanya di client
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    const parsed = stored ? JSON.parse(stored) : null;
+    setUser(parsed);
+    setIsLoadingUser(false);
   }, []);
 
-  // Redirect ke login jika belum login
+  // Redirect ke login jika user tidak ada (setelah selesai load)
   useEffect(() => {
-    if (!user) {
+    if (!isLoadingUser && !user) {
       router.replace("/login");
     }
-  }, [user, router]);
+  }, [isLoadingUser, user, router]);
 
-  // Ambil daftar periode
+  // Ambil periode hanya jika user ada
   useEffect(() => {
+    if (!user || isLoadingUser) return;
+
     const fetchPeriods = async () => {
       try {
         const response = await list();
@@ -72,7 +75,6 @@ export default function AssessmentPage() {
           console.warn("Struktur respons API tidak dikenali:", response);
           periods = [];
         }
-
         setAllPeriods(periods);
       } catch (err) {
         console.error("Gagal memuat periode:", err);
@@ -80,22 +82,18 @@ export default function AssessmentPage() {
       }
     };
 
-    if (user) fetchPeriods();
-  }, [list, user]);
+    fetchPeriods();
+  }, [list, user, isLoadingUser]);
 
-  // ✅ LOGIKA AKSES: Super User vs Admin Kampus
+  // Logika kampus berdasarkan role
   const campusesToShow = useMemo(() => {
     if (!user) return [];
 
-    // Pastikan role.id ada
-    const roleId = user.role?.id ?? user.roleId; // support dua format
-
-    // Jika Super User (role.id === 1)
+    const roleId = user.role?.id ?? user.roleId;
     if (roleId === 1) {
       return allCampuses;
     }
 
-    // Jika Admin Kampus (role.id === 2)
     const branchId = user.branchId;
     if (!branchId) return [];
 
@@ -119,22 +117,17 @@ export default function AssessmentPage() {
 
     let userId: number;
     let branchId: number;
-
     const roleId = user.role?.id ?? user.roleId;
 
     if (roleId === 1) {
-      // Super User: gunakan ID user sendiri (misal id=1), tapi branchId diambil dari kampus yang dipilih
       userId = user.id;
-      const foundEntry = Object.entries(branchIdToCampus).find(
-        ([, name]) => name === selectedCampus
-      );
+      const foundEntry = Object.entries(branchIdToCampus).find(([, name]) => name === selectedCampus);
       if (!foundEntry) {
         alert("Kampus tidak dikenali.");
         return;
       }
       branchId = parseInt(foundEntry[0], 10);
     } else {
-      // Admin biasa
       userId = user.id;
       branchId = user.branchId;
     }
@@ -151,9 +144,7 @@ export default function AssessmentPage() {
       });
 
       const assessmentId = response?.id;
-      if (!assessmentId) {
-        throw new Error("Assessment ID tidak ditemukan dalam respons");
-      }
+      if (!assessmentId) throw new Error("Assessment ID tidak ditemukan");
 
       const routeSuffix = branchIdToRoute[branchId];
       if (!routeSuffix) {
@@ -175,17 +166,44 @@ export default function AssessmentPage() {
     return `${period.year} - ${period.semester}`;
   };
 
+  // ⚠️ Render loading state yang SESUAI dengan struktur server
+  if (isLoadingUser) {
+    return (
+      <div className="flex">
+        <div className="flex-1 p-10 space-y-10">
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {[...Array(2)].map((_, i) => (
+              <div
+                key={i}
+                className="w-[300px] sm:w-[380px] md:w-[420px] lg:w-[450px] h-[320px] bg-white border border-gray-200 rounded-2xl p-6 shadow-sm animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika user tidak ada → redirect sudah ditangani, tapi tetap render sesuatu
   if (!user) {
-    return null;
+    return (
+      <div className="flex">
+        <div className="flex-1 p-10">
+          <p className="text-gray-500">Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
   if (campusesToShow.length === 0) {
     return (
-      <div className="p-10 text-center">
-        <p className="text-red-600">Anda tidak memiliki akses ke assessment.</p>
-        <Button onClick={() => router.push("/login")} className="mt-4">
-          Kembali ke Login
-        </Button>
+      <div className="flex">
+        <div className="p-10 text-center">
+          <p className="text-red-600">Anda tidak memiliki akses ke assessment.</p>
+          <Button onClick={() => router.push("/login")} className="mt-4">
+            Kembali ke Login
+          </Button>
+        </div>
       </div>
     );
   }
@@ -236,7 +254,6 @@ export default function AssessmentPage() {
         </div>
       </div>
 
-      {/* Modal Pemilihan Periode */}
       {showPeriodModal && selectedCampus && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
