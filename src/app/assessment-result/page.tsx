@@ -282,19 +282,14 @@ export default function AssessmentResultPage() {
   const allBranchIds = useMemo(() => {
     if (!user) return [];
 
-    if (user.branchId == null) {
-      return BRANCHES.map((b) => b.id);
-    }
-
     const roleId = Number(user.role?.id ?? user.roleId ?? -1);
-    if (roleId === 1) {
-      return BRANCHES.map((b) => b.id);
-    }
-    if (roleId === 2) {
+    const hasBranchId = user.branchId != null && user.branchId !== '';
+
+    if (roleId === 2 && hasBranchId) {
       return [Number(user.branchId)];
     }
 
-    return [];
+    return BRANCHES.map((b) => b.id);
   }, [user]);
 
   const { data: periodeData } = useListPeriode(0);
@@ -533,21 +528,6 @@ export default function AssessmentResultPage() {
     return <div className="p-6">Memuat...</div>;
   }
 
-  if (user && allBranchIds.length === 0) {
-    return (
-      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
-        <div className="text-center p-6 bg-white rounded shadow">
-          <p className="text-red-600">Anda tidak memiliki akses ke data assessment.</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="mt-4 text-blue-600 hover:underline"
-          >
-            Kembali ke Login
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
