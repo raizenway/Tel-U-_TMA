@@ -279,36 +279,23 @@ export default function AssessmentResultPage() {
     'Relevansi Penelitian',
   ]);
 
- const allBranchIds = useMemo(() => {
-  if (!user) return [];
+  const allBranchIds = useMemo(() => {
+    if (!user) return [];
 
-  const roleId = user.role?.id ?? user.roleId;
-  const branchId = user.branchId ? Number(user.branchId) : null;
+    if (user.branchId == null) {
+      return BRANCHES.map((b) => b.id);
+    }
 
-  // Daftar role yang diizinkan
-  const allowedRoles = [1, 2, 3, 4];
-  const allowedBranches = [1, 2, 3, 4];
+    const roleId = Number(user.role?.id ?? user.roleId ?? -1);
+    if (roleId === 1) {
+      return BRANCHES.map((b) => b.id);
+    }
+    if (roleId === 2) {
+      return [Number(user.branchId)];
+    }
 
-  // Pastikan roleId valid
-  if (!allowedRoles.includes(Number(roleId))) {
-    console.warn('RoleId tidak diizinkan:', roleId);
     return [];
-  }
-
-  // Jika roleId === 1 → akses semua cabang
-  if (roleId === 1) {
-    return BRANCHES.map((b) => b.id);
-  }
-
-  // Jika roleId 2, 3, atau 4 → harus punya branchId yang valid
-  if (branchId && allowedBranches.includes(branchId)) {
-    return [branchId];
-  }
-
-  // Jika tidak punya branchId atau branchId tidak valid → tidak ada akses
-  console.warn('User tidak memiliki branchId yang valid:', branchId);
-  return [];
-}, [user]);
+  }, [user]);
 
   const { data: periodeData } = useListPeriode(0);
 
@@ -546,21 +533,6 @@ export default function AssessmentResultPage() {
     return <div className="p-6">Memuat...</div>;
   }
 
-  if (user && allBranchIds.length === 0) {
-    return (
-      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
-        <div className="text-center p-6 bg-white rounded shadow">
-          <p className="text-red-600">Anda tidak memiliki akses ke data assessment.</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="mt-4 text-blue-600 hover:underline"
-          >
-            Kembali ke Login
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
