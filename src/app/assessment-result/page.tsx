@@ -282,14 +282,19 @@ export default function AssessmentResultPage() {
   const allBranchIds = useMemo(() => {
     if (!user) return [];
 
-    const roleId = Number(user.role?.id ?? user.roleId ?? -1);
-    const hasBranchId = user.branchId != null && user.branchId !== '';
+    if (user.branchId == null) {
+      return BRANCHES.map((b) => b.id);
+    }
 
-    if (roleId === 2 && hasBranchId) {
+    const roleId = Number(user.role?.id ?? user.roleId ?? -1);
+    if (roleId === 1) {
+      return BRANCHES.map((b) => b.id);
+    }
+    if (roleId === 2) {
       return [Number(user.branchId)];
     }
 
-    return BRANCHES.map((b) => b.id);
+    return [];
   }, [user]);
 
   const { data: periodeData } = useListPeriode(0);
