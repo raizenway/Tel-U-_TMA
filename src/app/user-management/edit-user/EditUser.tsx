@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { X, Save } from "lucide-react";
+import { X, Save, ChevronDown } from "lucide-react";
 import Button from "@/components/button";
 import { useGetUserById, useUpdateUser } from '@/hooks/useUserManagement';
-import { BRANCHES } from '@/interfaces/branch';
+import { useListBranch } from "@/hooks/useBranch";
+//import { BRANCHES } from '@/interfaces/branch';
 
 export default function EditUserPage() {
   const router = useRouter();
@@ -31,6 +32,8 @@ export default function EditUserPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [logoFileName, setLogoFileName] = useState<string>('Cari Lampiran...');
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
 
   const { data, loading, error } = useGetUserById(Number(userIdFromQuery));
   const { mutate: updateUser, loading: updating } = useUpdateUser();
@@ -183,6 +186,10 @@ export default function EditUserPage() {
     };
   }, [logoPreview]);
 
+  // ✅ Ambil data kampus cabang dari API
+const { data: branchData, isLoading: isBranchLoading } = useListBranch(0);
+const branches = branchData?.data || [];
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-100">
@@ -210,13 +217,13 @@ export default function EditUserPage() {
   return (
     <div>
       <main>
-        <div className="bg-white rounded-lg p-8 max-w-7xl w-full mx-auto">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (isFormValid) handleSave();
             }}
-            className="grid grid-cols-2 gap-x-12 gap-y-6"
+            className="grid grid-cols-2 gap-4"
           >
             <div>
               <label className="block mb-1 text-sm font-medium">Password</label>
@@ -311,16 +318,46 @@ export default function EditUserPage() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">Status</label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
+            <div className="relative">
+              <button
+                type="button"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200 text-left flex justify-between items-center hover:bg-gray-200"
+                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
               >
-                <option value="">Pilih Status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Non-Aktif</option>
-              </select>
+                <span className="truncate">
+                  {form.status === 'active' ? 'Aktif' : form.status === 'inactive' ? 'Non-Aktif' : 'Pilih Status'}
+                </span>
+                <ChevronDown 
+                  className={`w-4 h-4 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} 
+                  color="#6B7280"
+                />
+              </button>
+
+              {isStatusDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-blue-500 hover:text-white"
+                    onClick={() => {
+                      setForm({ ...form, status: 'active' });
+                      setIsStatusDropdownOpen(false);
+                    }}
+                  >
+                    Aktif
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-blue-500 hover:text-white"
+                    onClick={() => {
+                      setForm({ ...form, status: 'inactive' });
+                      setIsStatusDropdownOpen(false);
+                    }}
+                  >
+                    Non-Aktif
+                  </button>
+                </div>
+              )}
+            </div>
             </div>
 
             <div>
@@ -338,20 +375,50 @@ export default function EditUserPage() {
             {data?.data?.roleId === 2 && (
             <div>
               <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
-              <select
-                name="branchId"
-                value={form.branchId}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200"
-                required
+          <div className="relative">
+            <button
+              type="button"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md bg-white-200 text-left flex justify-between items-center"
+              onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+            >
+              <span className="truncate">
+                {form.branchId
+                  ? branches.find(b => b.id === Number(form.branchId))?.name || 'Pilih Kampus Cabang'
+                  : 'Pilih Kampus Cabang'}
+              </span>
+              <ChevronDown 
+                className={`w-4 h-4 transition-transform ${isBranchDropdownOpen ? 'rotate-180' : ''}`} 
+                color="#6B7280"
+              />
+            </button>
+
+            {isBranchDropdownOpen && (
+              <div 
+                className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-[180px] overflow-y-auto"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: '#ccc #f5f5f5' }}
               >
-                <option value="">Pilih Kampus Cabang</option>
-                {BRANCHES.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
+                {isBranchLoading ? (
+                  <div className="px-3 py-2 text-gray-500 text-sm">Memuat kampus...</div>
+                ) : branches.length === 0 ? (
+                  <div className="px-3 py-2 text-gray-500 text-sm">Tidak ada kampus tersedia</div>
+                ) : (
+                  branches.map((branch) => (
+                    <button
+                      key={branch.id}
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-blue-500 hover:text-white"
+                      onClick={() => {
+                        setForm({ ...form, branchId: branch.id.toString() });
+                        setIsBranchDropdownOpen(false);
+                      }}
+                    >
+                      {branch.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
             </div>
           )}
           </form>
@@ -382,7 +449,7 @@ export default function EditUserPage() {
               iconPosition="left"
               onClick={handleSave}
               disabled={!isFormValid || updating || !!errorMessage}
-              className="rounded-[12px] px-17 py-2 text-sm font-semibold"
+              className="rounded-[12px] px-17 py-3 text-sm font-semibold"
             >
               {updating ? 'Menyimpan...' : 'Simpan'}
             </Button>
