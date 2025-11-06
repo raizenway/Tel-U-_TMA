@@ -533,21 +533,6 @@ export default function AssessmentResultPage() {
     return <div className="p-6">Memuat...</div>;
   }
 
-  if (user && allBranchIds.length === 0) {
-    return (
-      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
-        <div className="text-center p-6 bg-white rounded shadow">
-          <p className="text-red-600">Anda tidak memiliki akses ke data assessment.</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="mt-4 text-blue-600 hover:underline"
-          >
-            Kembali ke Login
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">

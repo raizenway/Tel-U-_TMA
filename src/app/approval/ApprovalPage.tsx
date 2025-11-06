@@ -63,7 +63,7 @@ const TablePage = () => {
   width: "150px",
   sortable: true,
  renderCell: (item: any) => {
-  // Cek apakah linkEvidence null atau bukan string
+
   if (!item || item.linkEvidence == null || item.linkEvidence === "") {
     return (
       <span 

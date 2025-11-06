@@ -8,31 +8,32 @@ const CAMPUS_TO_BRANCH_ID: Record<CampusKey, number> = {
   'Tel-U Bandung': 1,
 };
 
+// ✅ Gunakan array eksplisit untuk iterasi — aman & tipe-aman
+const ALL_CAMPUSES = Object.keys(CAMPUS_TO_BRANCH_ID) as CampusKey[];
+
 export const useAccreditationData = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const saveToApi = useCallback(
-    async (rows: AccreditationRow[], selectedCampus: CampusKey): Promise<boolean> => {
+    async (rows: AccreditationRow[]): Promise<boolean> => {
       setIsSaving(true);
       setError(null);
 
       try {
-        if (!CAMPUS_TO_BRANCH_ID[selectedCampus]) {
-          throw new Error(`Kampus tidak valid: ${selectedCampus}`);
-        }
-
-        const branchId = CAMPUS_TO_BRANCH_ID[selectedCampus];
-        const payload: AccreditationApiPayloadItem[] = rows.map((row) => ({
-          branch_id: branchId,
-          year: Number(row.year),
-          accreditationGrowth: row[selectedCampus] ?? 0,
-        }));
-
         const baseUrl = process.env.NEXT_PUBLIC_API_URL;
         if (!baseUrl) {
           throw new Error('NEXT_PUBLIC_API_URL tidak ditemukan di .env');
         }
+
+        // ✅ Generate payload: semua kampus × semua tahun
+        const payload: AccreditationApiPayloadItem[] = rows.flatMap((row) => {
+          return ALL_CAMPUSES.map((campus) => ({
+            branch_id: CAMPUS_TO_BRANCH_ID[campus], // ✅ aman karena ALL_CAMPUSES adalah CampusKey[]
+            year: Number(row.year),
+            accreditationGrowth: row[campus] ?? 0,
+          }));
+        });
 
         const response = await fetch(`${baseUrl}/branch/detail`, {
           method: 'POST',
@@ -55,7 +56,7 @@ export const useAccreditationData = () => {
         setIsSaving(false);
       }
     },
-    []
+    [] // ✅ Tidak perlu dependency karena ALL_CAMPUSES konstan
   );
 
   return { saveToApi, isSaving, error };

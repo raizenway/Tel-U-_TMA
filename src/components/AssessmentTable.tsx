@@ -15,7 +15,7 @@ import {
   BookOpenCheck,
 } from 'lucide-react';
 import { Search, Copy, Printer, Download } from 'lucide-react';
-import { useListAssessment } from '@/hooks/useAssessment';
+import { useListAssessment, useAssessmentById } from '@/hooks/useAssessment';
 
 // Mapping status
 const mapStatusToUI = (
@@ -33,15 +33,78 @@ const mapStatusToUI = (
   }
 };
 
+// Helper: Bangun objek jawaban dari assessment detail
+const buildAnswersFromAssessment = (item: any): { [key: string]: string } => {
+  const answers: { [key: string]: string } = {};
+  if (item.assessmentDetails && Array.isArray(item.assessmentDetails)) {
+    item.assessmentDetails.forEach((detail: any) => {
+      const qId = detail.questionId;
+      const baseKey = String(qId);
+
+      // ✅ Baca dari detail.answer (sesuai struktur Postman)
+      const ans = detail.answer || {};
+          // ✅ Gunakan submissionValue jika textAnswer1 tidak ada
+        const answer1 = 
+          ans.textAnswer1 != null && ans.textAnswer1 !== "" 
+            ? String(ans.textAnswer1) 
+            : detail.submissionValue || "0";
+      const answer2 = ans.textAnswer2 != null ? String(ans.textAnswer2) : "0";
+      const answer3 = ans.textAnswer3 != null ? String(ans.textAnswer3) : "0";
+      const answer4 = ans.textAnswer4 != null ? String(ans.textAnswer4) : "0";
+      const answer5 = ans.textAnswer5 != null ? String(ans.textAnswer5) : "0";
+
+      answers[baseKey] = answer1;
+      if (answer2 !== "0") answers[`${baseKey}a`] = answer2;
+      if (answer3 !== "0") answers[`${baseKey}b`] = answer3;
+      if (answer4 !== "0") answers[`${baseKey}c`] = answer4;
+      if (answer5 !== "0") answers[`${baseKey}d`] = answer5;
+
+      if (detail.evidenceLink) {
+        answers[`evidence-${qId}`] = detail.evidenceLink;
+      }
+    });
+  }
+  return answers;
+};
+
 const AssessmentTable = ({ hideStartButton = false }) => {
   const { data: apiData, loading, error } = useListAssessment();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { data: selectedAssessment, loading: loadingSelected } = useAssessmentById(selectedId);
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [approveAssessmentId, setApproveAssessmentId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
-  // Baca notifikasi sukses dari localStorage
+  // Handle redirect setelah data lengkap siap
+  useEffect(() => {
+    if (selectedAssessment && selectedId) {
+      const answers = buildAnswersFromAssessment(selectedAssessment);
+      const isView = selectedAssessment.approvalStatus === 'approved';
+
+      if (isView) {
+        localStorage.setItem('currentAssessmentForView', JSON.stringify(selectedAssessment));
+      } else {
+        localStorage.setItem('currentAssessmentForEdit', JSON.stringify(selectedAssessment));
+      }
+      localStorage.setItem(`assessment-${selectedId}-answers`, JSON.stringify(answers));
+
+      const campusName = selectedAssessment.branch?.name || 'Unknown';
+      const city = campusName.split(' ').pop() || 'Unknown';
+
+      if (isView) {
+        router.push(`/assessment/${city}?viewOnly=true`);
+      } else {
+        router.push(`/assessment/${city}?from=edit`);
+      }
+
+      setSelectedId(null);
+    }
+  }, [selectedAssessment, selectedId, router]);
+
+  // Handle notifikasi sukses
   useEffect(() => {
     const saved = localStorage.getItem('showSuccessNotification');
     if (saved) {
@@ -50,7 +113,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     }
   }, []);
 
-  // Transform data API ke format tabel
   const data = apiData.map((item) => {
     const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
     const { status, aksi } = mapStatusToUI(item.approvalStatus);
@@ -84,66 +146,29 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     item.nama.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
- const handleEdit = (id: number) => {
+const handleEdit = (id: number) => {
+  console.log('handleEdit dipanggil dengan ID:', id);
   const item = apiData.find((item) => item.id === id);
-  if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) return;
-
-  const answers: { [key: string]: string } = {};
-
-  if (item.assessmentDetails && Array.isArray(item.assessmentDetails)) {
-    item.assessmentDetails.forEach(detail => {
-      const qId = detail.questionId;
-      const baseKey = String(qId);
-
-      // ✅ Ambil nilai dari kolom teks (bukan submissionValue)
-      const answer1 = detail.textAnswer1 != null ? String(detail.textAnswer1) : "0";
-      const answer2 = detail.textAnswer2 != null ? String(detail.textAnswer2) : "0";
-      const answer3 = detail.textAnswer3 != null ? String(detail.textAnswer3) : "0";
-      const answer4 = detail.textAnswer4 != null ? String(detail.textAnswer4) : "0";
-      const answer5 = detail.textAnswer5 != null ? String(detail.textAnswer5) : "0";
-
-      // Simpan bagian pertama
-      answers[baseKey] = answer1;
-
-      // Simpan sub-bagian
-      if (answer2 !== "0") answers[`${baseKey}a`] = answer2;
-      if (answer3 !== "0") answers[`${baseKey}b`] = answer3;
-      if (answer4 !== "0") answers[`${baseKey}c`] = answer4;
-      if (answer5 !== "0") answers[`${baseKey}d`] = answer5;
-
-      // Evidence
-      if (detail.evidenceLink) {
-        answers[`evidence-${qId}`] = detail.evidenceLink;
-      }
-    });
+  if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) {
+    console.log('Item tidak ditemukan atau status tidak sesuai');
+    return;
   }
-
-  localStorage.setItem('currentAssessmentForEdit', JSON.stringify(item));
-  localStorage.setItem(`assessment-${item.id}-answers`, JSON.stringify(answers));
-
-  const campusName = item.branch?.name || 'Unknown';
-  const city = campusName.split(' ').pop() || 'Unknown';
-  router.push(`/assessment/${city}?from=edit`);
+  setSelectedId(id);
+  console.log('selectedId di-set ke:', id);
 };
-  // 👁️ VIEW: hanya untuk approved
+
   const handleView = (id: number) => {
     const item = apiData.find((item) => item.id === id);
-    if (item && item.approvalStatus === 'approved') {
-      localStorage.setItem('currentAssessmentForView', JSON.stringify(item));
-      const campusName = item.branch?.name || 'Unknown';
-      const city = campusName.split(' ').pop() || 'Unknown';
-     router.push(`/assessment/${city}?viewOnly=true`);
-    }
+    if (!item || item.approvalStatus !== 'approved') return;
+    setSelectedId(id);
   };
 
-  // ✅ Approve (dummy, ganti dengan API call jika ada)
   const handleApprove = (id: number) => {
     setShowModal(false);
     setShowSuccess(true);
     localStorage.setItem('showSuccessNotification', 'true');
   };
 
-  // 🔢 Kolom tabel
   const columns = [
     { header: 'No', key: 'nomor', width: '50px' },
     { header: 'Logo', key: 'logo', width: '60px' },
@@ -158,7 +183,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     { header: 'Aksi', key: 'aksi', width: '120px' },
   ];
 
-  // 🗂️ Data untuk tabel
   const tableData = filteredData.map((item, index) => ({
     nomor: index + 1,
     logo: <div className="flex items-center">{item.logo}</div>,
@@ -168,7 +192,8 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         {item.approvalStatus === 'edit_requested' && (
           <div className="relative">
             <MessageCircleWarning
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setApproveAssessmentId(item.id);
                 setShowModal(true);
               }}
@@ -248,7 +273,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     ),
   }));
 
-  // 📋 COPY
+  // Fungsi utilitas (copy, print, download) tetap sama
   const handleCopy = () => {
     const headers = [
       'No',
@@ -275,13 +300,10 @@ const AssessmentTable = ({ hideStartButton = false }) => {
 
     navigator.clipboard
       .writeText([headers.join('\t'), ...rows].join('\n'))
-      .then(
-        () => alert('Data berhasil disalin!'),
-        () => alert('Gagal menyalin data.')
-      );
+      .then(() => alert('Data berhasil disalin!'))
+      .catch(() => alert('Gagal menyalin data.'));
   };
 
-  // 🖨️ PRINT
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const content = `
@@ -320,7 +342,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     printWindow.onload = () => printWindow.print();
   };
 
-  // 🔽 DOWNLOAD CSV
   const handleDownloadCSV = () => {
     const headers = [
       'No',
@@ -355,7 +376,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) {
+  if (loading || loadingSelected) {
     return (
       <div className="p-6 md:p-8 bg-white rounded-lg shadow-md border border-gray-45 w-full mt-20">
         <p className="text-gray-600">Memuat data assessment...</p>
@@ -399,7 +420,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         }}
       />
 
-      {/* Header Section */}
       <div>
         <h2 className="text-2xl font-semibold text-gray-800 mb-2">
           Pengisian Assessment
@@ -409,7 +429,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         </p>
       </div>
 
-      {/* Search + Action Buttons */}
       <div className="flex flex-col gap-4 w-full">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white shadow-sm w-80">
@@ -465,7 +484,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         </div>
       </div>
 
-      {/* Table Section */}
       <div id="assessment-table">
         <Table
           columns={columns}
