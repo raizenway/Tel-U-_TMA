@@ -10,7 +10,7 @@ import AssessmentForm from "@/components/AssetmentFrom";
 import WelcomeTab from "@/components/WelcomTab";
 import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
-import PurwokertoTab from "@/components/PengsisianAssessment";
+import PurwokertoTab from "@/app/assessment/AssessmentFormTab";
 
 export default function WelcomePage() {
   const router = useRouter();
