@@ -2,7 +2,7 @@
 
 import { useState,useEffect } from "react";
 import { useGet } from "./useGet";
-import { createAssessment, createAssessmentDetail, ListAssessment,finishAssessment} from "@/lib/api-assessment";
+import { createAssessment, createAssessmentDetail, ListAssessment,finishAssessment,getAssessmentById} from "@/lib/api-assessment";
 import { Assessment, CreateAssessment, CreateAssessmentDetail,FinishAssessment   } from "@/interfaces/assessment";
 import { ApiResponse } from "@/interfaces/api-response";
 
@@ -68,7 +68,7 @@ export function useCreateAssessmentDetail() {
   return { mutate, loading, error };
 }
 
-// hooks/useAssessment.ts
+
 export function useFinishAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,3 +97,38 @@ export function useFinishAssessment() {
 
   return { mutate, loading, error };
 }
+
+export const useAssessmentById = (id: number | null) => {
+  const [data, setData] = useState<Assessment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      const res = await getAssessmentById(id);
+      console.log("🔍 Response dari API:", res); // ← tambahkan ini
+
+      if (res.status === 'success' && res.data) {
+        setData(res.data);
+        console.log("✅ Data diterima:", res.data);
+      } else {
+        setError(res.message || 'Gagal memuat data');
+        console.error("❌ Gagal muat assessment:", res.message);
+      }
+
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [id]);
+
+  return { data, loading, error };
+};
