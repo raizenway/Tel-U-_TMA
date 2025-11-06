@@ -173,7 +173,7 @@
     if (item.name === "About TMA" && item.submenu) {
       const filteredSubmenu = item.submenu.filter((subItem) => {
         if (subItem.name === "Assessment Period" || subItem.name === "UPPS/KC") {
-          return roleId !== 2; // Sembunyikan kedua menu ini jika roleId === 2
+          return roleId !== 2 && roleId !== 3 && roleId !== 4; // Sembunyikan kedua menu ini jika roleId === 2
         }
         return true;
       });
