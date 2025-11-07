@@ -10,14 +10,7 @@ import { useListBranch } from "@/hooks/useBranch";
 import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
 import { useState, useEffect, useMemo } from "react";
 
-// 🔁 Mapping id cabang ke slug untuk routing
-// ⚠️ Ini sementara — idealnya slug dikirim dari API
-const branchIdToSlug: Record<number, string> = {
-  1: "Bandung",
-  2: "Jakarta",
-  3: "Surabaya",
-  4: "Purwokerto",
-};
+
 
 export default function AssessmentPage() {
   const router = useRouter();
@@ -122,12 +115,6 @@ export default function AssessmentPage() {
 
       const assessmentId = response?.id;
       if (!assessmentId) throw new Error("Assessment ID tidak ditemukan");
-
-      const slug = branchIdToSlug[branchId];
-      if (!slug) {
-        alert("Rute untuk cabang ini belum dikonfigurasi.");
-        return;
-      }
 
       router.push(`/assessment/${branchId}?assessmentId=${assessmentId}`);
     } catch (err) {
