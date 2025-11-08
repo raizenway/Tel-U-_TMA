@@ -77,7 +77,7 @@ export default function WelcomePage() {
           {tab === "purwokerto" && (
             <PurwokertoTab  />
           )}
-          {tab === "assessment-form" && (
+          {/* {tab === "assessment-form" && (
             <AssessmentForm
               onSelectCampus={(campus) => {
                 if (campus === "Tel-U Purwokerto") {
@@ -87,7 +87,7 @@ export default function WelcomePage() {
                 }
               }}
             />
-          )}
+          )} */}
         </main>
       </div>
     </div>

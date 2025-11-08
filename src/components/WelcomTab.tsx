@@ -82,16 +82,19 @@ const WelcomeTab = () => {
             img: "/about tma.png",
             title: "About TMA",
             desc: "Tidak hanya sebatas kuisioner, namun juga menilai kinerja secara kuantitatif.",
+            url: "https://transformasi.telkomuniversity.ac.id/about-tma/"
           },
           {
             img: "/faq.png",
             title: "FAQ",
             desc: "Pertanyaan yang sering diajukan di TMA.",
+            url: "https://transformasi.telkomuniversity.ac.id/faq/"
           },
           {
             img: "/admin.png",
             title: "Kontak Admin",
             desc: "Jika anda memerlukan bantuan, jangan ragu untuk menghubungi kami.",
+            url: "https://wa.me/+6282214782412"
           },
         ].map((card) => (
           <div
@@ -101,9 +104,11 @@ const WelcomeTab = () => {
             <Image src={card.img} alt={card.title} width={80} height={80} />
             <h3 className="text-lg font-semibold">{card.title}</h3>
             <p className="text-sm text-gray-600">{card.desc}</p>
-            <Button className="px-4 py-2 bg-slate-800 text-white text-sm rounded-md hover:bg-slate-700 transition">
-              Selengkapnya &rarr;
-            </Button>
+            <a href={card.url} target="_blank">
+              <Button className="px-4 py-2 bg-slate-800 text-white text-sm rounded-md hover:bg-slate-700 transition">
+                Selengkapnya &rarr;
+              </Button>
+            </a>
           </div>
         ))}
       </div>
