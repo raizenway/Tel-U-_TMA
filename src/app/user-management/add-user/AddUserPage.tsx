@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { X, Save} from "lucide-react";
+import { X, Save, ChevronDown} from "lucide-react";
 import Button  from "@/components/button";
 import { useCreateUser } from '@/hooks/useUserManagement';
 import { CreateUserRequest } from '@/interfaces/user-management';
-import { BRANCHES } from '@/interfaces/branch';
+import { useListBranch } from "@/hooks/useBranch";
+//import { BRANCHES } from '@/interfaces/branch';
 
 export default function AddUserPage() {
   const router = useRouter();
@@ -33,7 +34,12 @@ export default function AddUserPage() {
 
   const [picName, setPicName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
  
+  // ✅ TAMBAHKAN INI: Ambil data kampus cabang dari API
+const { data: branchData, isLoading: isBranchLoading } = useListBranch(0);
+const branches = branchData?.data || [];
   
   // ✅ Gunakan hook untuk create user
 const { mutate: createUser, loading} = useCreateUser();
@@ -295,16 +301,46 @@ useEffect(() => {
             {/* Status */}
             <div>
               <label className="block mb-1 text-sm font-medium">Status</label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
-              >
-                <option value="">Pilih Status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Non-Aktif</option>
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100 text-left flex justify-between items-center hover:bg-gray-200"
+                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                >
+                  <span className="truncate">
+                    {form.status === 'active' ? 'Aktif' : form.status === 'inactive' ? 'Non-Aktif' : 'Pilih Status'}
+                  </span>
+                  <ChevronDown 
+                    className={`w-4 h-4 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} 
+                    color="#6B7280"
+                  />
+                </button>
+
+                {isStatusDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-[#3B82F6] hover:text-white"
+                      onClick={() => {
+                        setForm({ ...form, status: 'active' });
+                        setIsStatusDropdownOpen(false);
+                      }}
+                    >
+                      Aktif
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-[#3B82F6] hover:text-white"
+                      onClick={() => {
+                        setForm({ ...form, status: 'inactive' });
+                        setIsStatusDropdownOpen(false);
+                      }}
+                    >
+                      Non-Aktif
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Nomor HP */}
@@ -327,20 +363,50 @@ useEffect(() => {
             {!isNonSSO && (
               <div>
                 <label className="block mb-1 text-sm font-medium">Kampus Cabang</label>
-                <select
-                  name="branchId"
-                  value={form.branchId}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100"
-                  required
-                >
-                  <option value="">Pilih Kampus Cabang</option>
-                  {BRANCHES.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100 text-left flex justify-between items-center"
+                    onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                  >
+                    <span className="truncate">
+                      {form.branchId
+                        ? branches.find(b => b.id === Number(form.branchId))?.name || 'Pilih Kampus Cabang'
+                        : 'Pilih Kampus Cabang'}
+                    </span>
+                    <ChevronDown 
+                      className={`w-4 h-4 transition-transform ${isBranchDropdownOpen ? 'rotate-180' : ''}`} 
+                      color="#6B7280"
+                    />
+                  </button>
+
+                  {isBranchDropdownOpen && (
+                    <div 
+                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-[180px] overflow-y-auto"
+                      style={{ scrollbarWidth: 'thin', scrollbarColor: '#ccc #f5f5f5' }}
+                    >
+                      {isBranchLoading ? (
+                        <div className="px-3 py-2 text-gray-500 text-sm">Memuat kampus...</div>
+                      ) : branches.length === 0 ? (
+                        <div className="px-3 py-2 text-gray-500 text-sm">Tidak ada kampus tersedia</div>
+                      ) : (
+                        branches.map((branch) => (
+                          <button
+                            key={branch.id}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-500 hover:text-white"
+                            onClick={() => {
+                              setForm({ ...form, branchId: branch.id.toString() });
+                              setIsBranchDropdownOpen(false);
+                            }}
+                          >
+                            {branch.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div> 
             )}
           </form>

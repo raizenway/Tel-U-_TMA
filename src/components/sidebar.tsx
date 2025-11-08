@@ -2,7 +2,7 @@
   "use client";
 
   import Image from "next/image";
-  import { useState, useEffect } from "react";
+  import { useState, useEffect, useMemo} from "react";
   import {
     ChevronDown,
     ChevronLeft,
@@ -17,7 +17,7 @@
     Calendar,
     Building,      
   } from "lucide-react";
-  import { BRANCH_NAMES } from "@/interfaces/branch";
+  import { useListBranch } from "@/hooks/useBranch";
 
   type NavItem = {
     name: string;
@@ -37,6 +37,16 @@
     
     const [userData, setUserData] = useState<any>(null); // ← simpan semua data user
     const [roleId, setRoleId] = useState<number | null>(null);
+    const { data: branchData, isLoading: isBranchLoading } = useListBranch(0);
+
+  // Buat mapping branchId → nama
+  const branchNames = useMemo(() => {
+    if (!branchData?.data) return {};
+    return branchData.data.reduce((acc, branch) => {
+      acc[branch.id] = branch.name;
+      return acc;
+    }, {} as Record<number, string>);
+  }, [branchData]);
 
     // Ambil roleId dari localStorage
     useEffect(() => {
@@ -206,6 +216,43 @@
   })
   .filter((item) => item !== null) as NavItem[];
 
+  if (isBranchLoading) {
+  return (
+    <aside className={`relative ${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}>
+      <div className="px-6 py-8 flex items-center">
+        {collapsed ? (
+          <Image src="/Logo v1.png" alt="Logo Telkom University" width={40} height={40} priority />
+        ) : (
+          <Image src="/Logo.png" alt="Logo Telkom University" width={190} height={80} priority />
+        )}
+        <button onClick={toggleCollapse} className="ml-auto p-2 text-gray-500 hover:text-gray-700 transition">
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+      </div>
+
+      {/* User Info — Loading */}
+      <div className={`px-6 py-6 border-y flex items-center gap-4 ${collapsed ? "justify-center" : ""}`}>
+        <Image src="/Logo (1).png" alt="User" width={40} height={40} className="rounded-full" />
+        {!collapsed && (
+          <div>
+            <p className="font-semibold text-gray-800">Loading...</p>
+            <p className="text-xs text-gray-500">Memuat data kampus...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation — Kosong sementara */}
+      <nav className="flex-1 px-4 mt-4 text-sm font-medium">
+        <div className="flex flex-col gap-1">
+          <div className="w-full flex items-center px-4 py-3 rounded-lg text-black cursor-pointer select-none font-medium justify-between">
+            <span>Loading menu...</span>
+          </div>
+        </div>
+      </nav>
+    </aside>
+  );
+}
+
     return (
       <aside
         className={`relative ${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}
@@ -259,7 +306,9 @@
 
               {/* Nama Kampus Cabang */}
               <p className="text-xs text-gray-500">
-                {BRANCH_NAMES[Number(userData.branchId)] || `Cabang ${userData.branchId}`}
+                {branchNames[Number(userData.branchId)] 
+                  ? branchNames[Number(userData.branchId)] 
+                  : 'Kampus Tidak Diketahui'}
               </p>
             </div>
           )}
