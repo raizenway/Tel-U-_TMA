@@ -191,72 +191,72 @@ export default function AssessmentFormTab() {
   }, [isClient, isAssessmentIdReady, selectedAssessmentId, fromEdit, viewOnly]);
 
   // === Load Answers dari localStorage atau API ===
-  useEffect(() => {
-    if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
+useEffect(() => {
+  if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
 
-    const loadAnswers = async () => {
-      // 🔸 Jika mode EDIT → selalu ambil dari API, abaikan localStorage
-      if (fromEdit) {
-        try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
-          const data = await res.json();
+  const loadAnswers = async () => {
+    // 🔸 Jika mode EDIT atau VIEW → ambil dari API
+    if (fromEdit || viewOnly) {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
+        const data = await res.json();
 
-          if (data.data?.assessmentDetails) {
-            const mappedAnswers: { [key: string]: string } = {};
+        if (data.data?.assessmentDetails) {
+          const mappedAnswers: { [key: string]: string } = {};
 
-            data.data.assessmentDetails.forEach((detail: any) => {
-              const qId = detail.questionId;
-              const baseKey = String(qId);
-              const ans = detail.answer;
-              const question = rawQuestions.find(q => q.id === qId);
-              if (!question) return;
+          data.data.assessmentDetails.forEach((detail: any) => {
+            const qId = detail.questionId;
+            const baseKey = String(qId);
+            const ans = detail.answer;
+            const question = rawQuestions.find(q => q.id === qId);
+            if (!question) return;
 
-              const getAnswer = (val: any): string => {
-                if (val == null || val === "") return "";
-                return String(val).trim();
-              };
+            const getAnswer = (val: any): string => {
+              if (val == null || val === "") return "";
+              return String(val).trim();
+            };
 
-              if (question.type === 'text') {
-                mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
-                mappedAnswers[`${baseKey}a`] = getAnswer(ans.textAnswer2);
-                mappedAnswers[`${baseKey}b`] = getAnswer(ans.textAnswer3);
-                mappedAnswers[`${baseKey}c`] = getAnswer(ans.textAnswer4);
-                mappedAnswers[`${baseKey}d`] = getAnswer(ans.textAnswer5);
-              } else if (question.type === 'multitext') {
-                mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
-              }
+            if (question.type === 'text') {
+              mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+              mappedAnswers[`${baseKey}a`] = getAnswer(ans.textAnswer2);
+              mappedAnswers[`${baseKey}b`] = getAnswer(ans.textAnswer3);
+              mappedAnswers[`${baseKey}c`] = getAnswer(ans.textAnswer4);
+              mappedAnswers[`${baseKey}d`] = getAnswer(ans.textAnswer5);
+            } else if (question.type === 'multitext') {
+              mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+            }
 
-              if (detail.evidenceLink) {
-                mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
-              }
-            });
+            if (detail.evidenceLink) {
+              mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
+            }
+          });
 
-            setAnswers(mappedAnswers);
-            setIsFormDirty(false);
-            setFormBelumDisimpan(false);
-          }
-        } catch (err) {
-          console.error("Gagal memuat data dari API:", err);
-        }
-        return; // ✅ pastikan tidak lanjut ke localStorage
-      }
-
-      // 🔸 Mode CREATE: cek localStorage
-      const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
-      if (savedAnswers) {
-        try {
-          setAnswers(JSON.parse(savedAnswers));
+          setAnswers(mappedAnswers);
           setIsFormDirty(false);
           setFormBelumDisimpan(false);
-          return;
-        } catch (e) {
-          console.warn("Gagal parse localStorage answers");
         }
+      } catch (err) {
+        console.error("Gagal memuat data dari API:", err);
       }
-    };
+      return;
+    }
 
-    loadAnswers();
-  }, [isClient, isAssessmentIdReady, selectedAssessmentId, rawQuestions, fromEdit]);
+    // 🔸 Mode CREATE: cek localStorage
+    const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
+    if (savedAnswers) {
+      try {
+        setAnswers(JSON.parse(savedAnswers));
+        setIsFormDirty(false);
+        setFormBelumDisimpan(false);
+        return;
+      } catch (e) {
+        console.warn("Gagal parse localStorage answers");
+      }
+    }
+  };
+
+  loadAnswers();
+}, [isClient, isAssessmentIdReady, selectedAssessmentId, rawQuestions, fromEdit, viewOnly]);
 
   // === Hooks ===
   const { mutate: saveAssessmentDetail, loading: savingAnswers, error: saveError } = useCreateAssessmentDetail();
