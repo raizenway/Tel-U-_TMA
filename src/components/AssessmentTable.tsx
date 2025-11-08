@@ -91,14 +91,17 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       }
       localStorage.setItem(`assessment-${selectedId}-answers`, JSON.stringify(answers));
 
-      const campusName = selectedAssessment.branch?.name || 'Unknown';
-      const city = campusName.split(' ').pop() || 'Unknown';
+     const branchId = selectedAssessment.branch?.id;
+if (typeof branchId !== 'number' || branchId <= 0) {
+  console.error('Branch ID tidak valid:', branchId);
+  return;
+}
 
-      if (isView) {
-        router.push(`/assessment/${city}?viewOnly=true`);
-      } else {
-        router.push(`/assessment/${city}?from=edit`);
-      }
+if (isView) {
+  router.push(`/assessment/${branchId}?viewOnly=true`);
+} else {
+  router.push(`/assessment/${branchId}?from=edit`);
+}
 
       setSelectedId(null);
     }

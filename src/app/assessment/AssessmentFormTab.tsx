@@ -7,7 +7,7 @@ import ModalConfirm from "@/components/StarAssessment/ModalConfirm";
 import Button from "@/components/button";
 import { Download, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import SuccessNotification from "./SuccessNotification";
+import SuccessNotification from "../../components/SuccessNotification";
 import ModalBlockNavigation from "@/components/ModalBlockNavigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
