@@ -26,6 +26,13 @@ interface QuestionItem {
   type: 'text' | 'multitext';
 }
 
+// ✅ Helper: Menentukan apakah jawaban valid (termasuk "0")
+const isAnswerValid = (val: any): boolean => {
+  if (val == null) return false;
+  const s = String(val).trim();
+  return s !== "" && /^\d+$/.test(s); // hanya angka non-negatif
+};
+
 export default function AssessmentFormTab() {
   // --- State Umum ---
   const [isClient, setIsClient] = useState(false);
@@ -72,9 +79,7 @@ export default function AssessmentFormTab() {
   // === Set assessmentId dengan aman ===
   useEffect(() => {
     if (!isClient) return;
-
     let id: number | null = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
-
     if (fromEdit) {
       const saved = localStorage.getItem('currentAssessmentForEdit');
       if (saved) {
@@ -94,15 +99,13 @@ export default function AssessmentFormTab() {
         }
       }
     }
-
     setSelectedAssessmentId(id);
     setIsAssessmentIdReady(true);
   }, [isClient, assessmentIdFromUrl, fromEdit, viewOnly]);
 
-  // === Validasi assessmentId (hanya setelah siap) ===
+  // === Validasi assessmentId ===
   useEffect(() => {
     if (!isAssessmentIdReady) return;
-
     if (selectedAssessmentId === null || isNaN(selectedAssessmentId) || selectedAssessmentId <= 0) {
       setError("Periode tidak valid.");
       const timer = setTimeout(() => router.push("/assessment"), 2000);
@@ -128,14 +131,12 @@ export default function AssessmentFormTab() {
   // === Fetch Questions ===
   useEffect(() => {
     if (!isClient || !isAssessmentIdReady || error) return;
-
     const fetchAllQuestions = async () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       if (!apiUrl) {
         console.error("NEXT_PUBLIC_API_URL belum diatur");
         return;
       }
-
       const tempQuestions: QuestionItem[] = [];
       for (let i = 0; i < 30; i++) {
         const id = i + 1;
@@ -152,7 +153,6 @@ export default function AssessmentFormTab() {
             if (result.data.answerText5) options.push(result.data.answerText5);
             const finalOptions = options.length > 0 ? options : ["0", "1", "2", "3", "Lebih dari 3"];
             const type = result.data.type === 'text' ? 'text' : 'multitext';
-
             const questionParts = [
               result.data.questionText,
               result.data.questionText2,
@@ -160,7 +160,6 @@ export default function AssessmentFormTab() {
               result.data.questionText4,
             ].filter(p => p != null && String(p).trim() !== '').map(p => String(p).trim());
             const question = questionParts.join(' | ');
-
             tempQuestions.push({
               id,
               section: "",
@@ -179,37 +178,70 @@ export default function AssessmentFormTab() {
       }
       setRawQuestions(tempQuestions);
     };
-
     fetchAllQuestions();
   }, [isClient, isAssessmentIdReady, error]);
 
   // === Bersihkan localStorage saat mode CREATE ===
-useEffect(() => {
-  if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null) return;
-  if (fromEdit || viewOnly) return; // Hanya bersihkan di mode CREATE
-
-  localStorage.removeItem(`assessment-${selectedAssessmentId}-answers`);
-  localStorage.removeItem('currentAssessmentForEdit');
-  console.log("✅ LocalStorage dibersihkan untuk assessment baru");
-}, [isClient, isAssessmentIdReady, selectedAssessmentId, fromEdit, viewOnly]);
-
-// === Load Answers dari localStorage (tetap seperti semula) ===
-useEffect(() => {
-  if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
-
-  const loadAnswers = () => {
-    // ... (logika lama tetap di sini)
-  };
-
-  loadAnswers();
-}, [isClient, isAssessmentIdReady, selectedAssessmentId, rawQuestions, fromEdit, viewOnly]);
+  useEffect(() => {
+    if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null) return;
+    if (fromEdit || viewOnly) return;
+    localStorage.removeItem(`assessment-${selectedAssessmentId}-answers`);
+    localStorage.removeItem('currentAssessmentForEdit');
+    console.log("✅ LocalStorage dibersihkan untuk assessment baru");
+  }, [isClient, isAssessmentIdReady, selectedAssessmentId, fromEdit, viewOnly]);
 
   // === Load Answers dari localStorage atau API ===
   useEffect(() => {
     if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
 
     const loadAnswers = async () => {
-      // Prioritaskan localStorage
+      // 🔸 Jika mode EDIT → selalu ambil dari API, abaikan localStorage
+      if (fromEdit) {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
+          const data = await res.json();
+
+          if (data.data?.assessmentDetails) {
+            const mappedAnswers: { [key: string]: string } = {};
+
+            data.data.assessmentDetails.forEach((detail: any) => {
+              const qId = detail.questionId;
+              const baseKey = String(qId);
+              const ans = detail.answer;
+              const question = rawQuestions.find(q => q.id === qId);
+              if (!question) return;
+
+              const getAnswer = (val: any): string => {
+                if (val == null || val === "") return "";
+                return String(val).trim();
+              };
+
+              if (question.type === 'text') {
+                mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+                mappedAnswers[`${baseKey}a`] = getAnswer(ans.textAnswer2);
+                mappedAnswers[`${baseKey}b`] = getAnswer(ans.textAnswer3);
+                mappedAnswers[`${baseKey}c`] = getAnswer(ans.textAnswer4);
+                mappedAnswers[`${baseKey}d`] = getAnswer(ans.textAnswer5);
+              } else if (question.type === 'multitext') {
+                mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+              }
+
+              if (detail.evidenceLink) {
+                mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
+              }
+            });
+
+            setAnswers(mappedAnswers);
+            setIsFormDirty(false);
+            setFormBelumDisimpan(false);
+          }
+        } catch (err) {
+          console.error("Gagal memuat data dari API:", err);
+        }
+        return; // ✅ pastikan tidak lanjut ke localStorage
+      }
+
+      // 🔸 Mode CREATE: cek localStorage
       const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
       if (savedAnswers) {
         try {
@@ -219,48 +251,6 @@ useEffect(() => {
           return;
         } catch (e) {
           console.warn("Gagal parse localStorage answers");
-        }
-      }
-
-      // Fallback ke API saat mode edit
-      if (fromEdit) {
-        try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
-          const data = await res.json();
-          
-          if (data.data?.assessmentDetails) {
-            const mappedAnswers: { [key: string]: string } = {};
-            data.data.assessmentDetails.forEach((detail: any) => {
-              const qId = detail.questionId;
-              const baseKey = String(qId);
-              const ans = detail.answer;
-              const question = rawQuestions.find(q => q.id === qId);
-              
-              if (!question) return;
-              
-              if (question.type === 'text') {
-                if (ans.textAnswer1 != null) mappedAnswers[baseKey] = String(ans.textAnswer1);
-                if (ans.textAnswer2 != null) mappedAnswers[`${baseKey}a`] = String(ans.textAnswer2);
-                if (ans.textAnswer3 != null) mappedAnswers[`${baseKey}b`] = String(ans.textAnswer3);
-                if (ans.textAnswer4 != null) mappedAnswers[`${baseKey}c`] = String(ans.textAnswer4);
-                if (ans.textAnswer5 != null) mappedAnswers[`${baseKey}d`] = String(ans.textAnswer5);
-              } else if (question.type === 'multitext') {
-                if (ans.textAnswer1 != null) {
-                  mappedAnswers[baseKey] = String(ans.textAnswer1);
-                }
-              }
-              
-              if (detail.evidenceLink) {
-                mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
-              }
-            });
-            
-            setAnswers(mappedAnswers);
-            setIsFormDirty(false);
-            setFormBelumDisimpan(false);
-          }
-        } catch (err) {
-          console.error("Gagal memuat data dari API:", err);
         }
       }
     };
@@ -356,14 +346,15 @@ useEffect(() => {
             else currentQuestionId = null;
           }
 
-          if (currentQuestionId === null || !valueCell || String(valueCell).trim() === "" || !inputDesc || String(inputDesc).trim() === "") {
+          if (currentQuestionId === null || !inputDesc || String(inputDesc).trim() === "") {
             continue;
           }
 
           const questionItem = questions.find(q => q.id === currentQuestionId);
           if (!questionItem) continue;
 
-          const valueStr = String(valueCell).trim();
+          const valueStr = valueCell == null ? "" : String(valueCell).trim();
+
           if (questionItem.type === 'multitext') {
             const letterToIndex: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4 };
             const lowerVal = valueStr.toLowerCase();
@@ -419,7 +410,7 @@ useEffect(() => {
 
         if (q.type === 'multitext') {
           const userAnswer = answers[baseKey];
-          if (userAnswer != null && userAnswer !== "") {
+          if (isAnswerValid(userAnswer)) {
             const idx = parseInt(userAnswer, 10);
             if (!isNaN(idx) && idx >= 0 && idx < q.options.length) {
               answerData.textAnswer1 = String(idx);
@@ -430,7 +421,7 @@ useEffect(() => {
           for (let i = 0; i < q.questionParts.length && i < 5; i++) {
             const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
             const val = answers[key];
-            if (val && !isNaN(Number(val)) && Number(val) >= 0) {
+            if (isAnswerValid(val)) {
               if (i === 0) answerData.textAnswer1 = val;
               else if (i === 1) answerData.textAnswer2 = val;
               else if (i === 2) answerData.textAnswer3 = val;
@@ -461,16 +452,17 @@ useEffect(() => {
 
       await finishAssessment({ assessmentId: selectedAssessmentId });
 
-      // Simpan ke localStorage
       localStorage.setItem(`assessment-${selectedAssessmentId}-answers`, JSON.stringify(answers));
       localStorage.setItem('currentAssessmentForEdit', JSON.stringify({ id: selectedAssessmentId }));
 
       const resultData = questions.map(q => {
         const baseKey = String(q.id);
-        let jawaban = q.type === 'multitext' ? (answers[baseKey] !== undefined ? q.options[parseInt(answers[baseKey])] : "-") : q.questionParts.map((_, i) => {
-          const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
-          return answers[key] || "-";
-        }).join(" | ");
+        let jawaban = q.type === 'multitext'
+          ? (isAnswerValid(answers[baseKey]) ? q.options[parseInt(answers[baseKey])] : "-")
+          : q.questionParts.map((_, i) => {
+              const key = i === 0 ? baseKey : `${baseKey}${String.fromCharCode(97 + i - 1)}`;
+              return isAnswerValid(answers[key]) ? answers[key] : "-";
+            }).join(" | ");
         return {
           no: q.id,
           kode: q.section,
@@ -510,20 +502,18 @@ useEffect(() => {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isClient, formBelumDisimpan, viewOnly]);
 
+  // ✅ Gunakan isAnswerValid di sini
   const allAnswered = questions.every(q => {
     if (q.type === 'text') {
       return q.questionParts.every((_, i) => {
         const key = i === 0 ? String(q.id) : `${q.id}${String.fromCharCode(97 + i - 1)}`;
-        const val = answers[key];
-        return val != null && val !== "" && !isNaN(Number(val)) && Number(val) >= 0;
+        return isAnswerValid(answers[key]);
       });
     }
-    return answers[q.id] != null && answers[q.id] !== "";
+    return isAnswerValid(answers[q.id]);
   });
 
   // === UI Rendering ===
-
-  // SSR fallback
   if (!isClient) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-10 min-h-screen bg-gray-50">
@@ -557,7 +547,6 @@ useEffect(() => {
     );
   }
 
-  // Error UI
   if (error) {
     return (
       <div className="max-w-2xl mx-auto p-10 text-center">
@@ -569,12 +558,10 @@ useEffect(() => {
     );
   }
 
-  // Loading
   if (!isAssessmentIdReady || variablesLoading || rawQuestions.length === 0) {
     return <div className="p-10 text-center">Memuat...</div>;
   }
 
-  // Render utama
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 min-h-screen bg-gray-50">
       {/* Badge Mode */}
@@ -616,17 +603,21 @@ useEffect(() => {
                     <div key={index}>
                       <label className="block text-sm text-gray-800 mb-1">{part}</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-                        value={String(answers[answerKey] ?? "")}
+                        value={answers[answerKey] ?? ""}
                         onChange={(e) => {
                           if (viewOnly) return;
-                          setAnswers(prev => ({ ...prev, [answerKey]: e.target.value }));
-                          setIsFormDirty(true);
-                          setFormBelumDisimpan(true);
+                          const value = e.target.value;
+                          if (value === "" || /^\d*$/.test(value)) {
+                            setAnswers(prev => ({ ...prev, [answerKey]: value }));
+                            setIsFormDirty(true);
+                            setFormBelumDisimpan(true);
+                          }
                         }}
                         placeholder="Masukkan angka"
-                        min="0"
                         disabled={viewOnly}
                       />
                     </div>
@@ -752,9 +743,9 @@ useEffect(() => {
                 const isAnswered = q.type === 'text'
                   ? q.questionParts.every((_, idx) => {
                       const key = idx === 0 ? String(q.id) : `${q.id}${String.fromCharCode(97 + idx - 1)}`;
-                      return answers[key] != null && answers[key] !== "";
+                      return isAnswerValid(answers[key]);
                     })
-                  : answers[q.id] != null && answers[q.id] !== "";
+                  : isAnswerValid(answers[q.id]);
                 return (
                   <button
                     key={q.id}
@@ -786,9 +777,9 @@ useEffect(() => {
                   answered: q.type === 'text'
                     ? q.questionParts.every((_, idx) => {
                         const key = idx === 0 ? String(q.id) : `${q.id}${String.fromCharCode(97 + idx - 1)}`;
-                        return answers[key] != null && answers[key] !== "";
+                        return isAnswerValid(answers[key]);
                       })
-                    : answers[q.id] != null && answers[q.id] !== "",
+                    : isAnswerValid(answers[q.id]),
                 }));
                 setModalData(summaryData);
                 setShowPreConfirmModal(true);
@@ -801,8 +792,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* --- MODALS --- */}
-      {/* Pre-Confirm Modal */}
+      {/* MODALS */}
       <ModalConfirm
         isOpen={showPreConfirmModal}
         onCancel={() => setShowPreConfirmModal(false)}
@@ -837,7 +827,6 @@ useEffect(() => {
         </div>
       </ModalConfirm>
 
-      {/* Submit Modal */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -878,7 +867,6 @@ useEffect(() => {
         </div>
       </ModalConfirm>
 
-      {/* Reset Modal */}
       {!viewOnly && (
         <ModalConfirm
           isOpen={showResetModal}
