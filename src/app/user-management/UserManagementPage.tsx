@@ -9,9 +9,9 @@ import TableButton from '@/components/TableButton';
 import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
-import { useListUsers,  useActivateUser, useDeactivateUser, useListBranches  } from "@/hooks/useUserManagement"; // ← Tambahkan import
+import { useListUsers,  useActivateUser, useDeactivateUser } from "@/hooks/useUserManagement"; // ← Tambahkan import
 import { User } from "@/interfaces/user-management";
-import { BRANCH_NAMES } from '@/interfaces/branch';
+import { useListBranch } from "@/hooks/useBranch";
 
 
 export default function UserManagementPage() {
@@ -23,7 +23,7 @@ const { data, loading, error } = useListUsers(refreshFlag);
  // DATA DARI API
 const users = data?.data || [];
  // Ambil data kampus cabang
-const { data: branchData, loading: branchLoading, error: branchError } = useListBranches();
+const { data: branchData, isLoading: branchLoading, error: branchError } = useListBranch(0);
 
 const branchNames = useMemo(() => {
   if (!branchData?.data) return {};
@@ -62,9 +62,9 @@ const enrichedUsers = useMemo(() => {
 
     // Ambil nama cabang: dari API (branchNames) > static (BRANCH_NAMES) > fallback
     const branchName = 
-      branchNames[user.branchId] || 
-      BRANCH_NAMES[user.branchId] || 
-      (user.branchId != null ? `Cabang ${user.branchId}` : '');
+    user.branchId == null || user.branchId === 0
+      ? '-'
+      : branchNames[user.branchId] ? branchNames[user.branchId] : '-';
 
       const statusName = user.status === 'active' ? 'Aktif' : 'Nonaktif';
 
@@ -239,7 +239,6 @@ const processedUsers = currentUsers.map(user => {
     user.branchId == null || user.branchId === 0
       ? '-'
       : branchNames[user.branchId] || 
-        BRANCH_NAMES[user.branchId] || 
         `Cabang ${user.branchId}`;
 
   return {
@@ -261,9 +260,26 @@ const dataForExport = processedUsers.map((user) => ({
 }));
 
 
+// Helper untuk ambil pesan error
+const getErrorMessage = (err: unknown): string => {
+  if (typeof err === 'string') {
+    return err;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return "Terjadi kesalahan tidak dikenal";
+};
+
 // Loading & Error
-if (loading) return <p className="p-6">Loading data dari server...</p>;
-if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
+if (loading || branchLoading) {
+  return <p className="p-6">Loading data dari server...</p>;
+}
+
+if (error || branchError) {
+  const errorMessage = getErrorMessage(error) || getErrorMessage(branchError);
+  return <p className="p-6 text-red-500">Error: {errorMessage}</p>;
+}
 
 console.log("Data users:", users);
 

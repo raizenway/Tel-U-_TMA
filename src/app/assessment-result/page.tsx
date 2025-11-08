@@ -282,15 +282,13 @@ export default function AssessmentResultPage() {
   const allBranchIds = useMemo(() => {
     if (!user) return [];
 
-    if (user.branchId == null) {
+    const roleId = Number(user.role?.id ?? user.roleId ?? -1);
+
+    if (roleId === 1 || roleId === 4) {
       return BRANCHES.map((b) => b.id);
     }
 
-    const roleId = Number(user.role?.id ?? user.roleId ?? -1);
-    if (roleId === 1) {
-      return BRANCHES.map((b) => b.id);
-    }
-    if (roleId === 2) {
+    if (roleId === 2 && user.branchId != null) {
       return [Number(user.branchId)];
     }
 
@@ -532,7 +530,6 @@ export default function AssessmentResultPage() {
   if (!isClient) {
     return <div className="p-6">Memuat...</div>;
   }
-
 
   return (
     <div className="flex min-h-screen bg-gray-100">
