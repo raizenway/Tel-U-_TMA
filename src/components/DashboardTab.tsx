@@ -67,6 +67,21 @@ interface DashboardApiResponse {
   branches: Branch[];
 }
 
+// ✅ Ambil user dari localStorage
+const getCurrentUser = () => {
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
+
 // --- Helper Functions ---
 const cleanYearlyData = (rawData: YearlyData[]): YearlyData[] => {
   if (!Array.isArray(rawData)) return [];
@@ -93,8 +108,7 @@ const getPeriodColor = (period: string, allPeriods: string[]): string => {
   return colors[idx >= 0 ? idx % colors.length : 0];
 };
 
-// ✅ Warna disesuaikan dengan gambar referensi: Bandung, Jakarta, Surabaya, Purwokerto
-const studentColors = ["#FF6384", "#36A2EB", "#4BC0C0", "#FF9F40"]; // Bandung, Jakarta, Surabaya, Purwokerto
+const studentColors = ["#FF6384", "#36A2EB", "#4BC0C0", "#FF9F40"];
 
 type StudentBodyRow = {
   year: string;
@@ -195,20 +209,31 @@ export default function DashboardTab() {
   const { saveToApi: saveAccreditation, isSaving: isSavingAccreditation, error: accreditationSaveError } = useAccreditationData();
   const apiDataRef = useRef<DashboardApiResponse | null>(null);
 
-  // --- FETCH DATA FUNCTION (reusable) ---
+  // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
+      const currentUser = getCurrentUser();
+      const userRoleId = currentUser?.roleId;
+      const userBranchId = currentUser?.branchId;
+
       const baseUrl = process.env.NEXT_PUBLIC_API_URL;
       if (!baseUrl) throw new Error('NEXT_PUBLIC_API_URL is not defined');
+
       const response = await fetch(`${baseUrl}/assessment/dashboard`);
       if (!response.ok) throw new Error('Failed to fetch dashboard data');
       const result = await response.json();
       const apiData = result.data as DashboardApiResponse;
       apiDataRef.current = apiData;
 
+      // ✅ Filter branches hanya untuk kampus user (jika bukan Super User)
+      let filteredBranches = apiData.branches;
+      if (userRoleId !== 1 && userBranchId) {
+        filteredBranches = apiData.branches.filter(b => b.id === userBranchId);
+      }
+
       setDashboardData({
-        totalBranches: apiData.totalBranches || 0,
+        totalBranches: filteredBranches.length,
         totalVariable: apiData.totalVariable || 0,
         submittedAssessments: apiData.submittedAssessments || 0,
         approvedAssessments: apiData.approvedAssessments || 0,
@@ -224,7 +249,7 @@ export default function DashboardTab() {
           "Tel-U Purwokerto": 0,
           "Tel-U Bandung": 0,
         };
-        for (const branch of apiData.branches) {
+        for (const branch of filteredBranches) {
           const campusName = branch.name;
           if (campusName in row) {
             const cleanedData = cleanYearlyData(branch.yearlyStudentBody);
@@ -244,7 +269,7 @@ export default function DashboardTab() {
           "Tel-U Purwokerto": 0,
           "Tel-U Bandung": 0,
         } as Record<CampusKey, number>;
-        for (const branch of apiData.branches) {
+        for (const branch of filteredBranches) {
           const campusName = branch.name;
           const cleanedData = cleanYearlyData(branch.yearlyAccreditationGrowth);
           const dataForYear = cleanedData.find(item => item.year === yearNum);
@@ -267,13 +292,18 @@ export default function DashboardTab() {
         'Tel-U Bandung': [...accInput['Tel-U Bandung']],
       });
 
-      const { transformationMaturityIndex } = apiData;
-      const firstTmi = transformationMaturityIndex[0]?.tmi || [];
+      // ✅ Filter TMI hanya untuk kampus user
+      let filteredTmi = apiData.transformationMaturityIndex;
+      if (userRoleId !== 1 && userBranchId) {
+        filteredTmi = apiData.transformationMaturityIndex.filter(t => t.branch.id === userBranchId);
+      }
+
+      const firstTmi = filteredTmi[0]?.tmi || [];
       const rawNames = firstTmi.map(i => i.name.trim());
       const uniqueNames = Array.from(new Set(rawNames)).filter(name => name !== '');
       const radarRows = uniqueNames.map(subject => {
         const row: TmiRadarRow = { subject };
-        transformationMaturityIndex.forEach(entry => {
+        filteredTmi.forEach(entry => {
           const campus = entry.branch.name;
           const found = entry.tmi.find(item => item.name.trim() === subject);
           if (found) {
@@ -289,9 +319,10 @@ export default function DashboardTab() {
       });
       setTmiRadarData(radarRows);
 
+      // ✅ Filter growth data hanya untuk kampus user
       const allVariablesSet = new Set<string>();
       const growthData: { branch: CampusKey; variable: string; period: string; score: number }[] = [];
-      for (const branch of apiData.branches) {
+      for (const branch of filteredBranches) {
         const branchName = branch.name;
         const growth = apiData.transformationVariableBranchGrowth.find(b => b.branch.name === branchName)?.growth || [];
         for (const variableEntry of growth) {
@@ -319,7 +350,6 @@ export default function DashboardTab() {
     }
   };
 
-  // --- EFFECTS ---
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -338,10 +368,10 @@ export default function DashboardTab() {
   }, [apiVariables, selectedVariables]);
 
   useEffect(() => {
-    fetchData(); // ✅ initial load
+    fetchData();
   }, []);
 
-  // --- HANDLERS ---
+  // --- HANDLERS (tetap sama) ---
   const handleAddYear = () => {
     const lastYearStr = studentBodyData.length > 0 ? studentBodyData[studentBodyData.length - 1].year : "2027";
     const nextYear = String(Number(lastYearStr) + 1);
@@ -537,7 +567,6 @@ export default function DashboardTab() {
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Transformation Maturity Index</h3>
           <div className="flex flex-col items-center">
-            {/* ✅ LEGENDA SESUAI GAMBAR REFERENSI */}
             <div className="flex flex-wrap justify-center gap-6 mb-4 text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-4 h-4 bg-[#FF6384] rounded-sm"></span>
@@ -571,7 +600,6 @@ export default function DashboardTab() {
                     tick={{ fontSize: 10, fill: '#9ca3af' }}
                     axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                   />
-                  {/* ✅ URUTAN RADAR SESUAI LEGENDA */}
                   <Radar name="Tel-U Bandung" dataKey="Tel-U Bandung" stroke="#FF6384" fill="#FF6384" fillOpacity={0.4} />
                   <Radar name="Tel-U Jakarta" dataKey="Tel-U Jakarta" stroke="#36A2EB" fill="#36A2EB" fillOpacity={0.4} />
                   <Radar name="Tel-U Surabaya" dataKey="Tel-U Surabaya" stroke="#4BC0C0" fill="#4BC0C0" fillOpacity={0.4} />
@@ -586,7 +614,6 @@ export default function DashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Student Body */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
@@ -606,7 +633,6 @@ export default function DashboardTab() {
               <YAxis />
               <Tooltip />
               <Legend />
-              {/* ✅ WARNA BAR MENGIKUTI URUTAN KAMPUS DI LEGENDA */}
               {studentYears.map((year, index) => (
                 <Bar key={year} dataKey={year} fill={studentColors[index % studentColors.length]} radius={[10, 10, 0, 0]} />
               ))}
@@ -614,7 +640,6 @@ export default function DashboardTab() {
           </ResponsiveContainer>
         </div>
 
-        {/* Accreditation */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
@@ -640,7 +665,6 @@ export default function DashboardTab() {
               <YAxis domain={[0, 100]} />
               <Tooltip formatter={(value) => Number(value).toFixed(2)} />
               <Legend />
-              {/* ✅ WARNA LINE SESUAI NAMA KAMPUS (Bukan Urutan Di Legend) */}
               <Line type="monotone" dataKey="Jakarta" stroke="#36A2EB" />
               <Line type="monotone" dataKey="Bandung" stroke="#FF6384" />
               <Line type="monotone" dataKey="Purwokerto" stroke="#FF9F40" />
@@ -939,4 +963,4 @@ export default function DashboardTab() {
       </ModalConfirm>
     </div>
   );
-}
+} 
