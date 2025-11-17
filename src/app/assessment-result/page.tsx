@@ -33,7 +33,17 @@ ChartJS.register(
   Legend
 );
 
-const normalizeLabel = (str: string) => str.trim().toLowerCase();
+const FIXED_LABELS = [
+  'Budaya Mutu',
+  'Relevansi Pendidikan',
+  'Relevansi Penelitian',
+  'Relevansi Pengabdian Pada Masyarakat',
+  'Akuntabilitas',
+  'Diferensiasi Misi',
+];
+
+const normalizeLabel = (str: string) =>
+  str.trim().toLowerCase().replace(/\s+/g, ' ');
 
 interface Assessment {
   id: string;
@@ -78,6 +88,11 @@ const palette = [
 ] as const;
 
 const getPalette = (i: number) => palette[i % palette.length];
+
+function hexWithAlpha(hex: string, alpha: number) {
+  const a = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  return `${hex}${a}`;
+}
 
 function RadarChart({
   selectedIds,
@@ -127,11 +142,6 @@ function RadarChart({
       height={380}
     />
   );
-}
-
-function hexWithAlpha(hex: string, alpha: number) {
-  const a = Math.round(alpha * 255).toString(16).padStart(2, '0');
-  return `${hex}${a}`;
 }
 
 function FilterUPPSPopover({
@@ -270,14 +280,8 @@ export default function AssessmentResultPage() {
   const [allBranches, setAllBranches] = useState<Option[]>([]);
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
-  const [radarLabels, setRadarLabels] = useState<string[]>([
-    'Budaya Mutu',
-    'Relevansi Pengabdian Pada Masyarakat',
-    'Akuntabilitas',
-    'Diferensiasi Misi',
-    'Relevansi Pendidikan',
-    'Relevansi Penelitian',
-  ]);
+
+  const [radarLabels] = useState<string[]>(FIXED_LABELS);
 
   const allBranchIds = useMemo(() => {
     if (!user) return [];
@@ -295,7 +299,7 @@ export default function AssessmentResultPage() {
     return [];
   }, [user]);
 
-  const { data: periodeData } = useListPeriode(0);
+  const { data:periodeData } = useListPeriode(0);
 
   useEffect(() => {
     if (!periodeData?.data) return;
@@ -326,8 +330,19 @@ export default function AssessmentResultPage() {
       const res = await getAssessmentResult(branchId, periodId);
       const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
       const submitPeriode = `${period.semester} ${period.year}`;
-      const radarLabels = tmiData.map((item: any) => item.name);
-      const radarData = tmiData.map((item: any) => parseFloat(item.value.toFixed(2)));
+
+      const dataMap = new Map<string, any>();
+      (tmiData || []).forEach((item: any) => {
+        dataMap.set(normalizeLabel(item.name), {
+          value: parseFloat((item.value ?? 0).toFixed(2)),
+          item,
+        });
+      });
+
+      const radarData = FIXED_LABELS.map(label => {
+        const norm = normalizeLabel(label);
+        return dataMap.has(norm) ? dataMap.get(norm).value : 0;
+      });
 
       const assessment: Assessment = {
         id: String(branch.id),
@@ -340,19 +355,21 @@ export default function AssessmentResultPage() {
         maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
       };
 
-      const reports = tmiData.map((item: any) => {
-        const ml = item.maturityLevel || {};
+      const reports = FIXED_LABELS.map(label => {
+        const norm = normalizeLabel(label);
+        const match = dataMap.get(norm)?.item;
+        const ml = match?.maturityLevel || {};
         return {
-          code: item.code || item.name,
-          name: item.name,
-          normalized: normalizeLabel(item.name),
-          point: parseFloat(item.value.toFixed(2)),
+          code: match?.code || label,
+          name: label,
+          normalized: norm,
+          point: match ? parseFloat(match.value.toFixed(2)) : 0,
           maturityLevel: ml.name || 'Unknown',
-          desc: ml.description || item.description || 'Tidak ada deskripsi.',
+          desc: ml.description || match?.description || 'Tidak ada deskripsi.',
         };
       });
 
-      return { assessment, reports, radarData, radarLabels };
+      return { assessment, reports, radarData, radarLabels: FIXED_LABELS };
     } catch (err) {
       console.error(`Fetch failed for branch ${branchId}, period ${periodId}:`, err);
       return null;
@@ -377,7 +394,6 @@ export default function AssessmentResultPage() {
 
       if (results.length === 0) return;
 
-      setRadarLabels(results[0].radarLabels);
       setAssessments(results.map((r) => r.assessment));
       setReportsByUPPS(
         results.reduce((acc, r) => ({ ...acc, [r.assessment.id]: r.reports }), {})
@@ -466,6 +482,9 @@ export default function AssessmentResultPage() {
       zIndex: '-1000',
       transform: 'scale(1)',
       transformOrigin: 'top left',
+      height: 'auto',
+      minHeight: 'auto',
+      paddingBottom: '24px',
     });
 
     document.body.appendChild(clone);
@@ -478,7 +497,7 @@ export default function AssessmentResultPage() {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         width: clone.scrollWidth,
-        height: clone.scrollHeight,
+        height: clone.scrollHeight, 
         cacheBust: true,
       });
 
@@ -580,9 +599,10 @@ export default function AssessmentResultPage() {
                     id="download-content"
                     className={clsx(
                       'inline-block min-w-full space-y-6 p-4 bg-white',
-                      isExporting && 'whitespace-nowrap'
+                      isExporting && 'whitespace-nowrap overflow-auto'
                     )}
                   >
+
                     <table className="w-full table-auto text-sm border-collapse">
                       <thead>
                         <tr>
@@ -746,6 +766,8 @@ export default function AssessmentResultPage() {
                         ))}
                       </tbody>
                     </table>
+
+                    {isExporting && <div className="h-16"></div>}
                   </div>
                 </div>
 
