@@ -227,7 +227,9 @@ export default function AssessmentPage() {
       </div>
 
       {showPeriodModal && selectedBranchId !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div 
+  className="fixed inset-0 bg-tranfarant bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+>
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">

@@ -69,6 +69,7 @@ export default function AssessmentFormTab() {
   const searchParams = useSearchParams();
   const assessmentIdFromUrl = searchParams.get('assessmentId');
   const fromEdit = searchParams.get('from') === 'edit';
+  const fromContinue = searchParams.get('from') === 'continue';
   const viewOnly = searchParams.get('viewOnly') === 'true';
 
   // === Hanya di client ===
@@ -80,13 +81,15 @@ export default function AssessmentFormTab() {
   useEffect(() => {
     if (!isClient) return;
     let id: number | null = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
-    if (fromEdit) {
-      const saved = localStorage.getItem('currentAssessmentForEdit');
+
+    if (fromEdit || fromContinue) {
+      let storageKey = fromEdit ? 'currentAssessmentForEdit' : 'currentAssessmentForContinue';
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
           id = JSON.parse(saved).id;
         } catch (e) {
-          console.warn("Gagal parse currentAssessmentForEdit");
+          console.warn(`Gagal parse ${storageKey}`);
         }
       }
     } else if (viewOnly) {
@@ -99,9 +102,10 @@ export default function AssessmentFormTab() {
         }
       }
     }
+
     setSelectedAssessmentId(id);
     setIsAssessmentIdReady(true);
-  }, [isClient, assessmentIdFromUrl, fromEdit, viewOnly]);
+  }, [isClient, assessmentIdFromUrl, fromEdit, fromContinue, viewOnly]);
 
   // === Validasi assessmentId ===
   useEffect(() => {
@@ -184,79 +188,124 @@ export default function AssessmentFormTab() {
   // === Bersihkan localStorage saat mode CREATE ===
   useEffect(() => {
     if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null) return;
-    if (fromEdit || viewOnly) return;
+    if (fromEdit || fromContinue || viewOnly) return;
     localStorage.removeItem(`assessment-${selectedAssessmentId}-answers`);
     localStorage.removeItem('currentAssessmentForEdit');
+    localStorage.removeItem('currentAssessmentForContinue');
     console.log("✅ LocalStorage dibersihkan untuk assessment baru");
-  }, [isClient, isAssessmentIdReady, selectedAssessmentId, fromEdit, viewOnly]);
+  }, [isClient, isAssessmentIdReady, selectedAssessmentId, fromEdit, fromContinue, viewOnly]);
 
   // === Load Answers dari localStorage atau API ===
-useEffect(() => {
-  if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
+  useEffect(() => {
+    if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
 
-  const loadAnswers = async () => {
-    // 🔸 Jika mode EDIT atau VIEW → ambil dari API
-    if (fromEdit || viewOnly) {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
-        const data = await res.json();
+    const loadAnswers = async () => {
+      // 🔸 Jika mode EDIT atau VIEW → ambil dari API
+      if (fromEdit || viewOnly) {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
+          const data = await res.json();
 
-        if (data.data?.assessmentDetails) {
-          const mappedAnswers: { [key: string]: string } = {};
+          if (data.data?.assessmentDetails) {
+            const mappedAnswers: { [key: string]: string } = {};
 
-          data.data.assessmentDetails.forEach((detail: any) => {
-            const qId = detail.questionId;
-            const baseKey = String(qId);
-            const ans = detail.answer;
-            const question = rawQuestions.find(q => q.id === qId);
-            if (!question) return;
+            data.data.assessmentDetails.forEach((detail: any) => {
+              const qId = detail.questionId;
+              const baseKey = String(qId);
+              const ans = detail.answer;
+              const question = rawQuestions.find(q => q.id === qId);
+              if (!question) return;
 
-            const getAnswer = (val: any): string => {
-              if (val == null || val === "") return "";
-              return String(val).trim();
-            };
+              const getAnswer = (val: any): string => {
+                if (val == null || val === "") return "";
+                return String(val).trim();
+              };
 
-            if (question.type === 'text') {
-              mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
-              mappedAnswers[`${baseKey}a`] = getAnswer(ans.textAnswer2);
-              mappedAnswers[`${baseKey}b`] = getAnswer(ans.textAnswer3);
-              mappedAnswers[`${baseKey}c`] = getAnswer(ans.textAnswer4);
-              mappedAnswers[`${baseKey}d`] = getAnswer(ans.textAnswer5);
-            } else if (question.type === 'multitext') {
-              mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+              if (question.type === 'text') {
+                mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+                mappedAnswers[`${baseKey}a`] = getAnswer(ans.textAnswer2);
+                mappedAnswers[`${baseKey}b`] = getAnswer(ans.textAnswer3);
+                mappedAnswers[`${baseKey}c`] = getAnswer(ans.textAnswer4);
+                mappedAnswers[`${baseKey}d`] = getAnswer(ans.textAnswer5);
+              } else if (question.type === 'multitext') {
+                mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
+              }
+
+              if (detail.evidenceLink) {
+                mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
+              }
+            });
+
+            setAnswers(mappedAnswers);
+            setIsFormDirty(false);
+            setFormBelumDisimpan(false);
+          }
+        } catch (err) {
+          console.error("Gagal memuat data dari API:", err);
+        }
+        return;
+      }
+
+      // 🔸 Mode CONTINUE: cek localStorage
+      if (fromContinue) {
+        const savedContinue = localStorage.getItem('currentAssessmentForContinue');
+        if (savedContinue) {
+          try {
+            const item = JSON.parse(savedContinue);
+            // Gunakan logika buildAnswersFromAssessment seperti di AssessmentTable
+            const answersMap: { [key: string]: string } = {};
+            if (item.assessmentDetails && Array.isArray(item.assessmentDetails)) {
+              item.assessmentDetails.forEach((detail: any) => {
+                const qId = detail.questionId;
+                const baseKey = String(qId);
+                const ans = detail.answer || {};
+
+                const answer1 = 
+                  ans.textAnswer1 != null && ans.textAnswer1 !== "" 
+                    ? String(ans.textAnswer1) 
+                    : detail.submissionValue || "0";
+                const answer2 = ans.textAnswer2 != null ? String(ans.textAnswer2) : "0";
+                const answer3 = ans.textAnswer3 != null ? String(ans.textAnswer3) : "0";
+                const answer4 = ans.textAnswer4 != null ? String(ans.textAnswer4) : "0";
+                const answer5 = ans.textAnswer5 != null ? String(ans.textAnswer5) : "0";
+
+                answersMap[baseKey] = answer1;
+                if (answer2 !== "0") answersMap[`${baseKey}a`] = answer2;
+                if (answer3 !== "0") answersMap[`${baseKey}b`] = answer3;
+                if (answer4 !== "0") answersMap[`${baseKey}c`] = answer4;
+                if (answer5 !== "0") answersMap[`${baseKey}d`] = answer5;
+
+                if (detail.evidenceLink) {
+                  answersMap[`evidence-${qId}`] = detail.evidenceLink;
+                }
+              });
             }
+            setAnswers(answersMap);
+            setIsFormDirty(true);
+            setFormBelumDisimpan(true);
+            return;
+          } catch (e) {
+            console.warn("Gagal parse currentAssessmentForContinue");
+          }
+        }
+      }
 
-            if (detail.evidenceLink) {
-              mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
-            }
-          });
-
-          setAnswers(mappedAnswers);
+      // 🔸 Mode CREATE: cek localStorage
+      const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
+      if (savedAnswers) {
+        try {
+          setAnswers(JSON.parse(savedAnswers));
           setIsFormDirty(false);
           setFormBelumDisimpan(false);
+          return;
+        } catch (e) {
+          console.warn("Gagal parse localStorage answers");
         }
-      } catch (err) {
-        console.error("Gagal memuat data dari API:", err);
       }
-      return;
-    }
+    };
 
-    // 🔸 Mode CREATE: cek localStorage
-    const savedAnswers = localStorage.getItem(`assessment-${selectedAssessmentId}-answers`);
-    if (savedAnswers) {
-      try {
-        setAnswers(JSON.parse(savedAnswers));
-        setIsFormDirty(false);
-        setFormBelumDisimpan(false);
-        return;
-      } catch (e) {
-        console.warn("Gagal parse localStorage answers");
-      }
-    }
-  };
-
-  loadAnswers();
-}, [isClient, isAssessmentIdReady, selectedAssessmentId, rawQuestions, fromEdit, viewOnly]);
+    loadAnswers();
+  }, [isClient, isAssessmentIdReady, selectedAssessmentId, rawQuestions, fromEdit, fromContinue, viewOnly]);
 
   // === Hooks ===
   const { mutate: saveAssessmentDetail, loading: savingAnswers, error: saveError } = useCreateAssessmentDetail();
@@ -483,6 +532,7 @@ useEffect(() => {
       }]));
       localStorage.setItem("showSuccessNotification", "Assessment berhasil dikirim!");
       localStorage.removeItem('currentAssessmentForEdit');
+      localStorage.removeItem('currentAssessmentForContinue');
       router.push("/assessment/assessmenttable");
     } catch (err) {
       console.error("❌ Gagal menyimpan:", err);
@@ -572,6 +622,10 @@ useEffect(() => {
       ) : fromEdit ? (
         <div className="mb-4 p-2 bg-blue-100 text-blue-800 rounded-md text-sm font-medium text-center">
           Mode Edit — Data akan diperbarui
+        </div>
+      ) : fromContinue ? (
+        <div className="mb-4 p-2 bg-yellow-100 text-yellow-800 rounded-md text-sm font-medium text-center">
+          Mode Lanjutkan — Melanjutkan pengisian assessment
         </div>
       ) : null}
 
