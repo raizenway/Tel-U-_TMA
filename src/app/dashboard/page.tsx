@@ -12,19 +12,34 @@ import DashboardTab from "@/components/DashboardTab";
 import UserManualTab from "@/components/UserManualTab";
 import PurwokertoTab from "@/app/assessment/AssessmentFormTab";
 
-
 export default function WelcomePage() {
   const router = useRouter();
   const pathname = usePathname();
 
   const [tab, setTab] = useState("welcome");
+  const [isNotNonSSO, setIsNotNonSSO] = useState(true); // Default: tampilkan tombol
 
   useEffect(() => {
     const path = pathname?.split("/")[1];
     setTab(path || "welcome");
-  }, [pathname]);
 
-  
+    // Ambil data user dari localStorage
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        
+        // Deteksi apakah user punya role 'Non-SSO'
+        const userRole = user.role || user.roles?.[0]?.name; // Sesuaikan dengan struktur data Anda
+
+        // Jika role === 'Non-SSO', maka sembunyikan tombol
+        setIsNotNonSSO(userRole !== "Non-SSO");
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        setIsNotNonSSO(true); // Default: tampilkan tombol jika error
+      }
+    }
+  }, [pathname]);
 
   const [, setIsFormDirty] = useState(false);
 
@@ -58,7 +73,8 @@ export default function WelcomePage() {
             </div>
           )}
 
-         {/* Di dalam halaman, misal dashboard page */}
+          {/* Tombol Start Assessment - muncul untuk semua role, KECUALI Non-SSO */}
+          {isNotNonSSO && (
             <div className="absolute top-3 right-50 z-40">
               <Button
                 variant="primary"
@@ -68,6 +84,7 @@ export default function WelcomePage() {
                 Start Assessment
               </Button>
             </div>
+          )}
         </div>
 
         {/* Main Content */}
@@ -78,18 +95,6 @@ export default function WelcomePage() {
           {tab === "purwokerto" && (
             <PurwokertoTab />
           )}
-         
-          {/* {tab === "assessment-form" && (
-            <AssessmentForm
-              onSelectCampus={(campus) => {
-                if (campus === "Tel-U Purwokerto") {
-                  router.push("/purwokerto");
-                } else {
-                  alert(`Pilihannya: ${campus}`);
-                }
-              }}
-            />
-          )} */}
         </main>
       </div>
     </div>

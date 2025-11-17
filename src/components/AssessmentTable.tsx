@@ -290,11 +290,15 @@ const AssessmentTable = ({ hideStartButton = false }) => {
             <BookOpenCheck size={20} />
           </button>
         )}
-        {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && (
-          <div className="text-red-600">
-            <Play size={20} />
-          </div>
-        )}
+       {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && (
+  <button
+    className="text-blue-600 hover:text-blue-800 transition"
+    onClick={() => handleContinue(item.id)}
+    title="Lanjutkan Pengisian"
+  >
+    <Play size={20} />
+  </button>
+)}
       </div>
     ),
   }));
@@ -367,6 +371,29 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     printWindow.focus();
     printWindow.onload = () => printWindow.print();
   };
+
+ const handleContinue = (id: number) => {
+  // Ambil data assessment berdasarkan ID
+  const item = filteredApiData.find((item) => item.id === id);
+  if (!item) {
+    console.error("Assessment tidak ditemukan");
+    return;
+  }
+
+  // Redirect ke halaman assessment dengan ID yang sesuai
+  const branchId = item.branch?.id;
+  if (typeof branchId !== 'number' || branchId <= 0) {
+    console.error('Branch ID tidak valid:', branchId);
+    return;
+  }
+
+  // Simpan ke localStorage agar bisa dilanjutkan
+  // Ganti key agar AssessmentFormTab tahu ini "Lanjutkan", bukan "Edit"
+  localStorage.setItem('currentAssessmentForContinue', JSON.stringify(item));
+
+  // Redirect ke halaman assessment
+  router.push(`/assessment/${branchId}?from=continue`); // ✅ Tambahkan param baru
+};
 
   const handleDownloadCSV = () => {
     const headers = [
