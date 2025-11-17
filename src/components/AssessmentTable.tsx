@@ -17,6 +17,21 @@ import {
 import { Search, Copy, Printer, Download } from 'lucide-react';
 import { useListAssessment, useAssessmentById } from '@/hooks/useAssessment';
 
+// Helper: Ambil user dari localStorage
+const getCurrentUser = () => {
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
+
 // Mapping status
 const mapStatusToUI = (
   approvalStatus: string
@@ -33,21 +48,18 @@ const mapStatusToUI = (
   }
 };
 
-// Helper: Bangun objek jawaban dari assessment detail
 const buildAnswersFromAssessment = (item: any): { [key: string]: string } => {
   const answers: { [key: string]: string } = {};
   if (item.assessmentDetails && Array.isArray(item.assessmentDetails)) {
     item.assessmentDetails.forEach((detail: any) => {
       const qId = detail.questionId;
       const baseKey = String(qId);
-
-      // ✅ Baca dari detail.answer (sesuai struktur Postman)
       const ans = detail.answer || {};
-          // ✅ Gunakan submissionValue jika textAnswer1 tidak ada
-        const answer1 = 
-          ans.textAnswer1 != null && ans.textAnswer1 !== "" 
-            ? String(ans.textAnswer1) 
-            : detail.submissionValue || "0";
+
+      const answer1 = 
+        ans.textAnswer1 != null && ans.textAnswer1 !== "" 
+          ? String(ans.textAnswer1) 
+          : detail.submissionValue || "0";
       const answer2 = ans.textAnswer2 != null ? String(ans.textAnswer2) : "0";
       const answer3 = ans.textAnswer3 != null ? String(ans.textAnswer3) : "0";
       const answer4 = ans.textAnswer4 != null ? String(ans.textAnswer4) : "0";
@@ -68,7 +80,7 @@ const buildAnswersFromAssessment = (item: any): { [key: string]: string } => {
 };
 
 const AssessmentTable = ({ hideStartButton = false }) => {
-  const { data: apiData, loading, error } = useListAssessment();
+  const {  data: apiData, loading, error } = useListAssessment();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { data: selectedAssessment, loading: loadingSelected } = useAssessmentById(selectedId);
 
@@ -78,7 +90,13 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
-  // Handle redirect setelah data lengkap siap
+  // Ambil user saat ini
+  const currentUser = getCurrentUser();
+  const userRoleId = currentUser?.roleId || currentUser?.role?.id;
+  const userBranchId = currentUser?.branchId;
+  const userId = currentUser?.id;
+
+  // Redirect setelah data lengkap
   useEffect(() => {
     if (selectedAssessment && selectedId) {
       const answers = buildAnswersFromAssessment(selectedAssessment);
@@ -91,23 +109,22 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       }
       localStorage.setItem(`assessment-${selectedId}-answers`, JSON.stringify(answers));
 
-     const branchId = selectedAssessment.branch?.id;
-if (typeof branchId !== 'number' || branchId <= 0) {
-  console.error('Branch ID tidak valid:', branchId);
-  return;
-}
+      const branchId = selectedAssessment.branch?.id;
+      if (typeof branchId !== 'number' || branchId <= 0) {
+        console.error('Branch ID tidak valid:', branchId);
+        return;
+      }
 
-if (isView) {
-  router.push(`/assessment/${branchId}?viewOnly=true`);
-} else {
-  router.push(`/assessment/${branchId}?from=edit`);
-}
+      if (isView) {
+        router.push(`/assessment/${branchId}?viewOnly=true`);
+      } else {
+        router.push(`/assessment/${branchId}?from=edit`);
+      }
 
       setSelectedId(null);
     }
   }, [selectedAssessment, selectedId, router]);
 
-  // Handle notifikasi sukses
   useEffect(() => {
     const saved = localStorage.getItem('showSuccessNotification');
     if (saved) {
@@ -116,7 +133,18 @@ if (isView) {
     }
   }, []);
 
-  const data = apiData.map((item) => {
+  // ✅ Filter berdasarkan role user
+  const filteredApiData = apiData.filter((item: any) => {
+    if (userRoleId === 1) {
+      return true; // Super User: lihat semua
+    }
+    if (userRoleId === 2 && userBranchId) {
+      return item.branchId === userBranchId; // UPPS/KC: lihat milik branch-nya
+    }
+    return false;
+  });
+
+  const data = filteredApiData.map((item) => {
     const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
     const { status, aksi } = mapStatusToUI(item.approvalStatus);
 
@@ -149,19 +177,14 @@ if (isView) {
     item.nama.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-const handleEdit = (id: number) => {
-  console.log('handleEdit dipanggil dengan ID:', id);
-  const item = apiData.find((item) => item.id === id);
-  if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) {
-    console.log('Item tidak ditemukan atau status tidak sesuai');
-    return;
-  }
-  setSelectedId(id);
-  console.log('selectedId di-set ke:', id);
-};
+  const handleEdit = (id: number) => {
+    const item = filteredApiData.find((item) => item.id === id);
+    if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) return;
+    setSelectedId(id);
+  };
 
   const handleView = (id: number) => {
-    const item = apiData.find((item) => item.id === id);
+    const item = filteredApiData.find((item) => item.id === id);
     if (!item || item.approvalStatus !== 'approved') return;
     setSelectedId(id);
   };
@@ -169,7 +192,7 @@ const handleEdit = (id: number) => {
   const handleApprove = (id: number) => {
     setShowModal(false);
     setShowSuccess(true);
-    localStorage.setItem('showSuccessNotification', 'true');
+    localStorage.setItem('showSuccessNotification', 'Assessment berhasil di-approve!');
   };
 
   const columns = [
@@ -267,16 +290,20 @@ const handleEdit = (id: number) => {
             <BookOpenCheck size={20} />
           </button>
         )}
-        {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && (
-          <div className="text-red-600">
-            <Play size={20} />
-          </div>
-        )}
+       {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && (
+  <button
+    className="text-blue-600 hover:text-blue-800 transition"
+    onClick={() => handleContinue(item.id)}
+    title="Lanjutkan Pengisian"
+  >
+    <Play size={20} />
+  </button>
+)}
       </div>
     ),
   }));
 
-  // Fungsi utilitas (copy, print, download) tetap sama
+  // --- Fungsi utilitas ---
   const handleCopy = () => {
     const headers = [
       'No',
@@ -344,6 +371,29 @@ const handleEdit = (id: number) => {
     printWindow.focus();
     printWindow.onload = () => printWindow.print();
   };
+
+ const handleContinue = (id: number) => {
+  // Ambil data assessment berdasarkan ID
+  const item = filteredApiData.find((item) => item.id === id);
+  if (!item) {
+    console.error("Assessment tidak ditemukan");
+    return;
+  }
+
+  // Redirect ke halaman assessment dengan ID yang sesuai
+  const branchId = item.branch?.id;
+  if (typeof branchId !== 'number' || branchId <= 0) {
+    console.error('Branch ID tidak valid:', branchId);
+    return;
+  }
+
+  // Simpan ke localStorage agar bisa dilanjutkan
+  // Ganti key agar AssessmentFormTab tahu ini "Lanjutkan", bukan "Edit"
+  localStorage.setItem('currentAssessmentForContinue', JSON.stringify(item));
+
+  // Redirect ke halaman assessment
+  router.push(`/assessment/${branchId}?from=continue`); // ✅ Tambahkan param baru
+};
 
   const handleDownloadCSV = () => {
     const headers = [
@@ -428,7 +478,9 @@ const handleEdit = (id: number) => {
           Pengisian Assessment
         </h2>
         <p className="text-sm text-gray-600">
-          Berikut adalah daftar UPPS/KC yang sudah melakukan assessment
+          {userRoleId === 1
+            ? 'Daftar semua UPPS/KC'
+            : 'Hasil assessment untuk kampus Anda'}
         </p>
       </div>
 
@@ -474,7 +526,7 @@ const handleEdit = (id: number) => {
               Download
             </Button>
 
-            {!hideStartButton && (
+            {!hideStartButton && userRoleId === 2 && (
               <Button
                 variant="primary"
                 onClick={() => router.push('/assessment')}

@@ -73,6 +73,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     align="end"
                     className="z-50 min-w-[160px] p-1 text-sm bg-white border rounded-md shadow-lg"
                   >
+                    {/* Menu profil dan pengaturan disembunyikan */}
+                    {/* 
                     <DropdownMenuItem onClick={() => alert("Profil Saya")}>
                       Profil Saya
                     </DropdownMenuItem>
@@ -80,6 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       Pengaturan
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    */}
                     <DropdownMenuItem
                       onClick={() => {
                         localStorage.removeItem("user"); // hapus user

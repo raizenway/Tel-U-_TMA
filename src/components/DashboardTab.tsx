@@ -33,13 +33,15 @@ const CAMPUS_LIST = [
   "Tel-U Surabaya",
   "Tel-U Purwokerto",
   "Tel-U Bandung",
+  "Tel-U Sumatra", // ✅ Tambahkan Tel-U Sumatra
 ] as const;
 
 type CampusKey = 
   | "Tel-U Jakarta"
   | "Tel-U Surabaya"
   | "Tel-U Purwokerto"
-  | "Tel-U Bandung";
+  | "Tel-U Bandung"
+  | "Tel-U Sumatra"; // ✅ Tambahkan tipe
 
 interface YearlyData { year: number; total: number; }
 interface Branch {
@@ -67,6 +69,21 @@ interface DashboardApiResponse {
   branches: Branch[];
 }
 
+// ✅ Ambil user dari localStorage
+const getCurrentUser = () => {
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
+
 // --- Helper Functions ---
 const cleanYearlyData = (rawData: YearlyData[]): YearlyData[] => {
   if (!Array.isArray(rawData)) return [];
@@ -93,8 +110,7 @@ const getPeriodColor = (period: string, allPeriods: string[]): string => {
   return colors[idx >= 0 ? idx % colors.length : 0];
 };
 
-// ✅ Warna disesuaikan dengan gambar referensi: Bandung, Jakarta, Surabaya, Purwokerto
-const studentColors = ["#FF6384", "#36A2EB", "#4BC0C0", "#FF9F40"]; // Bandung, Jakarta, Surabaya, Purwokerto
+const studentColors = ["#FF6384", "#36A2EB", "#4BC0C0", "#FF9F40", "#9966FF"]; // Tambahkan warna untuk Sumatra
 
 type StudentBodyRow = {
   year: string;
@@ -102,6 +118,7 @@ type StudentBodyRow = {
   "Tel-U Surabaya": number;
   "Tel-U Purwokerto": number;
   "Tel-U Bandung": number;
+  "Tel-U Sumatra": number; // ✅ Tambahkan
 };
 
 type AccreditationRow = {
@@ -110,6 +127,7 @@ type AccreditationRow = {
   "Tel-U Surabaya": number;
   "Tel-U Purwokerto": number;
   "Tel-U Bandung": number;
+  "Tel-U Sumatra": number; // ✅ Tambahkan
 };
 
 interface CustomRadarTooltipProps {
@@ -140,6 +158,27 @@ interface TmiRadarRow {
 }
 
 export default function DashboardTab() {
+  const currentUser = getCurrentUser();
+  const userRoleId = currentUser?.roleId;
+  const userBranchId = currentUser?.branchId;
+
+  // ✅ Mapping branchId ke nama kampus
+  const branchIdToName: Record<number, CampusKey> = {
+    1: "Tel-U Bandung",
+    2: "Tel-U Jakarta",
+    3: "Tel-U Surabaya",
+    4: "Tel-U Purwokerto",
+    6: "Tel-U Sumatra",
+  };
+
+  // ✅ Tentukan kampus default berdasarkan role
+  const getDefaultCampus = (): CampusKey => {
+    if (userRoleId !== 1 && userBranchId && branchIdToName[userBranchId]) {
+      return branchIdToName[userBranchId];
+    }
+    return "Tel-U Bandung";
+  };
+
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'student' | 'prodi'>('student');
   const [dashboardData, setDashboardData] = useState({
@@ -161,11 +200,13 @@ export default function DashboardTab() {
     "Tel-U Surabaya": number[];
     "Tel-U Purwokerto": number[];
     "Tel-U Bandung": number[];
+    "Tel-U Sumatra": number[];
   }>({
     "Tel-U Jakarta": Array(7).fill(0),
     "Tel-U Surabaya": Array(7).fill(0),
     "Tel-U Purwokerto": Array(7).fill(0),
     "Tel-U Bandung": Array(7).fill(0),
+    "Tel-U Sumatra": Array(7).fill(0),
   });
 
   const [tmiRadarData, setTmiRadarData] = useState<TmiRadarRow[]>([]);
@@ -175,7 +216,7 @@ export default function DashboardTab() {
   >([]);
 
   const [loading, setLoading] = useState(true);
-  const [selectedCampus, setSelectedCampus] = useState<CampusKey>("Tel-U Bandung");
+  const [selectedCampus, setSelectedCampus] = useState<CampusKey>(getDefaultCampus());
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
   const [localAccreditationYears, setLocalAccreditationYears] = useState<string[]>(FIXED_YEARS);
@@ -184,18 +225,20 @@ export default function DashboardTab() {
     "Tel-U Surabaya": number[];
     "Tel-U Purwokerto": number[];
     "Tel-U Bandung": number[];
+    "Tel-U Sumatra": number[];
   }>({
     "Tel-U Jakarta": Array(7).fill(0),
     "Tel-U Surabaya": Array(7).fill(0),
     "Tel-U Purwokerto": Array(7).fill(0),
     "Tel-U Bandung": Array(7).fill(0),
+    "Tel-U Sumatra": Array(7).fill(0),
   });
 
   const { saveToApi: saveStudentBody, isSaving: isSavingStudent, error: studentSaveError } = useStudentBodyData();
   const { saveToApi: saveAccreditation, isSaving: isSavingAccreditation, error: accreditationSaveError } = useAccreditationData();
   const apiDataRef = useRef<DashboardApiResponse | null>(null);
 
-  // --- FETCH DATA FUNCTION (reusable) ---
+  // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -207,8 +250,14 @@ export default function DashboardTab() {
       const apiData = result.data as DashboardApiResponse;
       apiDataRef.current = apiData;
 
+      // Filter branches hanya untuk kampus user (jika bukan Super User)
+      let filteredBranches = apiData.branches;
+      if (userRoleId !== 1 && userBranchId) {
+        filteredBranches = apiData.branches.filter(b => b.id === userBranchId);
+      }
+
       setDashboardData({
-        totalBranches: apiData.totalBranches || 0,
+        totalBranches: filteredBranches.length,
         totalVariable: apiData.totalVariable || 0,
         submittedAssessments: apiData.submittedAssessments || 0,
         approvedAssessments: apiData.approvedAssessments || 0,
@@ -223,8 +272,9 @@ export default function DashboardTab() {
           "Tel-U Surabaya": 0,
           "Tel-U Purwokerto": 0,
           "Tel-U Bandung": 0,
+          "Tel-U Sumatra": 0,
         };
-        for (const branch of apiData.branches) {
+        for (const branch of filteredBranches) {
           const campusName = branch.name;
           if (campusName in row) {
             const cleanedData = cleanYearlyData(branch.yearlyStudentBody);
@@ -243,8 +293,9 @@ export default function DashboardTab() {
           "Tel-U Surabaya": 0,
           "Tel-U Purwokerto": 0,
           "Tel-U Bandung": 0,
+          "Tel-U Sumatra": 0,
         } as Record<CampusKey, number>;
-        for (const branch of apiData.branches) {
+        for (const branch of filteredBranches) {
           const campusName = branch.name;
           const cleanedData = cleanYearlyData(branch.yearlyAccreditationGrowth);
           const dataForYear = cleanedData.find(item => item.year === yearNum);
@@ -258,6 +309,7 @@ export default function DashboardTab() {
         "Tel-U Surabaya": accreditationFormatted.map(r => r["Tel-U Surabaya"]),
         "Tel-U Purwokerto": accreditationFormatted.map(r => r["Tel-U Purwokerto"]),
         "Tel-U Bandung": accreditationFormatted.map(r => r["Tel-U Bandung"]),
+        "Tel-U Sumatra": accreditationFormatted.map(r => r["Tel-U Sumatra"]),
       };
       setAccreditationInputData(accInput);
       setLocalAccreditationData({
@@ -265,15 +317,21 @@ export default function DashboardTab() {
         'Tel-U Surabaya': [...accInput['Tel-U Surabaya']],
         'Tel-U Purwokerto': [...accInput['Tel-U Purwokerto']],
         'Tel-U Bandung': [...accInput['Tel-U Bandung']],
+        'Tel-U Sumatra': [...accInput['Tel-U Sumatra']],
       });
 
-      const { transformationMaturityIndex } = apiData;
-      const firstTmi = transformationMaturityIndex[0]?.tmi || [];
+      // Filter TMI hanya untuk kampus user
+      let filteredTmi = apiData.transformationMaturityIndex;
+      if (userRoleId !== 1 && userBranchId) {
+        filteredTmi = apiData.transformationMaturityIndex.filter(t => t.branch.id === userBranchId);
+      }
+
+      const firstTmi = filteredTmi[0]?.tmi || [];
       const rawNames = firstTmi.map(i => i.name.trim());
       const uniqueNames = Array.from(new Set(rawNames)).filter(name => name !== '');
       const radarRows = uniqueNames.map(subject => {
         const row: TmiRadarRow = { subject };
-        transformationMaturityIndex.forEach(entry => {
+        filteredTmi.forEach(entry => {
           const campus = entry.branch.name;
           const found = entry.tmi.find(item => item.name.trim() === subject);
           if (found) {
@@ -289,9 +347,10 @@ export default function DashboardTab() {
       });
       setTmiRadarData(radarRows);
 
+      // Filter growth data hanya untuk kampus user
       const allVariablesSet = new Set<string>();
       const growthData: { branch: CampusKey; variable: string; period: string; score: number }[] = [];
-      for (const branch of apiData.branches) {
+      for (const branch of filteredBranches) {
         const branchName = branch.name;
         const growth = apiData.transformationVariableBranchGrowth.find(b => b.branch.name === branchName)?.growth || [];
         for (const variableEntry of growth) {
@@ -319,7 +378,6 @@ export default function DashboardTab() {
     }
   };
 
-  // --- EFFECTS ---
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -338,10 +396,10 @@ export default function DashboardTab() {
   }, [apiVariables, selectedVariables]);
 
   useEffect(() => {
-    fetchData(); // ✅ initial load
+    fetchData();
   }, []);
 
-  // --- HANDLERS ---
+  // --- HANDLERS (sama seperti sebelumnya) ---
   const handleAddYear = () => {
     const lastYearStr = studentBodyData.length > 0 ? studentBodyData[studentBodyData.length - 1].year : "2027";
     const nextYear = String(Number(lastYearStr) + 1);
@@ -351,6 +409,7 @@ export default function DashboardTab() {
       "Tel-U Surabaya": 0,
       "Tel-U Purwokerto": 0,
       "Tel-U Bandung": 0,
+      "Tel-U Sumatra": 0,
     }]);
   };
 
@@ -374,6 +433,7 @@ export default function DashboardTab() {
       "Tel-U Surabaya": [...prev["Tel-U Surabaya"], 0],
       "Tel-U Purwokerto": [...prev["Tel-U Purwokerto"], 0],
       "Tel-U Bandung": [...prev["Tel-U Bandung"], 0],
+      "Tel-U Sumatra": [...prev["Tel-U Sumatra"], 0],
     }));
   };
 
@@ -394,6 +454,7 @@ export default function DashboardTab() {
         "Tel-U Surabaya": localAccreditationData["Tel-U Surabaya"][idx] ?? 0,
         "Tel-U Purwokerto": localAccreditationData["Tel-U Purwokerto"][idx] ?? 0,
         "Tel-U Bandung": localAccreditationData["Tel-U Bandung"][idx] ?? 0,
+        "Tel-U Sumatra": localAccreditationData["Tel-U Sumatra"][idx] ?? 0,
       }));
 
       const success = await saveAccreditation(accreditationRows);
@@ -424,19 +485,21 @@ export default function DashboardTab() {
       Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
       Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
       Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
+      Sumatra: accreditationInputData["Tel-U Sumatra"][idx] ?? 0,
     }));
     if (dataToDownload.length === 0) {
       alert("Belum ada data akreditasi prodi untuk diunduh.");
       return;
     }
     const csv = [
-      ["Tahun", "Jakarta", "Bandung", "Purwokerto", "Surabaya"],
+      ["Tahun", "Jakarta", "Bandung", "Purwokerto", "Surabaya", "Sumatra"],
       ...dataToDownload.map((row) => [
         row.tahun,
         row.Jakarta.toFixed(1),
         row.Bandung.toFixed(1),
         row.Purwokerto.toFixed(1),
         row.Surabaya.toFixed(1),
+        row.Sumatra.toFixed(1),
       ]),
     ]
       .map((r) => r.join(","))
@@ -462,6 +525,7 @@ export default function DashboardTab() {
       'Tel-U Surabaya': [...accreditationInputData['Tel-U Surabaya']],
       'Tel-U Purwokerto': [...accreditationInputData['Tel-U Purwokerto']],
       'Tel-U Bandung': [...accreditationInputData['Tel-U Bandung']],
+      'Tel-U Sumatra': [...accreditationInputData['Tel-U Sumatra']],
     });
     setLocalAccreditationYears(FIXED_YEARS);
     setShowModal(true);
@@ -480,7 +544,7 @@ export default function DashboardTab() {
   // --- RENDER ---
   return (
     <div className="space-y-8 px-4 py-6">
-      {/* Stat Cards */}
+      {/* Stat Cards - tetap sama */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
         <div className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center" style={{ backgroundImage: "url('/KC.png')" }}>
           <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
@@ -524,7 +588,7 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Progress & Radar */}
+      {/* Progress & Radar - tetap sama */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Progress Assessment</h3>
@@ -537,7 +601,6 @@ export default function DashboardTab() {
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Transformation Maturity Index</h3>
           <div className="flex flex-col items-center">
-            {/* ✅ LEGENDA SESUAI GAMBAR REFERENSI */}
             <div className="flex flex-wrap justify-center gap-6 mb-4 text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-4 h-4 bg-[#FF6384] rounded-sm"></span>
@@ -555,6 +618,10 @@ export default function DashboardTab() {
                 <span className="w-4 h-4 bg-[#FF9F40] rounded-sm"></span>
                 <span>Tel-U Purwokerto</span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 bg-[#9966FF] rounded-sm"></span>
+                <span>Tel-U Sumatra</span>
+              </div>
             </div>
             <div style={{ width: '100%', height: '300px', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -571,11 +638,11 @@ export default function DashboardTab() {
                     tick={{ fontSize: 10, fill: '#9ca3af' }}
                     axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                   />
-                  {/* ✅ URUTAN RADAR SESUAI LEGENDA */}
                   <Radar name="Tel-U Bandung" dataKey="Tel-U Bandung" stroke="#FF6384" fill="#FF6384" fillOpacity={0.4} />
                   <Radar name="Tel-U Jakarta" dataKey="Tel-U Jakarta" stroke="#36A2EB" fill="#36A2EB" fillOpacity={0.4} />
                   <Radar name="Tel-U Surabaya" dataKey="Tel-U Surabaya" stroke="#4BC0C0" fill="#4BC0C0" fillOpacity={0.4} />
                   <Radar name="Tel-U Purwokerto" dataKey="Tel-U Purwokerto" stroke="#FF9F40" fill="#FF9F40" fillOpacity={0.4} />
+                  <Radar name="Tel-U Sumatra" dataKey="Tel-U Sumatra" stroke="#9966FF" fill="#9966FF" fillOpacity={0.4} />
                   <Tooltip content={<CustomRadarTooltip />} />
                 </RadarChart>
               </ResponsiveContainer>
@@ -584,9 +651,8 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Charts */}
+      {/* Charts - tetap sama */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Student Body */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
@@ -606,7 +672,6 @@ export default function DashboardTab() {
               <YAxis />
               <Tooltip />
               <Legend />
-              {/* ✅ WARNA BAR MENGIKUTI URUTAN KAMPUS DI LEGENDA */}
               {studentYears.map((year, index) => (
                 <Bar key={year} dataKey={year} fill={studentColors[index % studentColors.length]} radius={[10, 10, 0, 0]} />
               ))}
@@ -614,7 +679,6 @@ export default function DashboardTab() {
           </ResponsiveContainer>
         </div>
 
-        {/* Accreditation */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
@@ -634,23 +698,24 @@ export default function DashboardTab() {
               Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
               Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
               Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
+              Sumatra: accreditationInputData["Tel-U Sumatra"][idx] ?? 0,
             }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
               <YAxis domain={[0, 100]} />
               <Tooltip formatter={(value) => Number(value).toFixed(2)} />
               <Legend />
-              {/* ✅ WARNA LINE SESUAI NAMA KAMPUS (Bukan Urutan Di Legend) */}
               <Line type="monotone" dataKey="Jakarta" stroke="#36A2EB" />
               <Line type="monotone" dataKey="Bandung" stroke="#FF6384" />
               <Line type="monotone" dataKey="Purwokerto" stroke="#FF9F40" />
               <Line type="monotone" dataKey="Surabaya" stroke="#4BC0C0" />
+              <Line type="monotone" dataKey="Sumatra" stroke="#9966FF" />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Perkembangan Variabel per Kampus */}
+      {/* Perkembangan Variabel per Kampus - DIPERBAIKI */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -658,20 +723,23 @@ export default function DashboardTab() {
             <p className="text-sm text-gray-500 mt-1">Skor perkembangan per semester akademik (Ganjil/Genap)</p>
           </div>
           <div className="flex flex-wrap gap-4 ml-auto">
-            <div className="min-w-[180px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kampus</label>
-              <select
-                value={selectedCampus}
-                onChange={(e) => setSelectedCampus(e.target.value as CampusKey)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-              >
-                {CAMPUS_LIST.map((campus) => (
-                  <option key={campus} value={campus}>
-                    {campus.replace("Tel-U ", "")}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* ✅ Hanya tampilkan dropdown jika Super User */}
+            {userRoleId === 1 && (
+              <div className="min-w-[180px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kampus</label>
+                <select
+                  value={selectedCampus}
+                  onChange={(e) => setSelectedCampus(e.target.value as CampusKey)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                >
+                  {CAMPUS_LIST.map((campus) => (
+                    <option key={campus} value={campus}>
+                      {campus.replace("Tel-U ", "")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="min-w-[200px] variable-dropdown-wrapper">
               <label className="block text-sm font-medium text-gray-700 mb-1">Variabel</label>
               <div className="relative">
@@ -798,7 +866,7 @@ export default function DashboardTab() {
         <AssessmentTable hideStartButton={true} />
       </div>
 
-      {/* Modal */}
+      {/* Modal - sama */}
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
