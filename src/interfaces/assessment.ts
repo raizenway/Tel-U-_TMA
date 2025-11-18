@@ -59,6 +59,7 @@ export interface AssessmentDetail {
 export interface Assessment {
   id: number;
   periodId: number;
+  branchId:number;
   userId: number;
   approvalStatus: string; // "submitted", "approved", dll
   submissionDate: string | null; // ISO string atau null
