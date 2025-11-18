@@ -68,6 +68,7 @@ export interface Assessment {
   user: User;
   assessmentPeriod: AssessmentPeriod;
   assessmentDetails: AssessmentDetail[];
+  variableScore: VariableScore[];
   countScore0: number;
   countScore1:  number;
   countScore2:  number;
@@ -99,4 +100,10 @@ export interface CreateAssessmentDetail {
 
 export interface FinishAssessment {
   assessmentId: number;
+}
+
+export interface VariableScore {
+  id: number;
+  name: string;
+  score: number;
 }
