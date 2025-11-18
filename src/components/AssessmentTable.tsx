@@ -80,9 +80,9 @@ const buildAnswersFromAssessment = (item: any): { [key: string]: string } => {
 };
 
 const AssessmentTable = ({ hideStartButton = false }) => {
-  const {  data: apiData, loading, error } = useListAssessment();
+  const {  data:apiData, loading, error } = useListAssessment();
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { data: selectedAssessment, loading: loadingSelected } = useAssessmentById(selectedId);
+  const {  data:selectedAssessment, loading: loadingSelected } = useAssessmentById(selectedId);
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -100,11 +100,17 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   useEffect(() => {
     if (selectedAssessment && selectedId) {
       const answers = buildAnswersFromAssessment(selectedAssessment);
-      const isView = selectedAssessment.approvalStatus === 'approved';
+
+      // Baca flag dari localStorage
+      const isEditingApproved = localStorage.getItem('isEditingApproved') === 'true';
+
+      // Tentukan mode berdasarkan status dan flag
+      const isView = selectedAssessment.approvalStatus === 'approved' && !isEditingApproved;
 
       if (isView) {
         localStorage.setItem('currentAssessmentForView', JSON.stringify(selectedAssessment));
       } else {
+        // Jika mode edit (termasuk edit dari approved), simpan ke key edit
         localStorage.setItem('currentAssessmentForEdit', JSON.stringify(selectedAssessment));
       }
       localStorage.setItem(`assessment-${selectedId}-answers`, JSON.stringify(answers));
@@ -118,8 +124,13 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       if (isView) {
         router.push(`/assessment/${branchId}?viewOnly=true`);
       } else {
+        // Jika edit dari approved, tambahkan param ?from=editFromApproved
+        // atau cukup ?from=edit jika tidak perlu dibedakan
         router.push(`/assessment/${branchId}?from=edit`);
       }
+
+      // Hapus flag setelah digunakan
+      localStorage.removeItem('isEditingApproved');
 
       setSelectedId(null);
     }
@@ -138,9 +149,19 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     if (userRoleId === 1) {
       return true; // Super User: lihat semua
     }
+    // Jika role adalah Non SSO (roleId = 4), tampilkan semua data
+    if (userRoleId === 4) {
+      return true;
+    }
     if (userRoleId === 2 && userBranchId) {
       return item.branchId === userBranchId; // UPPS/KC: lihat milik branch-nya
     }
+    // Untuk role lain (misalnya SSO - roleId = 3), jika tidak ada filter khusus, bisa return false
+    // atau sesuaikan logika. Untuk sementara, asumsi roleId 3 (SSO) tetap filter branch jika ada.
+    if (userRoleId === 3 && userBranchId) {
+       return item.branchId === userBranchId;
+    }
+    // Default behavior untuk role lain jika tidak ada kondisi spesifik
     return false;
   });
 
@@ -180,6 +201,15 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   const handleEdit = (id: number) => {
     const item = filteredApiData.find((item) => item.id === id);
     if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) return;
+    setSelectedId(id);
+  };
+
+  // Fungsi baru: Handle edit untuk assessment yang sudah approved
+  const handleEditFromApproved = (id: number) => {
+    const item = filteredApiData.find((item) => item.id === id);
+    if (!item || item.approvalStatus !== 'approved') return;
+    // Tandai bahwa ini adalah edit dari approved
+    localStorage.setItem('isEditingApproved', 'true');
     setSelectedId(id);
   };
 
@@ -260,7 +290,8 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     statusText: item.status,
     aksi: (
       <div className="flex items-center justify-start gap-2">
-        {['submitted', 'edit_requested'].includes(item.approvalStatus) && (
+        {/* Tombol Edit: Muncul jika status memungkinkan DAN bukan role Non-SSO */}
+        {['submitted', 'edit_requested'].includes(item.approvalStatus) && userRoleId !== 4 && (
           <button
             className="text-blue-600 hover:text-blue-800 transition"
             onClick={() => handleEdit(item.id)}
@@ -269,6 +300,17 @@ const AssessmentTable = ({ hideStartButton = false }) => {
             <Pencil size={20} />
           </button>
         )}
+        {/* Tombol Edit dari Approved: Muncul jika status approved DAN bukan role Non-SSO */}
+        {item.approvalStatus === 'approved' && userRoleId !== 4 && (
+          <button
+            className="text-blue-600 hover:text-blue-800 transition"
+            onClick={() => handleEditFromApproved(item.id)}
+            title="Edit Assessment"
+          >
+            <Pencil size={20} />
+          </button>
+        )}
+        {/* Tombol View: Muncul jika status approved - SELALU muncul, termasuk untuk Non-SSO */}
         {item.approvalStatus === 'approved' && (
           <button
             className="text-gray-600 hover:text-green-800 transition"
@@ -278,7 +320,8 @@ const AssessmentTable = ({ hideStartButton = false }) => {
             <Eye size={20} />
           </button>
         )}
-        {item.approvalStatus === 'edit_requested' && (
+        {/* Tombol Approve: Muncul jika status edit_requested DAN bukan role Non-SSO */}
+        {item.approvalStatus === 'edit_requested' && userRoleId !== 4 && (
           <button
             className="text-green-600 hover:text-green-800 transition"
             onClick={() => {
@@ -290,15 +333,16 @@ const AssessmentTable = ({ hideStartButton = false }) => {
             <BookOpenCheck size={20} />
           </button>
         )}
-       {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && (
-  <button
-    className="text-blue-600 hover:text-blue-800 transition"
-    onClick={() => handleContinue(item.id)}
-    title="Lanjutkan Pengisian"
-  >
-    <Play size={20} />
-  </button>
-)}
+        {/* Tombol Lanjutkan: Muncul jika status bukan submitted, approved, edit_requested DAN bukan role Non-SSO */}
+        {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && userRoleId !== 4 && (
+          <button
+            className="text-blue-600 hover:text-blue-800 transition"
+            onClick={() => handleContinue(item.id)}
+            title="Lanjutkan Pengisian"
+          >
+            <Play size={20} />
+          </button>
+        )}
       </div>
     ),
   }));
@@ -480,6 +524,8 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         <p className="text-sm text-gray-600">
           {userRoleId === 1
             ? 'Daftar semua UPPS/KC'
+            : userRoleId === 4 // Tambahkan pesan khusus untuk Non-SSO jika diperlukan
+            ? 'Daftar semua assessment (Role Non-SSO)'
             : 'Hasil assessment untuk kampus Anda'}
         </p>
       </div>
@@ -526,6 +572,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
               Download
             </Button>
 
+            {/* Tombol Start Assessment: Sembunyikan untuk role Non-SSO */}
             {!hideStartButton && userRoleId === 2 && (
               <Button
                 variant="primary"

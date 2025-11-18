@@ -19,28 +19,59 @@ export default function WelcomePage() {
   const [tab, setTab] = useState("welcome");
   const [isNotNonSSO, setIsNotNonSSO] = useState(true); // Default: tampilkan tombol
 
-  useEffect(() => {
-    const path = pathname?.split("/")[1];
-    setTab(path || "welcome");
+useEffect(() => {
+  const path = pathname?.split("/")[1];
+  setTab(path || "welcome");
 
-    // Ambil data user dari localStorage
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        
-        // Deteksi apakah user punya role 'Non-SSO'
-        const userRole = user.role || user.roles?.[0]?.name; // Sesuaikan dengan struktur data Anda
+  const userData = localStorage.getItem("user");
+  if (userData) {
+    try {
+      const user = JSON.parse(userData);
+      console.log("User data from localStorage:", user);
 
-        // Jika role === 'Non-SSO', maka sembunyikan tombol
-        setIsNotNonSSO(userRole !== "Non-SSO");
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        setIsNotNonSSO(true); // Default: tampilkan tombol jika error
+      let userRoleId = null;
+
+      // Coba ambil dari user.role.id
+      if (user.role && typeof user.role === 'object' && user.role.id !== undefined) {
+        userRoleId = user.role.id;
+        console.log(`Detected role ID via user.role.id → ${userRoleId}`);
       }
-    }
-  }, [pathname]);
 
+      // Jika tidak ketemu, coba user.roleId
+      else if (user.roleId !== undefined) {
+        userRoleId = user.roleId;
+        console.log(`Detected role ID via user.roleId → ${userRoleId}`);
+      }
+
+      // Jika tidak ketemu, coba user.role (jika string atau number)
+      else if (user.role !== undefined) {
+        userRoleId = Number(user.role); // Konversi ke number jika perlu
+        console.log(`Detected role ID via user.role → ${userRoleId}`);
+      }
+
+      // Jika masih tidak ketemu, coba user.roles[0].id
+      else if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+        userRoleId = user.roles[0].id || user.roles[0].role_id;
+        console.log(`Detected role ID via user.roles[0].id → ${userRoleId}`);
+      }
+
+      // Jika tetap tidak ketemu, log warning
+      if (userRoleId === null) {
+        console.warn("No role ID found in user data. Check structure of localStorage.user.");
+      }
+
+      // Tombol muncul hanya jika role_id = 1 atau 2
+      setIsNotNonSSO([1, 2].includes(Number(userRoleId)));
+
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      setIsNotNonSSO(false);
+    }
+  } else {
+    console.warn("No user data found in localStorage");
+    setIsNotNonSSO(false);
+  }
+}, [pathname]);
   const [, setIsFormDirty] = useState(false);
 
   return (

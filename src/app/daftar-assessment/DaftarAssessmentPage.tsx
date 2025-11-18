@@ -14,7 +14,7 @@ import { useQuestionList, useUpdateQuestion } from '@/hooks/useDaftarAssessment'
 import type { ApiResponse } from '@/interfaces/api-response';
 import type { Question } from '@/interfaces/daftar-assessment';
 import { useTransformationVariableList } from '@/hooks/useTransformationVariableList';
-import RoleBasedStatusCell from "@/components/RoleBasedStatusCell";
+// import RoleBasedStatusCell from "@/components/RoleBasedStatusCell"; // Di-hide karena tidak digunakan
 
 export default function AssessmentPage() {
   const router = useRouter();
@@ -111,12 +111,23 @@ export default function AssessmentPage() {
     setData(sorted);
   };
 
-  // Filter & Pagination
-  const filteredData = localData.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(search.toLowerCase())
-    )
-  );
+  // Filter & Pagination - Berdasarkan role
+  const filteredData = useMemo(() => {
+    let processedData = localData;
+
+    // Filter non-aktif hanya untuk role 2, 3, 4
+    if (roleId !== 1) {
+      processedData = processedData.filter(item => item.status === 'active');
+    }
+
+    // Filter pencarian
+    return processedData.filter((item) =>
+      Object.values(item).some((val) =>
+        String(val).toLowerCase().includes(search.toLowerCase())
+      )
+    );
+  }, [localData, search, roleId]);
+
   const totalData = filteredData.length;
   const totalPages = Math.ceil(totalData / itemsPerPage);
   const indexOfLastItem = page * itemsPerPage;
@@ -168,9 +179,9 @@ export default function AssessmentPage() {
     router.push('/daftar-assessment/tambah-assessment');
   };
 
-  // ✅ Kolom tabel dengan renderCell di Status
+  // ✅ Kolom tabel: Ditentukan berdasarkan roleId
   const columns = useMemo(() => {
-    const baseColumns = [
+    let baseColumns = [
       { header: 'Nomor', key: 'nomor', width: '100px', className: 'text-center', sortable: true },
       { header: 'Nama Variable', key: 'variable', width: '180px', sortable: true },
       { header: 'Indikator', key: 'indikator', width: '250px', sortable: false },
@@ -180,10 +191,17 @@ export default function AssessmentPage() {
       { header: 'Deskripsi Skor 2', key: 'deskripsiSkor2', width: '200px', sortable: false },
       { header: 'Deskripsi Skor 3', key: 'deskripsiSkor3', width: '200px', sortable: false },
       { header: 'Deskripsi Skor 4', key: 'deskripsiSkor4', width: '200px', sortable: false },
-      { header: 'Tipe Soal', key: 'tipeSoal', width: '140px', className: 'text-center', sortable: true },
     ];
 
+    // Tambahkan kolom 'Tipe Soal' hanya jika roleId = 1
     if (roleId === 1) {
+      baseColumns.push(
+        { header: 'Tipe Soal', key: 'tipeSoal', width: '140px', className: 'text-center', sortable: true }
+      );
+    }
+
+    if (roleId === 1) {
+      // Super User: Tambahkan kolom Aksi
       return [
         ...baseColumns,
         {
@@ -194,22 +212,9 @@ export default function AssessmentPage() {
         },
       ];
     } else {
-      return [
-        ...baseColumns,
-        {
-          header: 'Status',
-          key: 'status',
-          width: '150px',
-          className: 'text-center right-0 z-10 bg-white',
-          sortable: false,
-          renderCell: (item: any) => {
-            if (roleId !== null && [2, 3, 4].includes(roleId)) {
-              return <RoleBasedStatusCell status={item.status} id={item.id} roleId={roleId} />;
-            }
-            return item.status === 'active' ? 'Aktif' : 'Nonaktif';
-          },
-        },
-      ];
+      // Role lain (2, 3, 4): Tidak ada kolom Status tambahan
+      // Kolom 'Aksi' dihilangkan
+      return baseColumns;
     }
   }, [roleId]); // Reaktif terhadap roleId
 
@@ -286,11 +291,10 @@ export default function AssessmentPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap bg-white">
                   <TableButton data={currentData} />
-                  {roleId === 1 && (
-                    <Button variant="primary" onClick={handleTambah}>
-                      Tambah Assessment
-                    </Button>
-                  )}
+                  {/* ✅ Tombol Tambah Assessment: Muncul untuk semua role */}
+                  <Button variant="primary" onClick={handleTambah}>
+                    Tambah Assessment
+                  </Button>
                 </div>
               </div>
             </div>
@@ -310,7 +314,10 @@ export default function AssessmentPage() {
                 />
               ) : (
                 <div className="p-6 text-center text-gray-500 border-t">
-                  Tidak ada data assessment untuk ditampilkan.
+                  {/* ✅ Pesan kosong: Berbeda untuk Super User dan role lain */}
+                  {roleId === 1 
+                    ? 'Tidak ada data assessment untuk ditampilkan.' 
+                    : 'Tidak ada data assessment aktif untuk ditampilkan.'}
                 </div>
               )}
             </div>
