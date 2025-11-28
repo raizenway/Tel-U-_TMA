@@ -1,9 +1,21 @@
 "use client";
 
-import { useState,useEffect } from "react";
-import { useGet } from "./useGet";
-import { createAssessment, createAssessmentDetail, ListAssessment,finishAssessment,getAssessmentById} from "@/lib/api-assessment";
-import { Assessment, CreateAssessment, CreateAssessmentDetail,FinishAssessment   } from "@/interfaces/assessment";
+import { useState, useEffect } from "react";
+import { 
+  createAssessment, 
+  createAssessmentDetail, 
+  ListAssessment,
+  finishAssessment,
+  getAssessmentById,
+  requestEditAssessment,
+  approveEditAssessment
+} from "@/lib/api-assessment";
+import { 
+  Assessment, 
+  CreateAssessment, 
+  CreateAssessmentDetail,
+  FinishAssessment   
+} from "@/interfaces/assessment";
 import { ApiResponse } from "@/interfaces/api-response";
 
 export function useListAssessment() {
@@ -11,42 +23,46 @@ export function useListAssessment() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchAssessments = async () => {
+    setLoading(true);
+    const res = await ListAssessment();
+    if (res.status === 'success') {
+      setData(res.data);
+    } else {
+      setError(res.message);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetch = async () => {
-      const res = await ListAssessment();
-      if (res.status === 'success') {
-        setData(res.data);
-      } else {
-        setError(res.message);
-      }
-      setLoading(false);
-    };
-    fetch();
+    fetchAssessments();
   }, []);
 
-  return { data, loading, error };
+  // ✅ Kembalikan refetch
+  return { data, loading, error, refetch: fetchAssessments };
 }
 
 export function useCreateAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
- const mutate = async (body: CreateAssessment): Promise<Assessment> => {
-  setLoading(true);
-  setError(null);
-  try {
-    const response = await createAssessment(body); // ← ini return ApiResponse<Assessment>
-    return response.data; // ✅ BENAR — ambil data dari response
-  } catch (err: any) {
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+  const mutate = async (body: CreateAssessment): Promise<Assessment> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await createAssessment(body);
+      return response.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return { mutate, loading, error };
 }
+
 export function useCreateAssessmentDetail() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +71,7 @@ export function useCreateAssessmentDetail() {
     setLoading(true);
     setError(null);
     try {
-      const res = await createAssessmentDetail(body); // panggil API
+      const res = await createAssessmentDetail(body);
       return res.data;
     } catch (err: any) {
       setError(err.message);
@@ -68,7 +84,6 @@ export function useCreateAssessmentDetail() {
   return { mutate, loading, error };
 }
 
-
 export function useFinishAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,13 +93,9 @@ export function useFinishAssessment() {
     setError(null);
     try {
       const res = await finishAssessment(body);
-
-      // ✅ Tambahkan pengecekan res tidak null
       if (res && res.status === 'success') {
         return { success: true };
       }
-
-      // Jika res null atau status bukan 'success'
       const message = res?.message || 'Gagal menyelesaikan assessment';
       throw new Error(message);
     } catch (err: any) {
@@ -112,18 +123,12 @@ export const useAssessmentById = (id: number | null) => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-
       const res = await getAssessmentById(id);
-      console.log("🔍 Response dari API:", res); // ← tambahkan ini
-
       if (res.status === 'success' && res.data) {
         setData(res.data);
-        console.log("✅ Data diterima:", res.data);
       } else {
         setError(res.message || 'Gagal memuat data');
-        console.error("❌ Gagal muat assessment:", res.message);
       }
-
       setLoading(false);
     };
 
@@ -132,3 +137,47 @@ export const useAssessmentById = (id: number | null) => {
 
   return { data, loading, error };
 };
+
+// 🔹 Hook untuk Request Edit Assessment
+export function useRequestEditAssessment() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutate = async (assessmentId: number): Promise<{ success: boolean }> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await requestEditAssessment(assessmentId);
+      return { success: true }; // ✅ tidak perlu cek res.status — API sudah handle
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { mutate, loading, error };
+}
+
+// 🔹 Hook untuk Approve Edit Assessment
+export function useApproveEditAssessment() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutate = async (assessmentId: number): Promise<{ success: boolean }> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await approveEditAssessment(assessmentId);
+      return { success: true };
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { mutate, loading, error };
+}

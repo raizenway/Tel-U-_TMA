@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaSchool } from 'react-icons/fa';
-import Table from '@/components/Table'; // Pastikan path ini benar
+import Table from '@/components/Table';
 import SuccessNotification from '@/components/SuccessNotification';
 import Button from '@/components/button';
 import ModalConfirm from './StarAssessment/ModalConfirm';
@@ -12,12 +12,17 @@ import {
   Pencil,
   Eye,
   Play,
-  BookOpenCheck,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import { Search, Copy, Printer, Download } from 'lucide-react';
-import { useListAssessment, useAssessmentById } from '@/hooks/useAssessment';
+import {
+  useListAssessment,
+  useAssessmentById,
+  useRequestEditAssessment,
+  useApproveEditAssessment,
+} from '@/hooks/useAssessment';
 
-// Helper: Ambil user dari localStorage
 const getCurrentUser = () => {
   if (typeof window !== 'undefined') {
     const userStr = localStorage.getItem('user');
@@ -32,17 +37,16 @@ const getCurrentUser = () => {
   return null;
 };
 
-// Mapping status
-const mapStatusToUI = (
-  approvalStatus: string
-): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
+const mapStatusToUI = (approvalStatus: string): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
   switch (approvalStatus) {
     case 'submitted':
+    case 'approve_edit':
       return { status: 'Submitted', aksi: 'edit' };
     case 'approved':
       return { status: 'Approved', aksi: 'view' };
     case 'edit_requested':
-      return { status: 'Edit', aksi: 'edit' };
+    case 'request_edit':
+      return { status: 'Request Edit', aksi: 'edit' };
     default:
       return { status: 'Belum Selesai', aksi: 'progress' };
   }
@@ -56,20 +60,20 @@ const buildAnswersFromAssessment = (item: any): { [key: string]: string } => {
       const baseKey = String(qId);
       const ans = detail.answer || {};
 
-      const answer1 = 
-        ans.textAnswer1 != null && ans.textAnswer1 !== "" 
-          ? String(ans.textAnswer1) 
-          : detail.submissionValue || "0";
-      const answer2 = ans.textAnswer2 != null ? String(ans.textAnswer2) : "0";
-      const answer3 = ans.textAnswer3 != null ? String(ans.textAnswer3) : "0";
-      const answer4 = ans.textAnswer4 != null ? String(ans.textAnswer4) : "0";
-      const answer5 = ans.textAnswer5 != null ? String(ans.textAnswer5) : "0";
+      const answer1 =
+        ans.textAnswer1 != null && ans.textAnswer1 !== ''
+          ? String(ans.textAnswer1)
+          : detail.submissionValue || '0';
+      const answer2 = ans.textAnswer2 != null ? String(ans.textAnswer2) : '0';
+      const answer3 = ans.textAnswer3 != null ? String(ans.textAnswer3) : '0';
+      const answer4 = ans.textAnswer4 != null ? String(ans.textAnswer4) : '0';
+      const answer5 = ans.textAnswer5 != null ? String(ans.textAnswer5) : '0';
 
       answers[baseKey] = answer1;
-      if (answer2 !== "0") answers[`${baseKey}a`] = answer2;
-      if (answer3 !== "0") answers[`${baseKey}b`] = answer3;
-      if (answer4 !== "0") answers[`${baseKey}c`] = answer4;
-      if (answer5 !== "0") answers[`${baseKey}d`] = answer5;
+      if (answer2 !== '0') answers[`${baseKey}a`] = answer2;
+      if (answer3 !== '0') answers[`${baseKey}b`] = answer3;
+      if (answer4 !== '0') answers[`${baseKey}c`] = answer4;
+      if (answer5 !== '0') answers[`${baseKey}d`] = answer5;
 
       if (detail.evidenceLink) {
         answers[`evidence-${qId}`] = detail.evidenceLink;
@@ -80,9 +84,11 @@ const buildAnswersFromAssessment = (item: any): { [key: string]: string } => {
 };
 
 const AssessmentTable = ({ hideStartButton = false }) => {
-  const {  data:apiData, loading, error } = useListAssessment();
+  const { data: apiData, loading, error, refetch } = useListAssessment();
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const {  data:selectedAssessment, loading: loadingSelected } = useAssessmentById(selectedId);
+  const { data: selectedAssessment, loading: loadingSelected } = useAssessmentById(selectedId);
+  const { mutate: requestEdit, loading: loadingRequest } = useRequestEditAssessment();
+  const { mutate: approveEditAssessment } = useApproveEditAssessment();
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -90,27 +96,19 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
-  // Ambil user saat ini
   const currentUser = getCurrentUser();
   const userRoleId = currentUser?.roleId || currentUser?.role?.id;
   const userBranchId = currentUser?.branchId;
-  const userId = currentUser?.id;
 
-  // Redirect setelah data lengkap
   useEffect(() => {
     if (selectedAssessment && selectedId) {
       const answers = buildAnswersFromAssessment(selectedAssessment);
-
-      // Baca flag dari localStorage
       const isEditingApproved = localStorage.getItem('isEditingApproved') === 'true';
-
-      // Tentukan mode berdasarkan status dan flag
       const isView = selectedAssessment.approvalStatus === 'approved' && !isEditingApproved;
 
       if (isView) {
         localStorage.setItem('currentAssessmentForView', JSON.stringify(selectedAssessment));
       } else {
-        // Jika mode edit (termasuk edit dari approved), simpan ke key edit
         localStorage.setItem('currentAssessmentForEdit', JSON.stringify(selectedAssessment));
       }
       localStorage.setItem(`assessment-${selectedId}-answers`, JSON.stringify(answers));
@@ -124,14 +122,10 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       if (isView) {
         router.push(`/assessment/${branchId}?viewOnly=true`);
       } else {
-        // Jika edit dari approved, tambahkan param ?from=editFromApproved
-        // atau cukup ?from=edit jika tidak perlu dibedakan
         router.push(`/assessment/${branchId}?from=edit`);
       }
 
-      // Hapus flag setelah digunakan
       localStorage.removeItem('isEditingApproved');
-
       setSelectedId(null);
     }
   }, [selectedAssessment, selectedId, router]);
@@ -144,41 +138,28 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     }
   }, []);
 
-  // ✅ Filter berdasarkan role user
   const filteredApiData = useMemo(() => {
     if (!apiData) return [];
     return apiData.filter((item: any) => {
-      if (userRoleId === 1) {
-        return true; // Super User: lihat semua
+      if (userRoleId === 1) return true;
+      if (userRoleId === 4) return true;
+      if ((userRoleId === 2 || userRoleId === 3) && userBranchId) {
+        return item.branchId === userBranchId;
       }
-      // Jika role adalah Non SSO (roleId = 4), tampilkan semua data
-      if (userRoleId === 4) {
-        return true;
-      }
-      if (userRoleId === 2 && userBranchId) {
-        return item.branchId === userBranchId; // UPPS/KC: lihat milik branch-nya
-      }
-      // Untuk role lain (misalnya SSO - roleId = 3), jika tidak ada filter khusus, bisa return false
-      // atau sesuaikan logika. Untuk sementara, asumsi roleId 3 (SSO) tetap filter branch jika ada.
-      if (userRoleId === 3 && userBranchId) {
-         return item.branchId === userBranchId;
-      }
-      // Default behavior untuk role lain jika tidak ada kondisi spesifik
       return false;
     });
   }, [apiData, userRoleId, userBranchId]);
 
-  // Deklarasikan fungsi-fungsi sebelum digunakan di useMemo lainnya
+  // ✅ Tambahkan fungsi handleEdit untuk status 'submitted'
   const handleEdit = (id: number) => {
     const item = filteredApiData.find((item) => item.id === id);
-    if (!item || !['submitted', 'edit_requested'].includes(item.approvalStatus)) return;
+    if (!item || item.approvalStatus !== 'submitted') return;
     setSelectedId(id);
   };
 
   const handleEditFromApproved = (id: number) => {
     const item = filteredApiData.find((item) => item.id === id);
     if (!item || item.approvalStatus !== 'approved') return;
-    // Tandai bahwa ini adalah edit dari approved
     localStorage.setItem('isEditingApproved', 'true');
     setSelectedId(id);
   };
@@ -189,46 +170,56 @@ const AssessmentTable = ({ hideStartButton = false }) => {
     setSelectedId(id);
   };
 
-  const handleApprove = (id: number) => {
-    setShowModal(false);
-    setShowSuccess(true);
-    localStorage.setItem('showSuccessNotification', 'Assessment berhasil di-approve!');
+  const handleRequestEdit = async (id: number) => {
+    if (loadingRequest) return;
+    if (!window.confirm('Ajukan permintaan untuk mengedit assessment ini?')) return;
+
+    try {
+      await requestEdit(id);
+      alert('✅ Permintaan edit berhasil dikirim. Menunggu persetujuan admin.');
+    } catch (err: any) {
+      alert('❌ Gagal mengajukan permintaan edit: ' + (err.message || 'Terjadi kesalahan'));
+    }
+  };
+
+  const handleApprove = async (id: number) => {
+    try {
+      await approveEditAssessment(id);
+      await refetch();
+      setShowSuccess(true);
+      localStorage.setItem('showSuccessNotification', 'Assessment berhasil di-approve!');
+    } catch (err: any) {
+      alert('❌ Gagal menyetujui edit: ' + (err.message || 'Terjadi kesalahan'));
+    } finally {
+      setShowModal(false);
+      setApproveAssessmentId(null);
+    }
   };
 
   const handleContinue = (id: number) => {
-    // Ambil data assessment berdasarkan ID
     const item = filteredApiData.find((item) => item.id === id);
     if (!item) {
-      console.error("Assessment tidak ditemukan");
+      console.error('Assessment tidak ditemukan');
       return;
     }
 
-    // Redirect ke halaman assessment dengan ID yang sesuai
     const branchId = item.branch?.id;
     if (typeof branchId !== 'number' || branchId <= 0) {
       console.error('Branch ID tidak valid:', branchId);
       return;
     }
 
-    // Simpan ke localStorage agar bisa dilanjutkan
-    // Ganti key agar AssessmentFormTab tahu ini "Lanjutkan", bukan "Edit"
     localStorage.setItem('currentAssessmentForContinue', JSON.stringify(item));
-
-    // Redirect ke halaman assessment
-    router.push(`/assessment/${branchId}?from=continue`); // ✅ Tambahkan param baru
+    router.push(`/assessment/${branchId}?from=continue`);
   };
 
-  // --- Bagian dinamis untuk variableScore ---
   const { tableRows, columns: dynamicColumns, variableNames, variableIds } = useMemo(() => {
     if (!filteredApiData || filteredApiData.length === 0) {
-      // Kembalikan objek dengan struktur yang konsisten
-      return {  tableRows: [], columns: [], variableNames: [], variableIds: [] };
+      return { tableRows: [], columns: [], variableNames: [], variableIds: [] };
     }
 
-    // Ambil semua nama variabel unik dari SEMUA item, urutkan berdasarkan id
-    // Kita gunakan Map untuk menjaga urutan dan menghindari duplikat
     const allVariableNames = new Map<number, string>();
-    filteredApiData.forEach(item => {
+    filteredApiData.forEach((item) => {
       if (item.variableScore && Array.isArray(item.variableScore)) {
         item.variableScore.forEach((vs: any) => {
           if (!allVariableNames.has(vs.id)) {
@@ -238,61 +229,160 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       }
     });
 
-    // Urutkan berdasarkan ID untuk konsistensi tampilan kolom
     const sortedVariableEntries = Array.from(allVariableNames.entries()).sort((a, b) => a[0] - b[0]);
-    const uniqueVariableNames = sortedVariableEntries.map(([id, name]) => name);
-    const uniqueVariableIds = sortedVariableEntries.map(([id, name]) => id); // Simpan IDs juga
+    const uniqueVariableNames = sortedVariableEntries.map(([, name]) => name);
+    const uniqueVariableIds = sortedVariableEntries.map(([id]) => id);
 
-    // Buat kolom dinamis berdasarkan nama variabel
     const dynamicCols = [
       { header: 'No', key: 'nomor', width: '50px' },
       { header: 'Logo', key: 'logo', width: '60px' },
       { header: 'Nama UPPS/KC', key: 'nama', width: '220px' },
       { header: 'Periode', key: 'periode', width: '140px' },
       ...uniqueVariableNames.map((name, idx) => ({
-        header: name, // Gunakan 'name' dari variableScore sebagai header
-        key: `varScore_${uniqueVariableIds[idx]}`, // Gunakan ID sebagai bagian dari key untuk mapping
-        width: '120px', // Atur lebar default, bisa disesuaikan
+        header: name,
+        key: `varScore_${uniqueVariableIds[idx]}`,
+        width: '120px',
       })),
       { header: 'Hasil', key: 'hasil', width: '80px' },
       { header: 'Status', key: 'status', width: '120px' },
       { header: 'Aksi', key: 'aksi', width: '120px' },
     ];
 
-    // Buat data tabel dengan nilai skor dari variableScore
-    // Sertakan juga nama asli (campusName) untuk keperluan pencarian dan utilitas
     const tableRows = filteredApiData.map((item, index) => {
       const campusName = item.branch?.name || 'Kampus Tidak Diketahui';
-      const { status, aksi } = mapStatusToUI(item.approvalStatus);
+      const { status } = mapStatusToUI(item.approvalStatus);
       const hasil = typeof item.tmiScore === 'number' ? item.tmiScore : '-';
-
       const periode = item.assessmentPeriod
         ? `${item.assessmentPeriod.year}-${item.assessmentPeriod.semester}`
         : '–';
 
-      // Buat mapping dari id variabel ke nilainya untuk item ini
-      // ✅ PERUBAHAN: Pastikan nilai 0 tetap ditampilkan sebagai 0, bukan '-'
-      const scoreMap = item.variableScore?.reduce((acc: Record<number, number | string>, vs: any) => {
-        acc[vs.id] = vs.score === 0 ? 0 : (typeof vs.score === 'number' ? vs.score : '-');
-        return acc;
-      }, {} as Record<number, number | string>) || {};
+      const scoreMap =
+        item.variableScore?.reduce((acc: Record<number, number | string>, vs: any) => {
+          acc[vs.id] = vs.score === 0 ? 0 : typeof vs.score === 'number' ? vs.score : '-';
+          return acc;
+        }, {} as Record<number, number | string>) || {};
 
-      // Isi nilai skor ke dalam objek data berdasarkan urutan ID variabel
       const variableScores: Record<string, number | string> = {};
-      uniqueVariableIds.forEach((id, idx) => {
-        // ✅ PERUBAHAN: Gunakan nilai dari scoreMap yang sudah diperbarui logikanya
+      uniqueVariableIds.forEach((id) => {
         variableScores[`varScore_${id}`] = scoreMap[id];
       });
 
+      // ✅ LOGIKA AKSI FINAL — SEMUA STATUS ADA IKON
+      const renderAksi = () => {
+        // 1. Status: submitted → edit langsung (pencil biru)
+        if (item.approvalStatus === 'submitted' && userRoleId !== 4) {
+          return (
+            <button
+              className="text-blue-600 hover:text-blue-800 transition"
+              onClick={() => handleEdit(item.id)}
+              title="Edit Assessment"
+            >
+              <Pencil size={20} />
+            </button>
+          );
+        }
+
+        // 2. Status: approve_edit → centang hijau (statik)
+        if (item.approvalStatus === 'approve_edit') {
+          return (
+            <span title="Edit telah disetujui" className="text-green-600">
+              <CheckCircle size={20} />
+            </span>
+          );
+        }
+
+        // 3. Status: approved → view + request edit
+        if (item.approvalStatus === 'approved') {
+          return (
+            <div className="flex items-center gap-2">
+              {userRoleId !== 4 && (
+                <button
+                  className="text-blue-600 hover:text-blue-800 transition"
+                  onClick={() => handleEditFromApproved(item.id)}
+                  title="Edit Assessment"
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
+              <button
+                className="text-gray-600 hover:text-green-800 transition"
+                onClick={() => handleView(item.id)}
+                title="Lihat Detail"
+              >
+                <Eye size={20} />
+              </button>
+              {userRoleId !== 4 && (
+                <button
+                  className={`text-orange-600 hover:text-orange-800 transition ${
+                    loadingRequest ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRequestEdit(item.id);
+                  }}
+                  title="Ajukan Permintaan Edit"
+                  disabled={loadingRequest}
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
+            </div>
+          );
+        }
+
+       // 4. Status: edit_requested / request_edit → tindakan berbeda berdasarkan role
+if (item.approvalStatus === 'edit_requested' || item.approvalStatus === 'request_edit') {
+  if (userRoleId === 1) {
+    // ✅ Super admin: bisa approve
+    return (
+      <button
+        className="text-orange-500 hover:text-orange-700 transition"
+        onClick={() => {
+          setApproveAssessmentId(item.id);
+          setShowModal(true);
+        }}
+        title="Approve Permintaan Edit"
+      >
+        <Clock size={20} />
+      </button>
+    );
+  } else {
+    // ❌ UPPS/KC atau lainnya: hanya lihat, tidak bisa approve
+    return (
+      <span title="Tunggu persetujuan dari admin" className="text-gray-400 cursor-not-allowed">
+        <Clock size={20} />
+      </span>
+    );
+  }
+}
+        // 5. Status lain (draft, in progress, dll) → lanjutkan
+        if (
+          !['submitted', 'approve_edit', 'edit_requested', 'request_edit', 'approved'].includes(item.approvalStatus) &&
+          userRoleId !== 4
+        ) {
+          return (
+            <button
+              className="text-blue-600 hover:text-blue-800 transition"
+              onClick={() => handleContinue(item.id)}
+              title="Lanjutkan Pengisian"
+            >
+              <Play size={20} />
+            </button>
+          );
+        }
+
+        return null;
+      };
+
       return {
-        nomor: index + 1, // Tambahkan properti nomor
+        nomor: index + 1,
         id: item.id,
         logo: <FaSchool className="text-blue-600 text-xl" />,
-        nama: campusName, // Simpan nama asli sebagai string untuk pencarian dan utilitas
-        namaElement: ( // Simpan elemen JSX untuk render di tabel
+        nama: campusName,
+        namaElement: (
           <div className="flex items-center gap-2 relative group">
             <span>{campusName}</span>
-            {item.approvalStatus === 'edit_requested' && (
+            {(item.approvalStatus === 'edit_requested' || item.approvalStatus === 'request_edit') && (
               <div className="relative">
                 <MessageCircleWarning
                   onClick={(e) => {
@@ -312,7 +402,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
           </div>
         ),
         periode,
-        ...variableScores, // Masukkan nilai skor ke dalam objek data
+        ...variableScores,
         hasil,
         status: (
           <span
@@ -323,7 +413,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
                 ? 'bg-green-500'
                 : status === 'Belum Selesai'
                 ? 'bg-red-500'
-                : status === 'Edit'
+                : status === 'Request Edit'
                 ? 'bg-orange-500'
                 : 'bg-gray-500'
             }`}
@@ -332,93 +422,25 @@ const AssessmentTable = ({ hideStartButton = false }) => {
           </span>
         ),
         statusText: status,
-        aksi: (
-          <div className="flex items-center justify-start gap-2">
-            {/* Tombol Edit: Muncul jika status memungkinkan DAN bukan role Non-SSO */}
-            {['submitted', 'edit_requested'].includes(item.approvalStatus) && userRoleId !== 4 && (
-              <button
-                className="text-blue-600 hover:text-blue-800 transition"
-                onClick={() => handleEdit(item.id)} // Fungsi sudah dideklarasikan sebelumnya
-                title="Edit"
-              >
-                <Pencil size={20} />
-              </button>
-            )}
-            {/* Tombol Edit dari Approved: Muncul jika status approved DAN bukan role Non-SSO */}
-            {item.approvalStatus === 'approved' && userRoleId !== 4 && (
-              <button
-                className="text-blue-600 hover:text-blue-800 transition"
-                onClick={() => handleEditFromApproved(item.id)} // Fungsi sudah dideklarasikan sebelumnya
-                title="Edit Assessment"
-              >
-                <Pencil size={20} />
-              </button>
-            )}
-            {/* Tombol View: Muncul jika status approved - SELALU muncul, termasuk untuk Non-SSO */}
-            {item.approvalStatus === 'approved' && (
-              <button
-                className="text-gray-600 hover:text-green-800 transition"
-                onClick={() => handleView(item.id)} // Fungsi sudah dideklarasikan sebelumnya
-                title="Lihat Detail"
-              >
-                <Eye size={20} />
-              </button>
-            )}
-            {/* Tombol Approve: Muncul jika status edit_requested DAN bukan role Non-SSO */}
-            {item.approvalStatus === 'edit_requested' && userRoleId !== 4 && (
-              <button
-                className="text-green-600 hover:text-green-800 transition"
-                onClick={() => {
-                  setApproveAssessmentId(item.id);
-                  setShowModal(true);
-                }}
-                title="Approve"
-              >
-                <BookOpenCheck size={20} />
-              </button>
-            )}
-            {/* Tombol Lanjutkan: Muncul jika status bukan submitted, approved, edit_requested DAN bukan role Non-SSO */}
-            {!['submitted', 'edit_requested', 'approved'].includes(item.approvalStatus) && userRoleId !== 4 && (
-              <button
-                className="text-blue-600 hover:text-blue-800 transition"
-                onClick={() => handleContinue(item.id)} // Fungsi sudah dideklarasikan sebelumnya
-                title="Lanjutkan Pengisian"
-              >
-                <Play size={20} />
-              </button>
-            )}
-          </div>
-        ),
+        aksi: renderAksi(),
       };
     });
 
-    return {  tableRows, columns: dynamicCols, variableNames: uniqueVariableNames, variableIds: uniqueVariableIds };
-  }, [filteredApiData]); // Hanya bergantung pada filteredApiData, karena fungsi handler dideklarasikan di luar useMemo ini
+    return { tableRows, columns: dynamicCols, variableNames: uniqueVariableNames, variableIds: uniqueVariableIds };
+  }, [filteredApiData, loadingRequest, userRoleId]);
 
-  // Gunakan tableRows sebagai filteredData, karena sudah difilter sebelumnya
-  const filteredData = useMemo(() => 
-    tableRows.filter((item) =>
-      item.nama.toLowerCase().includes(searchTerm.toLowerCase()) // Gunakan string nama asli untuk pencarian
-    ),
+  const filteredData = useMemo(
+    () => tableRows.filter((item) => item.nama.toLowerCase().includes(searchTerm.toLowerCase())),
     [tableRows, searchTerm]
   );
 
-  // --- Fungsi utilitas ---
-  // Gunakan variableIds yang dihasilkan dari useMemo utama
   const handleCopy = () => {
-    const headers = [
-      'No',
-      'Nama UPPS/KC',
-      'Periode',
-      ...variableNames, // Gunakan nama variabel yang dinamis
-      'Hasil',
-      'Status',
-    ];
+    const headers = ['No', 'Nama UPPS/KC', 'Periode', ...variableNames, 'Hasil', 'Status'];
     const rows = filteredData.map((row) => [
       row.nomor,
-      row.nama, // Gunakan string nama asli
+      row.nama,
       row.periode,
-      ...variableIds.map(id => row[`varScore_${id}`]), // Ambil nilai skor berdasarkan ID yang konsisten
+      ...variableIds.map((id) => row[`varScore_${id}`]),
       row.hasil,
       row.statusText,
     ].join('\t'));
@@ -431,19 +453,12 @@ const AssessmentTable = ({ hideStartButton = false }) => {
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
-    const headers = [
-      'No',
-      'Nama UPPS/KC',
-      'Periode',
-      ...variableNames, // Gunakan nama variabel yang dinamis
-      'Hasil',
-      'Status',
-    ];
+    const headers = ['No', 'Nama UPPS/KC', 'Periode', ...variableNames, 'Hasil', 'Status'];
     const rows = filteredData.map((row) => [
       row.nomor,
-      row.nama, // Gunakan string nama asli
+      row.nama,
       row.periode,
-      ...variableIds.map(id => row[`varScore_${id}`]), // Ambil nilai skor berdasarkan ID yang konsisten
+      ...variableIds.map((id) => row[`varScore_${id}`]),
       row.hasil,
       row.statusText,
     ]);
@@ -454,12 +469,10 @@ const AssessmentTable = ({ hideStartButton = false }) => {
           <h2>Pengisian Assessment</h2>
           <table border="1" cellpadding="5" style="border-collapse:collapse;width:100%;">
             <thead>
-              <tr>${headers.map(h => `<th style="text-align:left;background:#f3f4f6;">${h}</th>`).join('')}</tr>
+              <tr>${headers.map((h) => `<th style="text-align:left;background:#f3f4f6;">${h}</th>`).join('')}</tr>
             </thead>
             <tbody>
-              ${rows.map(row => `
-                <tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>
-              `).join('')}
+              ${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}
             </tbody>
           </table>
         </body>
@@ -472,22 +485,15 @@ const AssessmentTable = ({ hideStartButton = false }) => {
   };
 
   const handleDownloadCSV = () => {
-    const headers = [
-      'No',
-      'Nama UPPS/KC',
-      'Periode',
-      ...variableNames, // Gunakan nama variabel yang dinamis
-      'Hasil',
-      'Status',
-    ];
+    const headers = ['No', 'Nama UPPS/KC', 'Periode', ...variableNames, 'Hasil', 'Status'];
     const rows = filteredData.map((row) => [
       row.nomor,
-      row.nama, // Gunakan string nama asli
+      row.nama,
       row.periode,
-      ...variableIds.map(id => row[`varScore_${id}`]), // Ambil nilai skor berdasarkan ID yang konsisten
+      ...variableIds.map((id) => row[`varScore_${id}`]),
       row.hasil,
       row.statusText,
-    ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
+    ].map((field) => `"${String(field).replace(/"/g, '""')}"`).join(','));
 
     const csv = [`\uFEFF${headers.join(',')}`, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -520,7 +526,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       <SuccessNotification
         isOpen={showSuccess}
         onClose={() => setShowSuccess(false)}
-        message="Assessment berhasil diubah menjadi status Edit!"
+        message="Assessment berhasil di-approve!"
       />
 
       <ModalConfirm
@@ -544,13 +550,11 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       />
 
       <div>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-          Pengisian Assessment
-        </h2>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-2">Pengisian Assessment</h2>
         <p className="text-sm text-gray-600">
           {userRoleId === 1
             ? 'Daftar semua UPPS/KC'
-            : userRoleId === 4 // Tambahkan pesan khusus untuk Non-SSO jika diperlukan
+            : userRoleId === 4
             ? 'Daftar semua assessment (Role Non-SSO)'
             : 'Hasil assessment untuk kampus Anda'}
         </p>
@@ -570,35 +574,16 @@ const AssessmentTable = ({ hideStartButton = false }) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              icon={Copy}
-              iconPosition="left"
-              onClick={handleCopy}
-              className="h-10 px-4 py-2 text-sm"
-            >
+            <Button variant="outline" icon={Copy} iconPosition="left" onClick={handleCopy} className="h-10 px-4 py-2 text-sm">
               Copy
             </Button>
-            <Button
-              variant="outline"
-              icon={Printer}
-              iconPosition="left"
-              onClick={handlePrint}
-              className="h-10 px-4 py-2 text-sm"
-            >
+            <Button variant="outline" icon={Printer} iconPosition="left" onClick={handlePrint} className="h-10 px-4 py-2 text-sm">
               Print
             </Button>
-            <Button
-              variant="outline"
-              icon={Download}
-              iconPosition="left"
-              onClick={handleDownloadCSV}
-              className="h-10 px-4 py-2 text-sm"
-            >
+            <Button variant="outline" icon={Download} iconPosition="left" onClick={handleDownloadCSV} className="h-10 px-4 py-2 text-sm">
               Download
             </Button>
 
-            {/* Tombol Start Assessment: Sembunyikan untuk role Non-SSO */}
             {!hideStartButton && userRoleId === 2 && (
               <Button
                 variant="primary"
@@ -613,12 +598,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
       </div>
 
       <div id="assessment-table">
-        <Table
-          columns={dynamicColumns} // Gunakan kolom dinamis
-          data={filteredData}
-          currentPage={1}
-          rowsPerPage={10}
-        />
+        <Table columns={dynamicColumns} data={filteredData} currentPage={1} rowsPerPage={10} />
       </div>
     </div>
   );
