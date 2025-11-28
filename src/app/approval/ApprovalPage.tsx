@@ -11,6 +11,22 @@ import { useSort } from "@/hooks/useSort";
 import SearchTable from "@/components/SearchTable";
 import axios from "axios";
 import SuccessNotification from "@/components/SuccessNotification";
+import { useApproveEditAssessment } from "@/hooks/useAssessment";
+
+// ✅ Fungsi helper untuk ambil user dari localStorage
+const getCurrentUser = () => {
+  if (typeof window !== "undefined") {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
 
 const BRANCHES = [
   { id: 1, name: "Tel-U Bandung" },
@@ -27,7 +43,7 @@ const TablePage = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<null | "approve" | "revisi">(null);
+  const [modalType, setModalType] = useState<null | "approve" | "revisi" | "approve-edit">(null);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
   const [tab] = useState("approval-assessment");
   const [search, setSearch] = useState("");
@@ -36,6 +52,13 @@ const TablePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  // ✅ Ambil role user
+  const currentUser = getCurrentUser();
+  const userRoleId = currentUser?.roleId || currentUser?.role?.id;
+
+  // ✅ Gunakan hook approve edit
+  const { mutate: approveEditAssessment } = useApproveEditAssessment();
 
   const rowsPerPage = 25;
 
@@ -57,49 +80,29 @@ const TablePage = () => {
       className: "whitespace-pre-line break-words"
     },
     { header: "Skor", key: "skor", width: "80px", sortable: true },
-   {
-  header: "Link Evidence",
-  key: "linkEvidence",
-  width: "150px",
-  sortable: true,
- renderCell: (item: any) => {
-
-  if (!item || item.linkEvidence == null || item.linkEvidence === "") {
-    return (
-      <span 
-        className="text-gray-400 pointer-events-none select-none"
-        style={{ cursor: 'default' }}
-      >
-        -
-      </span>
-    );
-  }
-
-  const link = item.linkEvidence.trim();
-  if (!link) {
-    return (
-      <span 
-        className="text-gray-400 pointer-events-none select-none"
-        style={{ cursor: 'default' }}
-      >
-        -
-      </span>
-    );
-  }
-
-  return (
-    <a 
-      href={link} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:text-blue-800 underline break-all text-xs"
-      title={link}
-    >
-      {link.length > 30 ? `${link.substring(0, 30)}...` : link}
-    </a>
-  );
-}
-}
+    {
+      header: "Link Evidence",
+      key: "linkEvidence",
+      width: "150px",
+      sortable: true,
+      renderCell: (item: any) => {
+        if (!item || !item.linkEvidence || item.linkEvidence.trim() === "") {
+          return <span className="text-gray-400">-</span>;
+        }
+        const link = item.linkEvidence.trim();
+        return (
+          <a 
+            href={link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline break-all text-xs"
+            title={link}
+          >
+            {link.length > 30 ? `${link.substring(0, 30)}...` : link}
+          </a>
+        );
+      }
+    }
   ];
 
   useEffect(() => {
@@ -133,7 +136,6 @@ const TablePage = () => {
 
     fetchPeriodeOptions();
   }, []);
-
 
   const fetchData = async () => {
     if (selectedPeriodeId === null) {
@@ -203,13 +205,13 @@ const TablePage = () => {
         const assessment = item.assessment || {};
         const answer = item.answer || {};
 
-      let linkEvidence: string | null = null;
-if (item.evidenceLink && typeof item.evidenceLink === "string") {
-  const trimmed = item.evidenceLink.trim();
-  if (trimmed !== "") {
-    linkEvidence = trimmed;
-  }
-}
+        let linkEvidence: string | null = null;
+        if (item.evidenceLink && typeof item.evidenceLink === "string") {
+          const trimmed = item.evidenceLink.trim();
+          if (trimmed !== "") {
+            linkEvidence = trimmed;
+          }
+        }
 
         let pertanyaan = "-";
         let jawaban = "-";
@@ -289,7 +291,6 @@ if (item.evidenceLink && typeof item.evidenceLink === "string") {
 
   const { sortedData, sortConfig, requestSort } = useSort(tableData);
 
-  
   const handleConfirm = async () => {
     if (!modalType || !selectedAssessmentId) {
       setShowModal(false);
@@ -297,24 +298,29 @@ if (item.evidenceLink && typeof item.evidenceLink === "string") {
     }
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-      if (!API_BASE) {
-        alert("NEXT_PUBLIC_API_URL belum di-set");
-        setShowModal(false);
-        return;
+      if (modalType === "approve-edit") {
+        await approveEditAssessment(selectedAssessmentId);
+        setSuccessMessage("Permintaan edit disetujui. Assessment siap diedit ulang!");
+      } else {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+        if (!API_BASE) {
+          alert("NEXT_PUBLIC_API_URL belum di-set");
+          return;
+        }
+
+        const endpoint = modalType === "approve"
+          ? `${API_BASE}/assessment/${selectedAssessmentId}/approve`
+          : `${API_BASE}/assessment/${selectedAssessmentId}/reject`;
+
+        await axios.post(endpoint, {});
+
+        const message = modalType === "approve"
+          ? "Assessment berhasil disetujui!"
+          : "Assessment berhasil dikirim untuk revisi!";
+
+        setSuccessMessage(message);
       }
 
-      const endpoint = modalType === "approve"
-        ? `${API_BASE}/assessment/${selectedAssessmentId}/approve`
-        : `${API_BASE}/assessment/${selectedAssessmentId}/reject`;
-
-      await axios.post(endpoint, {});
-
-      const message = modalType === "approve" 
-        ? "Assessment berhasil disetujui!" 
-        : "Assessment berhasil dikirim untuk revisi!";
-      
-      setSuccessMessage(message);
       setShowSuccess(true);
       fetchData();
     } catch (error: any) {
@@ -443,7 +449,26 @@ if (item.evidenceLink && typeof item.evidenceLink === "string") {
             </div>
 
             <div className="flex gap-4">
-              {tableData.length > 0 && tableData.some(row => row.assessment?.approvalStatus === 'submitted') && (
+              {/* ✅ TOMBOL APPROVE EDIT — HANYA UNTUK SUPER USER (ROLE ID = 1) */}
+              {userRoleId === 1 && tableData.some(row => row.assessment?.approvalStatus === 'request_edit') && (
+                <Button
+                  variant="success"
+                  className="px-13"
+                  onClick={() => {
+                    const firstRequested = tableData.find(row => row.assessment?.approvalStatus === 'request_edit');
+                    if (firstRequested) {
+                      setSelectedAssessmentId(firstRequested.assessmentId);
+                      setModalType("approve-edit");
+                      setShowModal(true);
+                    }
+                  }}
+                >
+                  Approve Edit
+                </Button>
+              )}
+
+              {/* TOMBOL APPROVE & REVISI — hanya untuk role 1 (opsional, sesuaikan jika perlu) */}
+              {userRoleId === 1 && tableData.some(row => row.assessment?.approvalStatus === 'submitted') && (
                 <>
                   <Button
                     variant="success"
@@ -488,8 +513,10 @@ if (item.evidenceLink && typeof item.evidenceLink === "string") {
             }}
             onConfirm={handleConfirm}
             title={`Apakah kamu yakin ingin ${
-              modalType === "approve" ? "melakukan approval" : "melakukan revisi"
-            } pada data ini?`}
+              modalType === "approve" ? "menyetujui assessment ini" :
+              modalType === "revisi" ? "mengirim assessment ini untuk revisi" :
+              "menyetujui permintaan edit ini"
+            }?`}
             header="Konfirmasi"
             confirmLabel="Ya, lakukan"
             cancelLabel="Batal"

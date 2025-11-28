@@ -145,3 +145,78 @@ export async function getAssessmentById(id: number): Promise<ApiResponse<Assessm
   };
 }
 }
+
+ // 🔹 POST /api/assessment/{id}/request-edit → Request edit assessment
+export async function requestEditAssessment(
+  assessmentId: number
+): Promise<ApiResponse<{ success: boolean }>> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const res = await fetch(`${BASE_URL}/assessment/${assessmentId}/request-edit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  // ✅ Jika status 2xx → sukses, kembalikan format valid
+  if (res.ok) {
+    return {
+      status: 'success',
+      message: 'Permintaan edit berhasil diajukan',
+      data: { success: true },
+    };
+  }
+
+  // ❌ Jika error → ambil pesan sebaik mungkin
+  let errorMessage = `Gagal mengajukan edit: ${res.status}`;
+  try {
+    const text = await res.text();
+    if (text.trim()) {
+      errorMessage = text.trim();
+    }
+  } catch {
+    // abaikan
+  }
+
+  throw new Error(errorMessage);
+}
+
+// 🔹 POST /approval-assessment/approve-edit → Approve edit request
+export async function approveEditAssessment(
+  assessmentId: number
+): Promise<ApiResponse<{ success: boolean }>> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const res = await fetch(`${BASE_URL}/assessment/${assessmentId}/approve-edit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ assessmentId }),
+  });
+
+  // ✅ Jika status 2xx → sukses, kembalikan format valid
+  if (res.ok) {
+    return {
+      status: 'success',
+      message: 'Permintaan edit disetujui',
+      data: { success: true },
+    };
+  }
+
+  // ❌ Jika error → ambil pesan sebaik mungkin
+  let errorMessage = `Gagal menyetujui edit: ${res.status}`;
+  try {
+    const text = await res.text();
+    if (text.trim()) {
+      errorMessage = text.trim();
+    }
+  } catch {
+    // abaikan
+  }
+
+  throw new Error(errorMessage);
+}
