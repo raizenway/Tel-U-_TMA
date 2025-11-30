@@ -1,25 +1,21 @@
 "use client";
 
-import Image from "next/image";
 import Button from "@/components/button";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useCreateAssessment } from "@/hooks/useAssessment";
 import { useAssessmentPeriod } from "@/hooks/useAssessmentPeriod";
 import { useListBranch } from "@/hooks/useBranch";
-import { useListAssessment } from "@/hooks/useAssessment"; // Import useListAssessment
+import { useListAssessment } from "@/hooks/useAssessment";
 import { AssessmentPeriodResponseDto } from "@/interfaces/assessment-period";
+import { Branch } from "@/interfaces/branch.interface";
 import { useState, useEffect, useMemo } from "react";
 
 export default function AssessmentPage() {
   const router = useRouter();
   const { mutate, loading: isCreating, error: createError } = useCreateAssessment();
   const { list, loading: loadingPeriodsFromHook } = useAssessmentPeriod();
-  
-  // useListBranch mengembalikan {  {  Branch[] } | null, isLoading, error }
   const branchHookResult = useListBranch(0);
-  
-  // useListAssessment mengembalikan {  Assessment[], loading, error }
   const assessmentHookResult = useListAssessment();
 
   const [user, setUser] = useState<any>(null);
@@ -29,7 +25,7 @@ export default function AssessmentPage() {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [allPeriods, setAllPeriods] = useState<AssessmentPeriodResponseDto[]>([]);
 
-  // 🔐 Load user dari localStorage (client-only)
+  // 🔐 Load user dari localStorage
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
     const parsed = stored ? JSON.parse(stored) : null;
@@ -68,15 +64,11 @@ export default function AssessmentPage() {
     fetchPeriods();
   }, [list, user, isLoadingUser]);
 
-  // 🏢 Ambil daftar cabang dari API (bukan hardcode!)
+  // 🏢 Ambil daftar cabang dari API
   const branches = useMemo(() => {
-    // Akses data dari hook branch
-    // branchHookResult adalah {  {  Branch[] } | null, isLoading, error }
     const branchDataWrapper = branchHookResult.data;
-    // branchDataWrapper adalah {  {  Branch[] } | null }
     if (!branchDataWrapper || !branchDataWrapper.data) return [];
-    // branchDataWrapper.data adalah Branch[] | null
-    return branchDataWrapper.data; // Ambil array Branch dari field 'data' dalam objek wrapper
+    return branchDataWrapper.data as Branch[];
   }, [branchHookResult]);
 
   // 🎯 Filter cabang berdasarkan role user
@@ -85,7 +77,7 @@ export default function AssessmentPage() {
 
     const roleId = user.role?.id ?? user.roleId;
     if (roleId === 1) {
-      return branches; // Super User: semua cabang
+      return branches;
     }
 
     const userBranchId = user.branchId;
@@ -95,17 +87,13 @@ export default function AssessmentPage() {
     return userBranch ? [userBranch] : [];
   }, [user, branches, branchHookResult.isLoading]);
 
-  // Fungsi helper untuk mengecek apakah user sudah membuat assessment untuk branch dan period ini
+  // Fungsi helper untuk cek assessment sudah ada
   const hasAssessmentForBranchAndPeriod = (branchId: number, periodId: number) => {
-    // Akses data dari hook assessment
-    // assessmentHookResult adalah {  Assessment[], loading, error }
     const userAssessmentList = assessmentHookResult.data;
-    // userAssessmentList langsung berupa array Assessment[]
     if (!user || !userAssessmentList || !Array.isArray(userAssessmentList)) return false;
-    // Gunakan field yang benar dari struktur assessment: userId, branchId, periodId
     return userAssessmentList.some(
       (assessment) =>
-        assessment.userId === user.id && // Filter by current user
+        assessment.userId === user.id &&
         assessment.branchId === branchId &&
         assessment.periodId === periodId
     );
@@ -157,8 +145,12 @@ export default function AssessmentPage() {
 
   // === RENDERING ===
 
-  // Tambahkan loadingAssessments ke loading state
-  if (isLoadingUser || branchHookResult.isLoading || assessmentHookResult.loading) {
+  if (
+    isLoadingUser ||
+    branchHookResult.isLoading ||
+    assessmentHookResult.loading ||
+    loadingPeriodsFromHook
+  ) {
     return (
       <div className="flex">
         <div className="flex-1 p-10 space-y-10">
@@ -206,63 +198,71 @@ export default function AssessmentPage() {
     );
   }
 
+  // ✅ Gunakan ASSET_URL untuk file upload (bukan API_URL)
+  const ASSET_URL = process.env.NEXT_PUBLIC_ASSET_URL || "";
+
   return (
     <div className="flex">
       <div className="flex-1 p-10 space-y-10">
-            {createError && (
-        <div className="bg-red-100 text-red-700 p-3 rounded-md max-w-2xl">
-          Gagal membuat assessment: {createError}
-        </div>
-      )}
+        {createError && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-md max-w-2xl">
+            Gagal membuat assessment: {createError}
+          </div>
+        )}
 
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-5">
-          {branchesToShow.map((branch) => (
-            <div
-              key={branch.id}
-              className="w-[300px] sm:w-[380px] md:w-[420px] lg:w-[450px] h-[320px] bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center space-y-4"
-            >
-              <Image
-                src="/image 2.png"
-                alt={branch.name}
-                width={243}
-                height={107}
-                priority
-              />
-              <h3 className="text-lg font-semibold text-gray-800">
-                {branch.name}
-              </h3>
-              <Button
-                variant="primary"
-                icon={ArrowRight}
-                iconPosition="right"
-                onClick={() => handleSelectCampus(branch.id)}
-                disabled={
-                  isCreating ||
-                  submittingBranchId === branch.id ||
-                  loadingPeriodsFromHook
-                }
-                className="rounded-[12px] px-6 py-2 text-sm font-semibold"
+          {branchesToShow.map((branch) => {
+            const cleanPath = branch.logoFile?.path?.replace(/^\/+/, "");
+            const logoUrl = cleanPath ? `${ASSET_URL}/${cleanPath}` : null;
+
+            return (
+              <div
+                key={branch.id}
+                className="w-[300px] sm:w-[380px] md:w-[420px] lg:w-[450px] h-[320px] bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center space-y-4"
               >
-                {loadingPeriodsFromHook || submittingBranchId === branch.id
-                  ? "Memuat..."
-                  : "Pilih"}
-              </Button>
-            </div>
-          ))}
+                <div className="w-full h-auto flex justify-center">
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt={branch.name}
+                      width={243}
+                      height={107}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <p className="text-gray-500 text-sm">Logo tidak tersedia</p>
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">{branch.name}</h3>
+                <Button
+                  variant="primary"
+                  icon={ArrowRight}
+                  iconPosition="right"
+                  onClick={() => handleSelectCampus(branch.id)}
+                  disabled={
+                    isCreating ||
+                    submittingBranchId === branch.id ||
+                    loadingPeriodsFromHook
+                  }
+                  className="rounded-[12px] px-6 py-2 text-sm font-semibold"
+                >
+                  {loadingPeriodsFromHook || submittingBranchId === branch.id
+                    ? "Memuat..."
+                    : "Pilih"}
+                </Button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {showPeriodModal && selectedBranchId !== null && (
-      <div 
-  className="fixed inset-0 bg-transparent bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50 p-4" // Perbaikan typo bg-tranfarant
->
+        <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">
                 Pilih Periode —{" "}
-                {
-                  branches.find((b) => b.id === selectedBranchId)?.name
-                }
+                {branches.find((b) => b.id === selectedBranchId)?.name}
               </h3>
               <button
                 onClick={() => {
@@ -275,7 +275,6 @@ export default function AssessmentPage() {
               </button>
             </div>
 
-            {/* Tambahkan loadingAssessments ke kondisi */}
             {loadingPeriodsFromHook || assessmentHookResult.loading ? (
               <p className="text-gray-500 text-sm py-4 text-center">
                 Memuat periode...
@@ -284,19 +283,19 @@ export default function AssessmentPage() {
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                 {getActivePeriods().length > 0 ? (
                   getActivePeriods().map((period) => {
-                    // Tambahkan pengecekan apakah sudah ada assessment
-                    const isDisabled = hasAssessmentForBranchAndPeriod(selectedBranchId, period.id);
+                    const isDisabled = hasAssessmentForBranchAndPeriod(
+                      selectedBranchId,
+                      period.id
+                    );
                     return (
                       <button
                         key={period.id}
-                        // Jangan panggil handleSelectPeriod jika disabled
                         onClick={() => !isDisabled && handleSelectPeriod(period.id)}
-                        // Tambahkan isDisabled ke disabled condition
                         disabled={isDisabled || submittingBranchId === selectedBranchId}
                         className={`w-full text-left p-3 border border-gray-200 rounded-lg transition text-sm font-medium ${
                           isDisabled
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' // Style jika disabled
-                            : 'hover:bg-blue-50 hover:border-blue-300'       // Style jika enabled
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "hover:bg-blue-50 hover:border-blue-300"
                         }`}
                       >
                         {formatPeriodName(period)}

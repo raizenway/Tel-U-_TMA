@@ -9,9 +9,29 @@ export interface BranchDetail {
   accreditationGrowth: number;
 }
 
+// types/branch.ts atau file interface terkait
+export interface LogoFile {
+  id: number;
+  originalName: string;
+  altText: string | null;
+  mimetype: string;
+  encoding: string;
+  path: string; // contoh: "uploads/branches/logo-1764343062513-194508810.png"
+  destination: string | null;
+  size: string;
+  aux: any;
+  uploaderId: any;
+  objectId: any;
+  objectType: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Branch {
   id: number;
   name: string;
   email: string;
+  logoFileId: number;
+  logoFile: LogoFile;
   branchDetails: BranchDetail[];
 }
