@@ -29,7 +29,7 @@ export const useAccreditationData = () => {
         // ✅ Generate payload: semua kampus × semua tahun
         const payload: AccreditationApiPayloadItem[] = rows.flatMap((row) => {
           return ALL_CAMPUSES.map((campus) => ({
-            branch_id: CAMPUS_TO_BRANCH_ID[campus], // ✅ aman karena ALL_CAMPUSES adalah CampusKey[]
+            branchId: CAMPUS_TO_BRANCH_ID[campus], // ✅ aman karena ALL_CAMPUSES adalah CampusKey[]
             year: Number(row.year),
             accreditationGrowth: row[campus] ?? 0,
           }));
