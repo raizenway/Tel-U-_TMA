@@ -14,7 +14,7 @@ export interface AccreditationRow {
 }
 
 export interface AccreditationApiPayloadItem {
-  branch_id: number;
+  branchId: number;
   year: number;
   accreditationGrowth: number;
 } 

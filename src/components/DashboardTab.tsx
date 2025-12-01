@@ -33,7 +33,7 @@ const CAMPUS_LIST = [
   "Tel-U Surabaya",
   "Tel-U Purwokerto",
   "Tel-U Bandung",
-  "Tel-U Sumatra", // ✅ Tambahkan Tel-U Sumatra
+  // "Tel-U Sumatra", // ✅ Tambahkan Tel-U Sumatra
 ] as const;
 
 type CampusKey = 
@@ -41,7 +41,7 @@ type CampusKey =
   | "Tel-U Surabaya"
   | "Tel-U Purwokerto"
   | "Tel-U Bandung"
-  | "Tel-U Sumatra"; // ✅ Tambahkan tipe
+  // | "Tel-U Sumatra"; // ✅ Tambahkan tipe
 
 interface YearlyData { year: number; total: number; }
 interface Branch {
@@ -118,7 +118,7 @@ type StudentBodyRow = {
   "Tel-U Surabaya": number;
   "Tel-U Purwokerto": number;
   "Tel-U Bandung": number;
-  "Tel-U Sumatra": number; // ✅ Tambahkan
+  // "Tel-U Sumatra": number; // ✅ Tambahkan
 };
 
 type AccreditationRow = {
@@ -127,7 +127,7 @@ type AccreditationRow = {
   "Tel-U Surabaya": number;
   "Tel-U Purwokerto": number;
   "Tel-U Bandung": number;
-  "Tel-U Sumatra": number; // ✅ Tambahkan
+  // "Tel-U Sumatra": number; // ✅ Tambahkan
 };
 
 interface CustomRadarTooltipProps {
@@ -168,7 +168,7 @@ export default function DashboardTab() {
     2: "Tel-U Jakarta",
     3: "Tel-U Surabaya",
     4: "Tel-U Purwokerto",
-    6: "Tel-U Sumatra",
+    // 6: "Tel-U Sumatra",
   };
 
   // ✅ Tentukan kampus default berdasarkan role
@@ -200,13 +200,13 @@ export default function DashboardTab() {
     "Tel-U Surabaya": number[];
     "Tel-U Purwokerto": number[];
     "Tel-U Bandung": number[];
-    "Tel-U Sumatra": number[];
+    // "Tel-U Sumatra": number[];
   }>({
     "Tel-U Jakarta": Array(7).fill(0),
     "Tel-U Surabaya": Array(7).fill(0),
     "Tel-U Purwokerto": Array(7).fill(0),
     "Tel-U Bandung": Array(7).fill(0),
-    "Tel-U Sumatra": Array(7).fill(0),
+    // "Tel-U Sumatra": Array(7).fill(0),
   });
 
   const [tmiRadarData, setTmiRadarData] = useState<TmiRadarRow[]>([]);
@@ -225,13 +225,13 @@ export default function DashboardTab() {
     "Tel-U Surabaya": number[];
     "Tel-U Purwokerto": number[];
     "Tel-U Bandung": number[];
-    "Tel-U Sumatra": number[];
+    // "Tel-U Sumatra": number[];
   }>({
     "Tel-U Jakarta": Array(7).fill(0),
     "Tel-U Surabaya": Array(7).fill(0),
     "Tel-U Purwokerto": Array(7).fill(0),
     "Tel-U Bandung": Array(7).fill(0),
-    "Tel-U Sumatra": Array(7).fill(0),
+    // "Tel-U Sumatra": Array(7).fill(0),
   });
 
   const { saveToApi: saveStudentBody, isSaving: isSavingStudent, error: studentSaveError } = useStudentBodyData();
@@ -272,7 +272,7 @@ export default function DashboardTab() {
           "Tel-U Surabaya": 0,
           "Tel-U Purwokerto": 0,
           "Tel-U Bandung": 0,
-          "Tel-U Sumatra": 0,
+          // "Tel-U Sumatra": 0,
         };
         for (const branch of filteredBranches) {
           const campusName = branch.name;
@@ -293,7 +293,7 @@ export default function DashboardTab() {
           "Tel-U Surabaya": 0,
           "Tel-U Purwokerto": 0,
           "Tel-U Bandung": 0,
-          "Tel-U Sumatra": 0,
+          // "Tel-U Sumatra": 0,
         } as Record<CampusKey, number>;
         for (const branch of filteredBranches) {
           const campusName = branch.name;
@@ -309,7 +309,7 @@ export default function DashboardTab() {
         "Tel-U Surabaya": accreditationFormatted.map(r => r["Tel-U Surabaya"]),
         "Tel-U Purwokerto": accreditationFormatted.map(r => r["Tel-U Purwokerto"]),
         "Tel-U Bandung": accreditationFormatted.map(r => r["Tel-U Bandung"]),
-        "Tel-U Sumatra": accreditationFormatted.map(r => r["Tel-U Sumatra"]),
+        // "Tel-U Sumatra": accreditationFormatted.map(r => r["Tel-U Sumatra"]),
       };
       setAccreditationInputData(accInput);
       setLocalAccreditationData({
@@ -317,7 +317,7 @@ export default function DashboardTab() {
         'Tel-U Surabaya': [...accInput['Tel-U Surabaya']],
         'Tel-U Purwokerto': [...accInput['Tel-U Purwokerto']],
         'Tel-U Bandung': [...accInput['Tel-U Bandung']],
-        'Tel-U Sumatra': [...accInput['Tel-U Sumatra']],
+        // 'Tel-U Sumatra': [...accInput['Tel-U Sumatra']],
       });
 
       // Filter TMI hanya untuk kampus user
@@ -409,7 +409,7 @@ export default function DashboardTab() {
       "Tel-U Surabaya": 0,
       "Tel-U Purwokerto": 0,
       "Tel-U Bandung": 0,
-      "Tel-U Sumatra": 0,
+      // "Tel-U Sumatra": 0,
     }]);
   };
 
@@ -433,7 +433,7 @@ export default function DashboardTab() {
       "Tel-U Surabaya": [...prev["Tel-U Surabaya"], 0],
       "Tel-U Purwokerto": [...prev["Tel-U Purwokerto"], 0],
       "Tel-U Bandung": [...prev["Tel-U Bandung"], 0],
-      "Tel-U Sumatra": [...prev["Tel-U Sumatra"], 0],
+      // "Tel-U Sumatra": [...prev["Tel-U Sumatra"], 0],
     }));
   };
 
@@ -454,7 +454,7 @@ export default function DashboardTab() {
         "Tel-U Surabaya": localAccreditationData["Tel-U Surabaya"][idx] ?? 0,
         "Tel-U Purwokerto": localAccreditationData["Tel-U Purwokerto"][idx] ?? 0,
         "Tel-U Bandung": localAccreditationData["Tel-U Bandung"][idx] ?? 0,
-        "Tel-U Sumatra": localAccreditationData["Tel-U Sumatra"][idx] ?? 0,
+        // "Tel-U Sumatra": localAccreditationData["Tel-U Sumatra"][idx] ?? 0,
       }));
 
       const success = await saveAccreditation(accreditationRows);
@@ -485,7 +485,7 @@ export default function DashboardTab() {
       Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
       Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
       Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
-      Sumatra: accreditationInputData["Tel-U Sumatra"][idx] ?? 0,
+      // Sumatra: accreditationInputData["Tel-U Sumatra"][idx] ?? 0,
     }));
     if (dataToDownload.length === 0) {
       alert("Belum ada data akreditasi prodi untuk diunduh.");
@@ -499,7 +499,7 @@ export default function DashboardTab() {
         row.Bandung.toFixed(1),
         row.Purwokerto.toFixed(1),
         row.Surabaya.toFixed(1),
-        row.Sumatra.toFixed(1),
+        // row.Sumatra.toFixed(1),
       ]),
     ]
       .map((r) => r.join(","))
@@ -525,7 +525,7 @@ export default function DashboardTab() {
       'Tel-U Surabaya': [...accreditationInputData['Tel-U Surabaya']],
       'Tel-U Purwokerto': [...accreditationInputData['Tel-U Purwokerto']],
       'Tel-U Bandung': [...accreditationInputData['Tel-U Bandung']],
-      'Tel-U Sumatra': [...accreditationInputData['Tel-U Sumatra']],
+      // 'Tel-U Sumatra': [...accreditationInputData['Tel-U Sumatra']],
     });
     setLocalAccreditationYears(FIXED_YEARS);
     setShowModal(true);
@@ -618,10 +618,10 @@ export default function DashboardTab() {
                 <span className="w-4 h-4 bg-[#FF9F40] rounded-sm"></span>
                 <span>Tel-U Purwokerto</span>
               </div>
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <span className="w-4 h-4 bg-[#9966FF] rounded-sm"></span>
                 <span>Tel-U Sumatra</span>
-              </div>
+              </div> */}
             </div>
             <div style={{ width: '100%', height: '300px', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -642,7 +642,7 @@ export default function DashboardTab() {
                   <Radar name="Tel-U Jakarta" dataKey="Tel-U Jakarta" stroke="#36A2EB" fill="#36A2EB" fillOpacity={0.4} />
                   <Radar name="Tel-U Surabaya" dataKey="Tel-U Surabaya" stroke="#4BC0C0" fill="#4BC0C0" fillOpacity={0.4} />
                   <Radar name="Tel-U Purwokerto" dataKey="Tel-U Purwokerto" stroke="#FF9F40" fill="#FF9F40" fillOpacity={0.4} />
-                  <Radar name="Tel-U Sumatra" dataKey="Tel-U Sumatra" stroke="#9966FF" fill="#9966FF" fillOpacity={0.4} />
+                  {/* <Radar name="Tel-U Sumatra" dataKey="Tel-U Sumatra" stroke="#9966FF" fill="#9966FF" fillOpacity={0.4} /> */}
                   <Tooltip content={<CustomRadarTooltip />} />
                 </RadarChart>
               </ResponsiveContainer>
@@ -702,7 +702,7 @@ export default function DashboardTab() {
               Bandung: accreditationInputData["Tel-U Bandung"][idx] ?? 0,
               Purwokerto: accreditationInputData["Tel-U Purwokerto"][idx] ?? 0,
               Surabaya: accreditationInputData["Tel-U Surabaya"][idx] ?? 0,
-              Sumatra: accreditationInputData["Tel-U Sumatra"][idx] ?? 0,
+              // Sumatra: accreditationInputData["Tel-U Sumatra"][idx] ?? 0,
             }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="tahun" />
@@ -713,7 +713,7 @@ export default function DashboardTab() {
               <Line type="monotone" dataKey="Bandung" stroke="#FF6384" />
               <Line type="monotone" dataKey="Purwokerto" stroke="#FF9F40" />
               <Line type="monotone" dataKey="Surabaya" stroke="#4BC0C0" />
-              <Line type="monotone" dataKey="Sumatra" stroke="#9966FF" />
+              {/* <Line type="monotone" dataKey="Sumatra" stroke="#9966FF" /> */}
             </LineChart>
           </ResponsiveContainer>
         </div>
