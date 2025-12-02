@@ -531,8 +531,7 @@ Berhasil: ${successCount}/${totalCount}`);
       localStorage.removeItem('currentAssessmentForContinue');
       router.push("/assessment/assessmenttable");
     } catch (err) {
-      console.error("❌ Gagal menyimpan:", err);
-      
+      alert("❌ GAGAL MENYIMPAN DATA!\nError: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -712,7 +711,6 @@ Berhasil: ${successCount}/${totalCount}`);
                 />
               </div>
             )}
-
             {!viewOnly && isLast && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                 <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
