@@ -41,7 +41,7 @@ const mapStatusToUI = (approvalStatus: string): { status: string; aksi: 'edit' |
   switch (approvalStatus) {
     case 'submitted':
     case 'approve_edit':
-      return { status: 'Approve Edit', aksi: 'edit' };
+      return { status: 'Submitted', aksi: 'edit' };
     case 'approved':
       return { status: 'Approved', aksi: 'view' };
     case 'edit_requested':
@@ -285,20 +285,9 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         // 2. Status: approve_edit → centang hijau (statik)
         if (item.approvalStatus === 'approve_edit') {
           return (
-            // <span title="Edit telah disetujui" className="text-green-600">
-            //   <CheckCircle size={20} />
-            // </span>
-            <div>
-              {userRoleId !== 4 && (
-                <button
-                  className="text-green-600 hover:text-blue-800 transition"
-                  onClick={() => handleContinue(item.id)}
-                  title="Edit Assessment"
-                >
-                  <Pencil size={20} />
-                </button>
-              )}
-            </div>
+            <span title="Edit telah disetujui" className="text-green-600">
+              <CheckCircle size={20} />
+            </span>
           );
         }
 
@@ -306,7 +295,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         if (item.approvalStatus === 'approved') {
           return (
             <div className="flex items-center gap-2">
-              {/* {userRoleId !== 4 && (
+              {userRoleId !== 4 && (
                 <button
                   className="text-blue-600 hover:text-blue-800 transition"
                   onClick={() => handleEditFromApproved(item.id)}
@@ -314,7 +303,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
                 >
                   <Pencil size={20} />
                 </button>
-              )} */}
+              )}
               <button
                 className="text-gray-600 hover:text-green-800 transition"
                 onClick={() => handleView(item.id)}
@@ -421,8 +410,6 @@ if (item.approvalStatus === 'edit_requested' || item.approvalStatus === 'request
               status === 'Submitted'
                 ? 'bg-blue-800'
                 : status === 'Approved'
-                ? 'bg-green-500'
-                : status === 'Approve Edit'
                 ? 'bg-green-500'
                 : status === 'Belum Selesai'
                 ? 'bg-red-500'

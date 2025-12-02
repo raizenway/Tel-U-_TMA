@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useRef, useEffect, useMemo } from "react";
 import clsx from "clsx";
 import * as XLSX from "xlsx";
@@ -39,19 +38,16 @@ export default function AssessmentFormTab() {
   const [isAssessmentIdReady, setIsAssessmentIdReady] = useState(false);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   // --- State Form ---
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [rawQuestions, setRawQuestions] = useState<QuestionItem[]>([]);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [currentIndex, setCurrentIndex] = useState(0);
-
   // --- Loading ---
   const hookResult = useTransformationVariableList();
   const transformationVariables = hookResult.data;
   const variablesLoading = hookResult.loading;
   const [variableMap, setVariableMap] = useState<Record<number, string>>({});
-
   // --- Modal & UI ---
   const [showModal, setShowModal] = useState(false);
   const [showPreConfirmModal, setShowPreConfirmModal] = useState(false);
@@ -63,7 +59,6 @@ export default function AssessmentFormTab() {
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [modalData, setModalData] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   // --- Router & Params ---
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,7 +76,6 @@ export default function AssessmentFormTab() {
   useEffect(() => {
     if (!isClient) return;
     let id: number | null = assessmentIdFromUrl ? parseInt(assessmentIdFromUrl, 10) : null;
-
     if (fromEdit || fromContinue) {
       let storageKey = fromEdit ? 'currentAssessmentForEdit' : 'currentAssessmentForContinue';
       const saved = localStorage.getItem(storageKey);
@@ -102,7 +96,6 @@ export default function AssessmentFormTab() {
         }
       }
     }
-
     setSelectedAssessmentId(id);
     setIsAssessmentIdReady(true);
   }, [isClient, assessmentIdFromUrl, fromEdit, fromContinue, viewOnly]);
@@ -198,29 +191,24 @@ export default function AssessmentFormTab() {
   // === Load Answers dari localStorage atau API ===
   useEffect(() => {
     if (!isClient || !isAssessmentIdReady || selectedAssessmentId === null || rawQuestions.length === 0) return;
-
     const loadAnswers = async () => {
       // 🔸 Jika mode EDIT atau VIEW → ambil dari API
       if (fromEdit || viewOnly) {
         try {
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assessment/${selectedAssessmentId}`);
           const data = await res.json();
-
           if (data.data?.assessmentDetails) {
             const mappedAnswers: { [key: string]: string } = {};
-
             data.data.assessmentDetails.forEach((detail: any) => {
               const qId = detail.questionId;
               const baseKey = String(qId);
               const ans = detail.answer;
               const question = rawQuestions.find(q => q.id === qId);
               if (!question) return;
-
               const getAnswer = (val: any): string => {
                 if (val == null || val === "") return "";
                 return String(val).trim();
               };
-
               if (question.type === 'text') {
                 mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
                 mappedAnswers[`${baseKey}a`] = getAnswer(ans.textAnswer2);
@@ -230,12 +218,10 @@ export default function AssessmentFormTab() {
               } else if (question.type === 'multitext') {
                 mappedAnswers[baseKey] = getAnswer(ans.textAnswer1);
               }
-
               if (detail.evidenceLink) {
                 mappedAnswers[`evidence-${qId}`] = detail.evidenceLink;
               }
             });
-
             setAnswers(mappedAnswers);
             setIsFormDirty(false);
             setFormBelumDisimpan(false);
@@ -246,20 +232,32 @@ export default function AssessmentFormTab() {
         return;
       }
 
-      // 🔸 Mode CONTINUE: cek localStorage
+      // 🔸 Mode CONTINUE: prioritaskan auto-saved data
       if (fromContinue) {
+        const autoSavedKey = `assessment-${selectedAssessmentId}-answers`;
+        const savedAuto = localStorage.getItem(autoSavedKey);
+        if (savedAuto) {
+          try {
+            setAnswers(JSON.parse(savedAuto));
+            setIsFormDirty(true);
+            setFormBelumDisimpan(true);
+            return;
+          } catch (e) {
+            console.warn("Gagal parse auto-saved answers");
+          }
+        }
+
+        // Fallback ke currentAssessmentForContinue
         const savedContinue = localStorage.getItem('currentAssessmentForContinue');
         if (savedContinue) {
           try {
             const item = JSON.parse(savedContinue);
-            // Gunakan logika buildAnswersFromAssessment seperti di AssessmentTable
             const answersMap: { [key: string]: string } = {};
             if (item.assessmentDetails && Array.isArray(item.assessmentDetails)) {
               item.assessmentDetails.forEach((detail: any) => {
                 const qId = detail.questionId;
                 const baseKey = String(qId);
                 const ans = detail.answer || {};
-
                 const answer1 = 
                   ans.textAnswer1 != null && ans.textAnswer1 !== "" 
                     ? String(ans.textAnswer1) 
@@ -268,13 +266,11 @@ export default function AssessmentFormTab() {
                 const answer3 = ans.textAnswer3 != null ? String(ans.textAnswer3) : "0";
                 const answer4 = ans.textAnswer4 != null ? String(ans.textAnswer4) : "0";
                 const answer5 = ans.textAnswer5 != null ? String(ans.textAnswer5) : "0";
-
                 answersMap[baseKey] = answer1;
                 if (answer2 !== "0") answersMap[`${baseKey}a`] = answer2;
                 if (answer3 !== "0") answersMap[`${baseKey}b`] = answer3;
                 if (answer4 !== "0") answersMap[`${baseKey}c`] = answer4;
                 if (answer5 !== "0") answersMap[`${baseKey}d`] = answer5;
-
                 if (detail.evidenceLink) {
                   answersMap[`evidence-${qId}`] = detail.evidenceLink;
                 }
@@ -303,14 +299,31 @@ export default function AssessmentFormTab() {
         }
       }
     };
-
     loadAnswers();
   }, [isClient, isAssessmentIdReady, selectedAssessmentId, rawQuestions, fromEdit, fromContinue, viewOnly]);
+
+  // ✅ AUTO-SAVE KE LOCALSTORAGE SETIAP KALI JAWABAN BERUBAH (DENGAN DEBOUNCE)
+  useEffect(() => {
+    if (!isClient || viewOnly || selectedAssessmentId === null) return;
+
+    const saveToLocalStorage = () => {
+      try {
+        const key = `assessment-${selectedAssessmentId}-answers`;
+        localStorage.setItem(key, JSON.stringify(answers));
+        console.log("✅ Auto-saved to localStorage:", key);
+      } catch (e) {
+        console.warn("⚠️ Gagal auto-save ke localStorage:", e);
+      }
+    };
+
+    // Gunakan debounce 500ms agar tidak terlalu sering menulis ke disk
+    const debounceTimeout = setTimeout(saveToLocalStorage, 500);
+    return () => clearTimeout(debounceTimeout);
+  }, [answers, selectedAssessmentId, isClient, viewOnly]);
 
   // === Hooks ===
   const { mutate: saveAssessmentDetail, loading: savingAnswers, error: saveError } = useCreateAssessmentDetail();
   const { mutate: finishAssessment, loading: finishing, error: finishError } = useFinishAssessment();
-
   useEffect(() => {
     if (saveError) console.error("Error menyimpan jawaban:", saveError);
   }, [saveError]);
@@ -350,12 +363,10 @@ export default function AssessmentFormTab() {
   const handleNext = () => { if (currentIndex < questions.length - 1) setCurrentIndex(currentIndex + 1); };
   const handlePrevious = () => { if (currentIndex > 0) setCurrentIndex(currentIndex - 1); };
   const handleBrowseClick = () => fileInputRef.current?.click();
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (viewOnly || !isClient) return;
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -367,7 +378,6 @@ export default function AssessmentFormTab() {
         }
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (string | number | null)[][];
-
         let headerRowIndex = -1;
         for (let i = 0; i < jsonData.length; i++) {
           const row = jsonData[i];
@@ -377,33 +387,26 @@ export default function AssessmentFormTab() {
           }
         }
         if (headerRowIndex === -1) throw new Error("Header 'No' tidak ditemukan.");
-
         const rows = jsonData.slice(headerRowIndex + 1);
         let currentQuestionId: number | null = null;
         const updatedAnswers: { [key: string]: string } = {};
         const questionCounter: Record<number, number> = {};
-
         for (const row of rows) {
           if (!Array.isArray(row) || row.length < 7) continue;
           const noCell = row[0];
           const inputDesc = row[5];
           const valueCell = row[6];
-
           if (noCell != null && (typeof noCell === 'number' || (/^\d+$/.test(String(noCell).trim())))) {
             const id = Number(noCell);
             if (id >= 1 && id <= 19) currentQuestionId = id;
             else currentQuestionId = null;
           }
-
           if (currentQuestionId === null || !inputDesc || String(inputDesc).trim() === "") {
             continue;
           }
-
           const questionItem = questions.find(q => q.id === currentQuestionId);
           if (!questionItem) continue;
-
           const valueStr = valueCell == null ? "" : String(valueCell).trim();
-
           if (questionItem.type === 'multitext') {
             const letterToIndex: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4 };
             const lowerVal = valueStr.toLowerCase();
@@ -423,13 +426,13 @@ export default function AssessmentFormTab() {
             questionCounter[currentQuestionId!]++;
           }
         }
-
         setAnswers(prev => ({ ...prev, ...updatedAnswers }));
         setCurrentIndex(questions.length - 1);
         alert(`✅ Berhasil memuat ${Object.keys(updatedAnswers).length} jawaban dari Excel!`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        alert(`Gagal membaca file Excel.\nError: ${msg}`);
+        alert(`Gagal membaca file Excel.
+Error: ${msg}`);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -440,7 +443,6 @@ export default function AssessmentFormTab() {
       setError("Periode tidak valid.");
       return;
     }
-
     try {
       let successCount = 0, totalCount = 0;
       for (const q of questions) {
@@ -456,7 +458,6 @@ export default function AssessmentFormTab() {
           evidenceLink: answers[`evidence-${q.id}`] || "",
         };
         let hasValidAnswer = false;
-
         if (q.type === 'multitext') {
           const userAnswer = answers[baseKey];
           if (isAnswerValid(userAnswer)) {
@@ -480,7 +481,6 @@ export default function AssessmentFormTab() {
             }
           }
         }
-
         if (!hasValidAnswer) continue;
         totalCount++;
         try {
@@ -490,20 +490,17 @@ export default function AssessmentFormTab() {
           console.error(`❌ Gagal menyimpan soal ${q.id}:`, error);
         }
       }
-
       if (successCount === 0 && totalCount > 0) {
         alert("❌ GAGAL MENYIMPAN DATA KE DATABASE!");
         return;
       }
       if (successCount < totalCount) {
-        alert(`⚠️ Sebagian data gagal disimpan!\nBerhasil: ${successCount}/${totalCount}`);
+        alert(`⚠️ Sebagian data gagal disimpan!
+Berhasil: ${successCount}/${totalCount}`);
       }
-
       await finishAssessment({ assessmentId: selectedAssessmentId });
-
       localStorage.setItem(`assessment-${selectedAssessmentId}-answers`, JSON.stringify(answers));
       localStorage.setItem('currentAssessmentForEdit', JSON.stringify({ id: selectedAssessmentId }));
-
       const resultData = questions.map(q => {
         const baseKey = String(q.id);
         let jawaban = q.type === 'multitext'
@@ -521,7 +518,6 @@ export default function AssessmentFormTab() {
           status: jawaban.split(" | ").every(a => a === "-") ? "Kosong" : "Terisi",
         };
       });
-
       const existing = JSON.parse(localStorage.getItem("assessmentResults") || "[]");
       localStorage.setItem("assessmentResults", JSON.stringify([...existing, {
         id: Date.now(),
@@ -535,7 +531,6 @@ export default function AssessmentFormTab() {
       localStorage.removeItem('currentAssessmentForContinue');
       router.push("/assessment/assessmenttable");
     } catch (err) {
-      console.error("❌ Gagal menyimpan:", err);
       alert("❌ GAGAL MENYIMPAN DATA!\nError: " + (err instanceof Error ? err.message : String(err)));
     }
   };
@@ -596,7 +591,6 @@ export default function AssessmentFormTab() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="max-w-2xl mx-auto p-10 text-center">
@@ -607,7 +601,6 @@ export default function AssessmentFormTab() {
       </div>
     );
   }
-
   if (!isAssessmentIdReady || variablesLoading || rawQuestions.length === 0) {
     return <div className="p-10 text-center">Memuat...</div>;
   }
@@ -628,13 +621,11 @@ export default function AssessmentFormTab() {
           Mode Lanjutkan — Melanjutkan pengisian assessment
         </div>
       ) : null}
-
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-6">
           <div className="text-center font-semibold text-lg text-black bg-white py-2 rounded-md border shadow">
             {current.title}
           </div>
-
           <div className="flex items-start gap-4">
             <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm w-max">
               <div className="w-1 h-10 flex items-center justify-center font-semibold text-sm text-gray-700">
@@ -645,10 +636,8 @@ export default function AssessmentFormTab() {
               <p className="text-sm text-gray-800">{current.indicator}</p>
             </div>
           </div>
-
           <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
             <div className="text-sm text-gray-600 font-medium">{current.question}</div>
-
             {current.type === 'text' ? (
               <div className="space-y-4">
                 {current.questionParts.map((part, index) => {
@@ -701,7 +690,6 @@ export default function AssessmentFormTab() {
                 ))}
               </div>
             ) : null}
-
             {current.id && !viewOnly && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-800 mb-1">Link Evidence</label>
@@ -723,8 +711,7 @@ export default function AssessmentFormTab() {
                 />
               </div>
             )}
-
-            {false && !viewOnly && isLast && (
+            {!viewOnly && isLast && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                 <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
                   <p className="text-sm text-gray-600">Download template jawaban</p>
@@ -758,7 +745,6 @@ export default function AssessmentFormTab() {
                 </div>
               </div>
             )}
-
             <div className="flex justify-end items-center gap-3 pt-4">
               {!viewOnly && (
                 <Button
@@ -787,7 +773,6 @@ export default function AssessmentFormTab() {
             </div>
           </div>
         </div>
-
         <div className="w-full lg:w-1/3">
           <div className="bg-white p-9 rounded-xl shadow border border-gray-200 space-y-4">
             <h3 className="text-sm font-semibold text-gray-600">Navigasi Soal</h3>
@@ -815,7 +800,6 @@ export default function AssessmentFormTab() {
                 );
               })}
             </div>
-
             <button
               className={`mt-4 w-full text-sm py-2 rounded-lg font-medium transition ${
                 viewOnly
@@ -880,7 +864,6 @@ export default function AssessmentFormTab() {
           </p>
         </div>
       </ModalConfirm>
-
       <ModalConfirm
         isOpen={showModal}
         onCancel={() => setShowModal(false)}
@@ -920,7 +903,6 @@ export default function AssessmentFormTab() {
           ))}
         </div>
       </ModalConfirm>
-
       {!viewOnly && (
         <ModalConfirm
           isOpen={showResetModal}
@@ -994,7 +976,6 @@ export default function AssessmentFormTab() {
           </div>
         </ModalConfirm>
       )}
-
       <ModalBlockNavigation
         isOpen={showBlockModal}
         onCancel={() => setShowBlockModal(false)}
@@ -1006,7 +987,6 @@ export default function AssessmentFormTab() {
           }
         }}
       />
-
       <SuccessNotification
         isOpen={showSuccess}
         onClose={() => setShowSuccess(false)}
