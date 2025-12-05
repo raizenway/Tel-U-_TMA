@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useMemo, useRef} from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ModalConfirm from '@/components/StarAssessment/ModalConfirm';
 import SuccessNotification from '@/components/SuccessNotification';
@@ -9,17 +9,14 @@ import TableButton from '@/components/TableButton';
 import Pagination from '@/components/Pagination';
 import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
-import { useListBranch, useCreateBranch } from "@/hooks/useBranch";
-import { Branch, BranchDetail} from '@/interfaces/branch.interface';
-import ModalAddBranch from '@/components/ModalAddBranch';
+import { useListBranch } from "@/hooks/useBranch";
+import { Branch, BranchDetail } from '@/interfaces/branch.interface';
 
 export default function KampusCabangPage() {
   const router = useRouter();
 
-  const { mutate: createBranch, loading: creating } = useCreateBranch();
-
   const [refreshFlag, setRefreshFlag] = useState(0);
-  const { data, isLoading, error } = useListBranch(refreshFlag); 
+  const { data, isLoading, error } = useListBranch(refreshFlag);
   const branches = data?.data || [];
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,34 +27,94 @@ export default function KampusCabangPage() {
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // ✅ Simpan kampus yang dipilih
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
-  // ✅ State untuk data di modal (editable)
   const [modalData, setModalData] = useState<BranchDetail[]>([]);
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // ✅ State untuk modal tambah
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+
+  // ✅ State untuk modal edit
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editBranch, setEditBranch] = useState<Branch | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
+  const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const ASSET_URL = process.env.NEXT_PUBLIC_ASSET_URL?.replace(/\/$/, '') || '';
 
   const columns = [
     { header: 'No', key: 'id', width: '60px', sortable: true },
     { header: 'Nama UPPS/KC', key: 'name', width: '250px', sortable: true },
     { header: 'Email', key: 'email', width: '300px', sortable: true },
-     {
-    header: 'Detail',
-    key: 'detail',
-    width: '100px',
-    sortable: false,
-    className: 'sticky right-0 bg-gray-100 z-10',
-    renderCell: (item: Branch) => (
-      <button
-        onClick={() => handleDetailClick(item)}
-        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-      >
-        Detail
-      </button>
-    ),
-  },
+    {
+      header: 'Logo',
+      key: 'logoFile',
+      width: '120px',
+      sortable: false,
+      renderCell: (item: Branch) => {
+        const cleanPath = item.logoFile?.path?.replace(/^\/+/, "");
+        const logoUrl = cleanPath ? `${ASSET_URL}/${cleanPath}` : null;
+        return (
+          <div className="flex justify-center">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={`Logo ${item.name}`}
+                className="w-10 h-10 object-contain border rounded"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-logo.png';
+                }}
+              />
+            ) : (
+              <span className="text-gray-400">–</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Aksi',
+      key: 'actions',
+      width: '80px',
+      sortable: false,
+      className: 'sticky right-0  z-10',
+      renderCell: (item: Branch) => (
+        <button
+          onClick={() => handleEditClick(item)}
+          className="text-gray-600 hover:text-blue-600"
+          title="Edit"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+          </svg>
+        </button>
+      ),
+    },
+    {
+      header: 'Detail',
+      key: 'detail',
+      width: '100px',
+      sortable: false,
+      className: 'sticky right-0 bg-gray-100 z-10',
+      renderCell: (item: Branch) => (
+        <button
+          onClick={() => handleDetailClick(item)}
+          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+        >
+          Detail
+        </button>
+      ),
+    },
   ];
 
   const filteredBranches = useMemo(() => {
@@ -77,14 +134,11 @@ export default function KampusCabangPage() {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
-
   const currentBranches = sortedData.slice(indexOfFirst, indexOfLast);
 
-  // ✅ Simpan kampus yang diklik & inisialisasi data modal
   const handleDetailClick = (branch: Branch) => {
     setSelectedBranch(branch);
-    // Inisialisasi data modal dari branchDetails
-    setModalData(branch.branchDetails); 
+    setModalData(branch.branchDetails);
     setIsDetailModalOpen(true);
   };
 
@@ -94,177 +148,295 @@ export default function KampusCabangPage() {
     setModalData([]);
   };
 
-  // ✅ Tambah baris baru
   const handleAddYear = () => {
-  if (!selectedBranch) return; // ✅ TAMBAHKAN INI — pastikan selectedBranch ada
-
-  if (modalData.length === 0) {
-    setModalData([{
-      id: undefined as any,
-      branchId: selectedBranch.id,
-      year: 2021,
-      studentBodyCount: 0,
-      studyProgramCount: 0,
-      superiorAccreditedStudyProgramCount: 0,
-      accreditationGrowth: 0,
-    }]);
-    return;
-  }
-
-    // Cari tahun terakhir
+    if (!selectedBranch) return;
+    if (modalData.length === 0) {
+      setModalData([{
+        id: undefined as any,
+        branchId: selectedBranch.id,
+        year: 2021,
+        studentBodyCount: 0,
+        studyProgramCount: 0,
+        superiorAccreditedStudyProgramCount: 0,
+        accreditationGrowth: 0,
+      }]);
+      return;
+    }
     const lastYear = Math.max(...modalData.map(d => d.year));
     const nextYear = lastYear + 1;
-
-    setModalData(prev => [
-    ...prev,
-    {
-      id: undefined as any, // ← penting: tidak ada id untuk data baru
+    setModalData(prev => [...prev, {
+      id: undefined as any,
       branchId: selectedBranch!.id,
       year: nextYear,
       studentBodyCount: 0,
       studyProgramCount: 0,
       superiorAccreditedStudyProgramCount: 0,
       accreditationGrowth: 0,
-    }
-  ]);
+    }]);
   };
 
-  // ✅ Ubah nilai di input (validasi angka)
-const handleInputChange = (idOrYear: number, field: keyof BranchDetail, value: string) => {
-  const newValue = value.replace(/[^0-9]/g, '');
-  const numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
-
-  setModalData(prev =>
-    prev.map(item =>
-      // Jika item punya id, cari berdasarkan id
-      // Jika tidak (data baru), cari berdasarkan year
-      (item.id !== undefined && item.id === idOrYear) ||
-      (item.id === undefined && item.year === idOrYear)
-        ? { ...item, [field]: numValue }
-        : item
-    )
-  );
-};
-
-const handleSave = async () => {
-  if (!selectedBranch) return;
-
-  setIsSaving(true);
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!baseUrl) {
-      throw new Error('NEXT_PUBLIC_API_URL tidak ditemukan di environment variables.');
-    }
-
-    const response = await fetch(`${baseUrl}/branch/detail`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(modalData),
-    });
-
-    if (!response.ok) {
-      const errorMsg = await response.text();
-      throw new Error(`Gagal menyimpan data: ${errorMsg}`);
-    }
-
-    setShowSuccess(true);
-    setSuccessMessage('Data berhasil disimpan!');
-    setIsDetailModalOpen(false);
-    setRefreshFlag(prev => prev + 1);
-  } catch (err) {
-    setErrorMessage('Gagal menyimpan data: ' + (err as Error).message);
-    setShowError(true);
-    setTimeout(() => setShowError(false), 3000);
-  } finally {
-    setIsSaving(false);
-  }
-};
-
-const handleAddSubmit = async (formData: { name: string; email: string }) => {
-  const isNameDuplicate = branches.some(branch => branch.name === formData.name);
-  if (isNameDuplicate) {
-    throw new Error(`Nama UPPS/KC "${formData.name}" sudah terdaftar!`);
-  }
-
-  const isEmailDuplicate = branches.some(branch => branch.email === formData.email);
-  if (isEmailDuplicate) {
-    throw new Error(`Email "${formData.email}" sudah digunakan oleh kampus lain!`);
-  }
-
-  try {
-    await createBranch(formData);
-    setRefreshFlag(f => f + 1);
-    setSuccessMessage('Kampus cabang berhasil ditambahkan!');
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
-    setShowAddModal(false);
-  } catch (err) {
-    throw err; // lempar error ke modal
-  }
-};
-
-useEffect(() => {
-  if (scrollContainerRef.current && modalData.length > 0) {
-    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-  }
-}, [modalData]);
-
-const dataForExport = branches.flatMap(branch => {
-  const rows: any[] = [];
-
-  if (branch.branchDetails && branch.branchDetails.length > 0) {
-    // 🔹 Baris pertama: isi semua kolom (No, Nama, Email, Tahun, Prodi)
-    const firstDetail = branch.branchDetails[0];
-    rows.push({
-      No: branch.id,
-      'Nama UPPS/KC': branch.name,
-      Email: branch.email,
-      Tahun: firstDetail.year,
-      'Jumlah Prodi': firstDetail.studyProgramCount,
-      'Jumlah Prodi Terakreditasi Unggul': firstDetail.superiorAccreditedStudyProgramCount,
-    });
-
-    // 🔹 Baris kedua dan seterusnya: kosongkan No, Nama, Email — isi hanya Tahun & Prodi
-    for (let i = 1; i < branch.branchDetails.length; i++) {
-      const detail = branch.branchDetails[i];
-      rows.push({
-        No: "", // Kosongkan
-        'Nama UPPS/KC': "", // Kosongkan
-        Email: "", // Kosongkan
-        Tahun: detail.year,
-        'Jumlah Prodi': detail.studyProgramCount,
-        'Jumlah Prodi Terakreditasi Unggul': detail.superiorAccreditedStudyProgramCount,
-      });
-    }
-  } else {
-    // Jika tidak ada detail, tambahkan satu baris info
-    rows.push({
-      No: branch.id,
-      'Nama UPPS/KC': branch.name,
-      Email: branch.email,
-      Tahun: "Tidak ada data",
-      'Jumlah Prodi': "",
-      'Jumlah Prodi Terakreditasi Unggul': "",
-    });
-  }
-
-  // 🔹 Tambahkan baris kosong sebagai pemisah antar kampus
-  rows.push({
-    No: "",
-    'Nama UPPS/KC': "",
-    Email: "",
-    Tahun: "",
-    'Jumlah Prodi': "",
-    'Jumlah Prodi Terakreditasi Unggul': "",
-  });
-
-  return rows;
-});
+  const handleInputChange = (idOrYear: number, field: keyof BranchDetail, value: string) => {
+    const newValue = value.replace(/[^0-9]/g, '');
+    const numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
+    setModalData(prev =>
+      prev.map(item =>
+        (item.id !== undefined && item.id === idOrYear) ||
+        (item.id === undefined && item.year === idOrYear)
+          ? { ...item, [field]: numValue }
+          : item
+      )
+    );
+  };
 
   const [isSaving, setIsSaving] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+
+  const handleSave = async () => {
+    if (!selectedBranch) return;
+    setIsSaving(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!baseUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL tidak ditemukan.');
+      }
+      const response = await fetch(`${baseUrl}/branch/detail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(modalData),
+      });
+      if (!response.ok) {
+        const errorMsg = await response.text();
+        throw new Error(`Gagal menyimpan: ${errorMsg}`);
+      }
+      setShowSuccess(true);
+      setSuccessMessage('Data berhasil disimpan!');
+      setIsDetailModalOpen(false);
+      setRefreshFlag(prev => prev + 1);
+    } catch (err) {
+      setErrorMessage('Gagal menyimpan: ' + (err as Error).message);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ✅ Handle logo tambah
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setLogoFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setLogoPreview(null);
+    }
+  };
+
+  // ✅ Handle logo edit
+  const handleEditLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setEditLogoFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setEditLogoPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setEditLogoPreview(null);
+    }
+  };
+
+  const handleEditClick = (branch: Branch) => {
+  setEditBranch(branch);
+  setEditName(branch.name);
+  setEditEmail(branch.email);
+  setEditLogoFile(null); // Reset file baru (karena user belum pilih file baru)
+  
+  // ✅ Tampilkan preview logo lama jika ada
+  if (branch.logoFile?.path) {
+    const cleanPath = branch.logoFile.path.replace(/^\/+/, "");
+    const logoUrl = `${ASSET_URL}/${cleanPath}`;
+    setEditLogoPreview(logoUrl);
+  } else {
+    setEditLogoPreview(null);
+  }
+
+  setShowEditModal(true);
+};
+
+  // ✅ Submit edit
+  const handleEditSubmit = async () => {
+    if (!editBranch) return;
+
+    const name = editName.trim();
+    const email = editEmail.trim();
+
+    if (!name || !email) {
+      setErrorMessage('Nama dan email wajib diisi.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
+    const isNameDuplicate = branches.some(b => b.name === name && b.id !== editBranch.id);
+    if (isNameDuplicate) {
+      setErrorMessage(`Nama "${name}" sudah digunakan.`);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
+    const isEmailDuplicate = branches.some(b => b.email === email && b.id !== editBranch.id);
+    if (isEmailDuplicate) {
+      setErrorMessage(`Email "${email}" sudah digunakan.`);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!baseUrl) throw new Error('API URL tidak tersedia.');
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      if (editLogoFile) {
+        formData.append('logo', editLogoFile);
+      }
+
+      const response = await fetch(`${baseUrl}/branch/${editBranch.id}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Gagal update: ${text}`);
+      }
+
+      setSuccessMessage('Data kampus berhasil diupdate!');
+      setShowSuccess(true);
+      setShowEditModal(false);
+      setRefreshFlag(f => f + 1);
+    } catch (err: any) {
+      const msg = err.message || 'Gagal mengupdate kampus.';
+      setErrorMessage(msg);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 4000);
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  // ✅ Submit tambah
+  const handleAddSubmit = async () => {
+    const name = newName.trim();
+    const email = newEmail.trim();
+
+    if (!name || !email) {
+      setErrorMessage('Nama dan email wajib diisi.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
+    if (branches.some(b => b.name === name)) {
+      setErrorMessage(`Nama "${name}" sudah terdaftar.`);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
+    if (branches.some(b => b.email === email)) {
+      setErrorMessage(`Email "${email}" sudah digunakan.`);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!baseUrl) throw new Error('API URL tidak tersedia.');
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+
+      const response = await fetch(`${baseUrl}/branch`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Gagal: ${text}`);
+      }
+
+      setRefreshFlag(f => f + 1);
+      setSuccessMessage('Kampus cabang berhasil ditambahkan!');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      setShowAddModal(false);
+      setNewName('');
+      setNewEmail('');
+      setLogoFile(null);
+      setLogoPreview(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal menambah kampus.';
+      setErrorMessage(msg);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 4000);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  useEffect(() => {
+    if (scrollContainerRef.current && modalData.length > 0) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [modalData]);
+
+  const dataForExport = branches.flatMap(branch => {
+    const rows: any[] = [];
+    if (branch.branchDetails?.length > 0) {
+      const firstDetail = branch.branchDetails[0];
+      rows.push({
+        No: branch.id,
+        'Nama UPPS/KC': branch.name,
+        Email: branch.email,
+        Tahun: firstDetail.year,
+        'Jumlah Prodi': firstDetail.studyProgramCount,
+        'Jumlah Prodi Terakreditasi Unggul': firstDetail.superiorAccreditedStudyProgramCount,
+      });
+      for (let i = 1; i < branch.branchDetails.length; i++) {
+        const detail = branch.branchDetails[i];
+        rows.push({
+          No: "", 'Nama UPPS/KC': "", Email: "",
+          Tahun: detail.year,
+          'Jumlah Prodi': detail.studyProgramCount,
+          'Jumlah Prodi Terakreditasi Unggul': detail.superiorAccreditedStudyProgramCount,
+        });
+      }
+    } else {
+      rows.push({
+        No: branch.id,
+        'Nama UPPS/KC': branch.name,
+        Email: branch.email,
+        Tahun: "Tidak ada data",
+        'Jumlah Prodi': "",
+        'Jumlah Prodi Terakreditasi Unggul': "",
+      });
+    }
+    rows.push({ No: "", 'Nama UPPS/KC': "", Email: "", Tahun: "", 'Jumlah Prodi': "", 'Jumlah Prodi Terakreditasi Unggul': "" });
+    return rows;
+  });
 
   if (isLoading) {
     return (
@@ -272,7 +444,7 @@ const dataForExport = branches.flatMap(branch => {
         <main className="w-full h-screen px-6 py-21 bg-gray overflow-y-auto">
           <div className="bg-white rounded-lg overflow-x-auto w-full p-4 mt-4 mx-4">
             <div className="flex justify-center items-center h-64">
-              <p className="text-black-600">Loading data dari server...</p>
+              <p className="text-gray-600">Loading data dari server...</p>
             </div>
           </div>
         </main>
@@ -304,7 +476,6 @@ const dataForExport = branches.flatMap(branch => {
             onClose={() => setShowSuccess(false)}
           />
         )}
-        {/* ✅ TAMBAHKAN INI UNTUK NOTIFIKASI ERROR */}
         {showError && (
           <SuccessNotification
             isOpen={showError}
@@ -328,7 +499,6 @@ const dataForExport = branches.flatMap(branch => {
             </div>
           </div>
 
-          {/* ✅ Render tombol Detail per baris */}
           <TableUpdate
             key={refreshFlag}
             columns={columns}
@@ -337,7 +507,6 @@ const dataForExport = branches.flatMap(branch => {
             rowsPerPage={itemsPerPage}
             onSort={requestSort}
             sortConfig={sortConfig}
-           
           />
 
           <Pagination
@@ -352,16 +521,14 @@ const dataForExport = branches.flatMap(branch => {
           />
         </div>
 
-        {/* Modal */}
+        {/* Modal Detail */}
         <ModalConfirm
           isOpen={isDetailModalOpen}
           onCancel={closeDetailModal}
           title=""
           header="Ubah Data Mahasiswa"
-          // ❌ HAPUS confirmLabel & cancelLabel karena kita render sendiri di footer
           footer={
             <div className="flex justify-center gap-4 mt-2">
-              {/* ✅ Tombol Batal — pakai Button */}
               <Button
                 variant="ghost"
                 onClick={closeDetailModal}
@@ -369,7 +536,6 @@ const dataForExport = branches.flatMap(branch => {
               >
                 Batal
               </Button>
-              {/* ✅ Tombol Simpan — pakai Button */}
               <Button
                 variant="primary"
                 onClick={handleSave}
@@ -381,20 +547,17 @@ const dataForExport = branches.flatMap(branch => {
             </div>
           }
         >
-          <div className="space-y-4">  
-            {/* ✅ Tombol Tambah Tahun — pakai Button yang sama */}
+          <div className="space-y-4">
             <div className="flex justify-end">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleAddYear}
-                className="px-4 py-2  font-medium"
+                className="px-4 py-2 font-medium"
               >
                 + Tambah Tahun
               </Button>
             </div>
-
-            {/* 🟢 Tabel Editable*/}
             <div
               ref={scrollContainerRef}
               className="overflow-x-auto max-h-[350px] overflow-y-auto border rounded-lg"
@@ -445,12 +608,167 @@ const dataForExport = branches.flatMap(branch => {
           </div>
         </ModalConfirm>
 
-        {/* Modal Tambah Kampus Cabang */}
-        <ModalAddBranch
+        {/* ✅ Modal Tambah Kampus */}
+        <ModalConfirm
           isOpen={showAddModal}
-          onCancel={() => setShowAddModal(false)}
-          onConfirm={handleAddSubmit}
-        />
+          onCancel={() => {
+            setShowAddModal(false);
+            setNewName('');
+            setNewEmail('');
+            setLogoFile(null);
+            setLogoPreview(null);
+          }}
+          title=""
+          header="Tambah Kampus Cabang Baru"
+          footer={
+            <div className="flex justify-center gap-4 mt-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setNewName('');
+                  setNewEmail('');
+                  setLogoFile(null);
+                  setLogoPreview(null);
+                }}
+                className="rounded-[2px] px-8 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleAddSubmit}
+                disabled={isAdding || !newName.trim() || !newEmail.trim()}
+                className="px-8 py-2 text-sm font-medium"
+              >
+                {isAdding ? 'Menyimpan...' : 'Simpan'}
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nama UPPS/KC *</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-base"
+                placeholder="Contoh: Telkom University Surabaya"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-base"
+                placeholder="contoh@telkomuniversity.ac.id"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opsional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {logoPreview && (
+                <div className="mt-2 flex justify-center">
+                  <img
+                    src={logoPreview}
+                    alt="Preview logo"
+                    className="w-20 h-20 object-contain border rounded"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </ModalConfirm>
+
+        {/* ✅ Modal Edit Kampus */}
+        <ModalConfirm
+          isOpen={showEditModal}
+          onCancel={() => {
+            setShowEditModal(false);
+            setEditBranch(null);
+            setEditName('');
+            setEditEmail('');
+            setEditLogoFile(null);
+            setEditLogoPreview(null);
+          }}
+          title=""
+          header="Edit Kampus Cabang"
+          footer={
+            <div className="flex justify-center gap-4 mt-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditBranch(null);
+                  setEditName('');
+                  setEditEmail('');
+                  setEditLogoFile(null);
+                  setEditLogoPreview(null);
+                }}
+                className="rounded-[2px] px-8 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleEditSubmit}
+                disabled={isEditing || !editName.trim() || !editEmail.trim()}
+                className="px-8 py-2 text-sm font-medium"
+              >
+                {isEditing ? 'Menyimpan...' : 'Simpan'}
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nama UPPS/KC *</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-base"
+                placeholder="Nama kampus"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-base"
+                placeholder="Email kampus"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opsional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleEditLogoChange}
+                className="w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {editLogoPreview && (
+                <div className="mt-2 flex justify-center">
+                  <img
+                    src={editLogoPreview}
+                    alt="Preview logo"
+                    className="w-20 h-20 object-contain border rounded"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </ModalConfirm>
       </main>
     </div>
   );
