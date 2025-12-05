@@ -40,6 +40,7 @@ const getCurrentUser = () => {
 const mapStatusToUI = (approvalStatus: string): { status: string; aksi: 'edit' | 'view' | 'progress' } => {
   switch (approvalStatus) {
     case 'submitted':
+      return { status: 'Submitted', aksi: 'edit' };
     case 'approve_edit':
       return { status: 'Submitted', aksi: 'edit' };
     case 'approved':

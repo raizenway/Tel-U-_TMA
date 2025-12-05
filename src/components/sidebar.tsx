@@ -253,6 +253,11 @@
   );
 }
 
+    let userLogoUrl = '/Logo (1).png';
+    if(userData.logoUrl){
+      userLogoUrl = process.env.NEXT_PUBLIC_ASSET_URL + '/' + userData.logoUrl;
+    }
+
     return (
       <aside
         className={`relative ${collapsed ? "w-20" : "w-80"} h-screen bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out`}
@@ -290,8 +295,9 @@
             collapsed ? "justify-center" : ""
           }`}
         >
+          
           <Image
-            src="/Logo (1).png"
+            src={userLogoUrl}
             alt="User"
             width={40}
             height={40}
