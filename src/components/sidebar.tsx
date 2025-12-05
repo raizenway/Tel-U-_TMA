@@ -232,7 +232,7 @@
 
       {/* User Info — Loading */}
       <div className={`px-6 py-6 border-y flex items-center gap-4 ${collapsed ? "justify-center" : ""}`}>
-        <Image src="/Logo (1).png" alt="User" width={40} height={40} className="rounded-full" />
+        <Image src="/Solid_gray.png" alt="User" width={40} height={40} className="rounded-full" />
         {!collapsed && (
           <div>
             <p className="font-semibold text-gray-800">Loading...</p>
@@ -255,7 +255,11 @@
 
     let userLogoUrl = '/Logo (1).png';
     if(userData.logoUrl){
-      userLogoUrl = process.env.NEXT_PUBLIC_ASSET_URL + '/' + userData.logoUrl;
+      if(userData.logoUrl.includes('https')){
+        userLogoUrl = userData.logoUrl;
+      } else {
+        userLogoUrl = process.env.NEXT_PUBLIC_ASSET_URL + '/' + userData.logoUrl;
+      }
     }
 
     return (
@@ -296,13 +300,15 @@
           }`}
         >
           
-          <Image
-            src={userLogoUrl}
-            alt="User"
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
+          <div style={{display: 'flex', width: '40px', height: '40px', overflow: 'hidden'}}>
+            <Image
+              src={userLogoUrl}
+              alt="User"
+              width={40}
+              height={40}
+              className="rounded-full"
+            />
+          </div>
           {!collapsed && userData && (
             <div>
               {/* Nama User */}
