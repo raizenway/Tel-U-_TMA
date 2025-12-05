@@ -160,7 +160,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
 
   const handleEditFromApproved = (id: number) => {
     const item = filteredApiData.find((item) => item.id === id);
-    if (!item || item.approvalStatus !== 'approved') return;
+    if (!item || item.approvalStatus !== 'approve_edit') return;
     localStorage.setItem('isEditingApproved', 'true');
     setSelectedId(id);
   };

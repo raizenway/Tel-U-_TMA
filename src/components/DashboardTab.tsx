@@ -25,6 +25,7 @@ import Button from './button';
 import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'lucide-react';
 import { useStudentBodyData } from '@/hooks/useStudentBody';
 import { useAccreditationData } from '@/hooks/useAccreditation';
+import { useRouter } from 'next/navigation';
 
 // --- Konstanta & Tipe ---
 const FIXED_YEARS = Array.from({ length: 7 }, (_, i) => String(2021 + i));
@@ -541,6 +542,8 @@ export default function DashboardTab() {
     return data;
   });
 
+  const router = useRouter();
+
   // --- RENDER ---
   return (
     <div className="space-y-8 px-4 py-6">
@@ -599,7 +602,18 @@ export default function DashboardTab() {
           />
         </div>
         <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Transformation Maturity Index</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">Transformation Maturity Index</h3>
+            <div className="flex space-x-3">
+            <Button
+                variant="primary"
+                onClick={() => router.push('/assessment-result')}
+                className="h-8 px-4 py-1 text-sm font-semibold rounded flex items-center gap-2"
+              >
+                Lihat Detail
+              </Button>
+            </div>
+          </div>
           <div className="flex flex-col items-center">
             <div className="flex flex-wrap justify-center gap-6 mb-4 text-sm">
               <div className="flex items-center gap-2">

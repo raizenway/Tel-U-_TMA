@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         hostname: "tma.telkomuniversity.ac.id",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdndata.telkomuniversity.ac.id",
+        pathname: "/**",
+      }
     ],
   },
 };
