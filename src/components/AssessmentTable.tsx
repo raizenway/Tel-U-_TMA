@@ -160,7 +160,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
 
   const handleEditFromApproved = (id: number) => {
     const item = filteredApiData.find((item) => item.id === id);
-    if (!item || item.approvalStatus !== 'approved') return;
+    if (!item || item.approvalStatus !== 'approve_edit') return;
     localStorage.setItem('isEditingApproved', 'true');
     setSelectedId(id);
   };
@@ -293,7 +293,7 @@ const AssessmentTable = ({ hideStartButton = false }) => {
               {userRoleId !== 4 && (
                 <button
                   className="text-green-600 hover:text-blue-800 transition"
-                  onClick={() => handleContinue(item.id)}
+                  onClick={() => handleEditFromApproved(item.id)}
                   title="Edit Assessment"
                 >
                   <Pencil size={20} />
@@ -307,15 +307,6 @@ const AssessmentTable = ({ hideStartButton = false }) => {
         if (item.approvalStatus === 'approved') {
           return (
             <div className="flex items-center gap-2">
-              {/* {userRoleId !== 4 && (
-                <button
-                  className="text-blue-600 hover:text-blue-800 transition"
-                  onClick={() => handleEditFromApproved(item.id)}
-                  title="Edit Assessment"
-                >
-                  <Pencil size={20} />
-                </button>
-              )} */}
               <button
                 className="text-gray-600 hover:text-green-800 transition"
                 onClick={() => handleView(item.id)}
