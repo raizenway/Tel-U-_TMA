@@ -320,7 +320,7 @@
               <p className="text-xs text-gray-500">
                 {branchNames[Number(userData.branchId)] 
                   ? branchNames[Number(userData.branchId)] 
-                  : 'Kampus Tidak Diketahui'}
+                  : ''}
               </p>
             </div>
           )}
