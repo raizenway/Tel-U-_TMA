@@ -175,6 +175,13 @@ export default function KampusCabangPage() {
     }]);
   };
 
+  const handleRemoveYear = (year) => {
+    if(confirm('Apakah akan menghapus data tahun ' + year + '?')){
+      const filtered = modalData.filter(item => item.year !== year);
+      setModalData(filtered)  
+    }
+  };
+
   const handleInputChange = (idOrYear: number, field: keyof BranchDetail, value: string) => {
     const newValue = value.replace(/[^0-9]/g, '');
     const numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
@@ -305,6 +312,7 @@ export default function KampusCabangPage() {
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
+      console.log(formData)
 
       const response = await fetch(`${baseUrl}/branch/${editBranch.id}`, {
         method: 'POST',
@@ -568,6 +576,9 @@ export default function KampusCabangPage() {
                     <th className="border px-3 py-2 text-left text-sm font-medium">Tahun</th>
                     <th className="border px-3 py-2 text-left text-sm font-medium">Jumlah Prodi</th>
                     <th className="border px-3 py-2 text-left text-sm font-medium">Jumlah Prodi Terakreditasi Unggul</th>
+                    <th className="border px-3 py-2 text-left text-sm font-medium">Jumlah Student Body</th>
+                    <th className="border px-3 py-2 text-left text-sm font-medium">Pertumbuhan Akreditasi Prodi</th>
+                    <th className="border px-3 py-2 text-left text-sm font-medium">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -599,6 +610,33 @@ export default function KampusCabangPage() {
                           className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-base"
                           placeholder="Jumlah Prodi Terakreditasi Unggul"
                         />
+                      </td>
+                      <td className="border px-3 py-2">
+                        <input
+                          type="text"
+                          value={row.studentBodyCount || ''}
+                          onInput={(e) => handleInputChange(row.id ?? row.year, 'studentBodyCount', e.currentTarget.value)}
+                          className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-base"
+                          placeholder="Jumlah Student Body"
+                        />
+                      </td>
+                      <td className="border px-3 py-2">
+                        <input
+                          type="text"
+                          value={row.accreditationGrowth || ''}
+                          onInput={(e) => handleInputChange(row.id ?? row.year, 'accreditationGrowth', e.currentTarget.value)}
+                          className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-base"
+                          placeholder="Pertumbuhan Akreditasi Prodi"
+                        />
+                      </td>
+                      <td className="border px-3 py-2">
+                        <Button 
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleRemoveYear(row.year)}
+                          >
+                          Hapus
+                        </Button>
                       </td>
                     </tr>
                   ))}
