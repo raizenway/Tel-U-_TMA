@@ -28,15 +28,11 @@ const getCurrentUser = () => {
   return null;
 };
 
-const BRANCHES = [
-  { id: 1, name: "Tel-U Bandung" },
-  { id: 2, name: "Tel-U Jakarta" },
-  { id: 3, name: "Tel-U Surabaya" },
-  { id: 4, name: "Tel-U Purwokerto" },
-];
+// ❌ HAPUS HARD-CODED BRANCHES
+// const BRANCHES = [ ... ];
 
 const TablePage = () => {
-  const [selectedCampusId, setSelectedCampusId] = useState<number>(2);
+  const [selectedCampusId, setSelectedCampusId] = useState<number | null>(null);
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<number | null>(null);
   const [periodeOptions, setPeriodeOptions] = useState<{ id: number; label: string }[]>([]);
   const [periodeDropdownOpen, setPeriodeDropdownOpen] = useState(false);
@@ -52,6 +48,10 @@ const TablePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  // ✅ State untuk daftar kampus cabang
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
 
   // ✅ Ambil role user
   const currentUser = getCurrentUser();
@@ -105,6 +105,44 @@ const TablePage = () => {
     }
   ];
 
+  // ✅ Fetch daftar kampus cabang dari /branch
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+        if (!API_BASE) {
+          setLoadingBranches(false);
+          return;
+        }
+
+        const res = await axios.get(`${API_BASE}/branch`);
+        const branchList = res.data.data || [];
+
+        // Pastikan struktur sesuai: id dan name
+        const formatted = branchList.map((b: any) => ({
+          id: b.id,
+          name: b.name,
+        }));
+
+        setBranches(formatted);
+        setLoadingBranches(false);
+
+        // Set default ke kampus pertama jika belum ada yang dipilih
+        if (formatted.length > 0 && selectedCampusId === null) {
+          setSelectedCampusId(formatted[0].id);
+        }
+      } catch (err) {
+        console.error("Gagal memuat daftar kampus cabang:", err);
+        setLoadingBranches(false);
+        // Opsional: fallback jika API gagal
+        // setBranches([{ id: 1, name: "Tel-U Bandung" }]);
+        // if (selectedCampusId === null) setSelectedCampusId(1);
+      }
+    };
+
+    fetchBranches();
+  }, []);
+
   useEffect(() => {
     const fetchPeriodeOptions = async () => {
       try {
@@ -138,7 +176,7 @@ const TablePage = () => {
   }, []);
 
   const fetchData = async () => {
-    if (selectedPeriodeId === null) {
+    if (selectedPeriodeId === null || selectedCampusId === null) {
       setLoading(false);
       return;
     }
@@ -391,18 +429,24 @@ const TablePage = () => {
                 )}
               </div>
 
-              {/* Dropdown Kampus */}
+              {/* Dropdown Kampus — DINAMIS DARI API */}
               <div className="relative">
-                <button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
-                >
-                  {BRANCHES.find(b => b.id === selectedCampusId)?.name || "Pilih Kampus"}
-                  <ChevronDown size={16} />
-                </button>
-                {dropdownOpen && (
+                {loadingBranches ? (
+                  <button className="border px-3 py-2 rounded-md cursor-not-allowed bg-gray-100">
+                    Memuat kampus...
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-1 border px-3 py-2 rounded-md hover:bg-gray-100"
+                  >
+                    {branches.find(b => b.id === selectedCampusId)?.name || "Pilih Kampus"}
+                    <ChevronDown size={16} />
+                  </button>
+                )}
+                {dropdownOpen && !loadingBranches && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border shadow rounded z-10">
-                    {BRANCHES.map((branch) => (
+                    {branches.map((branch) => (
                       <div
                         key={branch.id}
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
@@ -467,7 +511,7 @@ const TablePage = () => {
                 </Button>
               )}
 
-              {/* TOMBOL APPROVE & REVISI — hanya untuk role 1 (opsional, sesuaikan jika perlu) */}
+              {/* TOMBOL APPROVE & REVISI */}
               {userRoleId === 1 && tableData.some(row => row.assessment?.approvalStatus === 'submitted') && (
                 <>
                   <Button
