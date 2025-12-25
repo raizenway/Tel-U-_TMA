@@ -16,7 +16,7 @@ export interface LogoFile {
   altText: string | null;
   mimetype: string;
   encoding: string;
-  path: string; // contoh: "uploads/branches/logo-1764343062513-194508810.png"
+  path: string; 
   destination: string | null;
   size: string;
   aux: any;

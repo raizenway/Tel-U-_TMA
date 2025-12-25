@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import {
   RadarChart,
@@ -7,8 +8,6 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -25,15 +24,7 @@ import { useRouter } from 'next/navigation';
 import DashboardStudentBody from './DashboardStudentBody';
 import DashboardAccreditationGrowth from './DashboardAccreditationGrowth';
 
-// --- Konstanta & Tipe ---
-const CAMPUS_LIST = [
-  "Tel-U Jakarta",
-  "Tel-U Surabaya",
-  "Tel-U Purwokerto",
-  "Tel-U Bandung",
-  // "Tel-U Sumatra", // ✅ Tambahkan Tel-U Sumatra
-] as const;
-
+// --- Tipe Data (SESUAI API) ---
 interface YearlyData { year: number; total: number; }
 interface Branch {
   id: number;
@@ -44,8 +35,14 @@ interface Branch {
 }
 interface TransformationMaturityItem { name: string; value: number; }
 interface GrowthDataPoint { periodName: string; score: number; }
-interface VariableGrowth { variable: { id: number; name: string }; data: GrowthDataPoint[]; }
-interface BranchGrowth { branch: { id: number; name: string }; growth: VariableGrowth[]; }
+interface VariableGrowth {
+  variable: { id: number; name: string };
+   data:GrowthDataPoint[]; // ✅ 'data' untuk GrowthDataPoint
+}
+interface BranchGrowth {
+  branch: { id: number; name: string };
+  growth: VariableGrowth[]; // ✅ 'growth' untuk array VariableGrowth
+}
 interface TmiEntry { branch: { id: number; name: string }; tmi: TransformationMaturityItem[]; }
 interface DashboardApiResponse {
   totalBranches: number;
@@ -60,7 +57,6 @@ interface DashboardApiResponse {
   branches: Branch[];
 }
 
-// ✅ Ambil user dari localStorage
 const getCurrentUser = () => {
   if (typeof window !== 'undefined') {
     const userStr = localStorage.getItem('user');
@@ -109,27 +105,24 @@ interface TmiRadarRow {
   [key: string]: number | string;
 }
 
+const CAMPUS_LIST = [
+  "Tel-U Jakarta",
+  "Tel-U Surabaya",
+  "Tel-U Purwokerto",
+  "Tel-U Bandung",
+] as const;
+
+const branchIdToName: Record<number, string> = {
+  1: "Tel-U Bandung",
+  2: "Tel-U Jakarta",
+  3: "Tel-U Surabaya",
+  4: "Tel-U Purwokerto",
+};
+
 export default function DashboardTab() {
   const currentUser = getCurrentUser();
   const userRoleId = currentUser?.roleId;
   const userBranchId = currentUser?.branchId;
-
-  // ✅ Mapping branchId ke nama kampus
-  const branchIdToName: Record<number, string> = {
-    1: "Tel-U Bandung",
-    2: "Tel-U Jakarta",
-    3: "Tel-U Surabaya",
-    4: "Tel-U Purwokerto",
-    // 6: "Tel-U Sumatra",
-  };
-
-  // ✅ Tentukan kampus default berdasarkan role
-  const getDefaultCampus = (): string => {
-    if (userRoleId !== 1 && userBranchId && branchIdToName[userBranchId]) {
-      return branchIdToName[userBranchId];
-    }
-    return "Tel-U Bandung";
-  };
 
   const [dashboardData, setDashboardData] = useState({
     totalBranches: 0,
@@ -151,13 +144,16 @@ export default function DashboardTab() {
   >([]);
 
   const [loading, setLoading] = useState(true);
-  const [selectedCampus, setSelectedCampus] = useState<string>(getDefaultCampus());
+  const [selectedCampus, setSelectedCampus] = useState<string>('');
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
   
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedSemester, setSelectedSemester] = useState<string>('all');
+  
   const apiDataRef = useRef<DashboardApiResponse | null>(null);
 
-  // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -169,7 +165,6 @@ export default function DashboardTab() {
       const apiData = result.data as DashboardApiResponse;
       apiDataRef.current = apiData;
 
-      // Filter branches hanya untuk kampus user (jika bukan Super User)
       let filteredBranches = apiData.branches;
       if (userRoleId !== 1 && userBranchId) {
         filteredBranches = apiData.branches.filter(b => b.id === userBranchId);
@@ -183,7 +178,6 @@ export default function DashboardTab() {
         assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
       });
 
-      // Filter TMI hanya untuk kampus user
       let filteredTmi = apiData.transformationMaturityIndex;
       if (userRoleId !== 1 && userBranchId) {
         filteredTmi = apiData.transformationMaturityIndex.filter(t => t.branch.id === userBranchId);
@@ -210,16 +204,17 @@ export default function DashboardTab() {
       });
       setTmiRadarData(radarRows);
 
-      // Filter growth data hanya untuk kampus user
       const allVariablesSet = new Set<string>();
       const growthData: { branch: string; variable: string; period: string; score: number }[] = [];
       for (const branch of filteredBranches) {
         const branchName = branch.name;
+        // ✅ Akses dengan .growth (sesuai API)
         const growth = apiData.transformationVariableBranchGrowth.find(b => b.branch.name === branchName)?.growth || [];
         for (const variableEntry of growth) {
           const varName = variableEntry.variable.name.trim();
           if (varName === '') continue;
           allVariablesSet.add(varName);
+          // ✅ Akses data point dengan .data
           for (const dataPoint of variableEntry.data) {
             if (typeof dataPoint.score === 'number') {
               growthData.push({
@@ -234,6 +229,17 @@ export default function DashboardTab() {
       }
       setApiVariables(Array.from(allVariablesSet));
       setVariableGrowthData(growthData);
+
+      const yearsSet = new Set<string>();
+      growthData.forEach(item => {
+        const match = item.period.match(/(\d{4})/);
+        if (match) yearsSet.add(match[1]);
+      });
+      setAvailableYears(Array.from(yearsSet).sort((a, b) => parseInt(b) - parseInt(a)));
+
+      const defaultCampus = filteredBranches.length > 0 ? filteredBranches[0].name : '';
+      setSelectedCampus(defaultCampus);
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching dashboard', error);
@@ -264,10 +270,9 @@ export default function DashboardTab() {
 
   const router = useRouter();
 
-  // --- RENDER ---
   return (
     <div className="space-y-8 px-4 py-6">
-      {/* Stat Cards - tetap sama */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
         <div className="relative h-32 bg-cover bg-center rounded-xl shadow flex items-center justify-center text-white text-center" style={{ backgroundImage: "url('/KC.png')" }}>
           <div className="absolute inset-0 bg-opacity-50 rounded-xl"></div>
@@ -311,7 +316,7 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Progress & Radar - tetap sama */}
+      {/* Progress & Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Progress Assessment</h3>
@@ -325,7 +330,7 @@ export default function DashboardTab() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700">Transformation Maturity Index</h3>
             <div className="flex space-x-3">
-            <Button
+              <Button
                 variant="primary"
                 onClick={() => router.push('/assessment-result')}
                 className="h-8 px-4 py-1 text-sm font-semibold rounded flex items-center gap-2"
@@ -352,10 +357,6 @@ export default function DashboardTab() {
                 <span className="w-4 h-4 bg-[#FF9F40] rounded-sm"></span>
                 <span>Tel-U Purwokerto</span>
               </div>
-              {/* <div className="flex items-center gap-2">
-                <span className="w-4 h-4 bg-[#9966FF] rounded-sm"></span>
-                <span>Tel-U Sumatra</span>
-              </div> */}
             </div>
             <div style={{ width: '100%', height: '300px', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -376,7 +377,6 @@ export default function DashboardTab() {
                   <Radar name="Tel-U Jakarta" dataKey="Tel-U Jakarta" stroke="#36A2EB" fill="#36A2EB" fillOpacity={0.4} />
                   <Radar name="Tel-U Surabaya" dataKey="Tel-U Surabaya" stroke="#4BC0C0" fill="#4BC0C0" fillOpacity={0.4} />
                   <Radar name="Tel-U Purwokerto" dataKey="Tel-U Purwokerto" stroke="#FF9F40" fill="#FF9F40" fillOpacity={0.4} />
-                  {/* <Radar name="Tel-U Sumatra" dataKey="Tel-U Sumatra" stroke="#9966FF" fill="#9966FF" fillOpacity={0.4} /> */}
                   <Tooltip content={<CustomRadarTooltip />} />
                 </RadarChart>
               </ResponsiveContainer>
@@ -385,51 +385,81 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Charts - tetap sama */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DashboardStudentBody></DashboardStudentBody>
-
-        <DashboardAccreditationGrowth></DashboardAccreditationGrowth>
+        <DashboardStudentBody />
+        <DashboardAccreditationGrowth />
       </div>
 
-      {/* Perkembangan Variabel per Kampus - DIPERBAIKI */}
+      {/* ✅ Perkembangan Variabel per Kampus — Final */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <h3 className="text-lg font-bold text-gray-800">📊 Perkembangan Variabel per Kampus</h3>
-            <p className="text-sm text-gray-500 mt-1">Skor perkembangan per semester akademik (Ganjil/Genap)</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Skor perkembangan per semester akademik (Ganjil/Genap)
+            </p>
           </div>
           <div className="flex flex-wrap gap-4 ml-auto">
-            {/* ✅ Hanya tampilkan dropdown jika Super User */}
             {userRoleId === 1 && (
               <div className="min-w-[180px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kampus</label>
                 <select
                   value={selectedCampus}
-                  onChange={(e) => setSelectedCampus(e.target.value as string)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                  onChange={(e) => setSelectedCampus(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
-                  {CAMPUS_LIST.map((campus) => (
-                    <option key={campus} value={campus}>
-                      {campus.replace("Tel-U ", "")}
+                  {apiDataRef.current?.branches.map((branch) => (
+                    <option key={branch.name} value={branch.name}>
+                      {branch.name}
                     </option>
                   ))}
                 </select>
               </div>
             )}
+
+            <div className="min-w-[120px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+              <select
+                value={selectedSemester}
+                onChange={(e) => setSelectedSemester(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="all">Semua Semester</option>
+                <option value="Ganjil">Ganjil</option>
+                <option value="Genap">Genap</option>
+              </select>
+            </div>
+
+            <div className="min-w-[120px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="all">Semua Tahun</option>
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="min-w-[200px] variable-dropdown-wrapper">
               <label className="block text-sm font-medium text-gray-700 mb-1">Variabel</label>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowVariableDropdown(!showVariableDropdown)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
                   {selectedVariables.length === 0
                     ? "Pilih Variabel"
                     : selectedVariables.length === apiVariables.length
-                      ? "Semua variabel dipilih"
-                      : `${selectedVariables.length} variabel dipilih`}
+                    ? "Semua variabel"
+                    : `${selectedVariables.length} dipilih`}
                 </button>
                 {showVariableDropdown && (
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
@@ -459,16 +489,25 @@ export default function DashboardTab() {
             </div>
           </div>
         </div>
+
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
             data={(() => {
-              if (selectedVariables.length === 0) return [];
+              if (selectedVariables.length === 0 || !selectedCampus) return [];
               const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
-              const formattedPeriods = rawPeriods.map(p => formatPeriodName(p)).sort();
+              const filteredPeriods = rawPeriods.filter(period => {
+                const clean = formatPeriodName(period);
+                const isSemMatch = selectedSemester === 'all' || 
+                  (selectedSemester === 'Ganjil' && clean.startsWith('Ganjil')) ||
+                  (selectedSemester === 'Genap' && clean.startsWith('Genap'));
+                const isYearMatch = selectedYear === 'all' || (clean.match(/(\d{4})/)?.[1] === selectedYear);
+                return isSemMatch && isYearMatch;
+              });
+              const formattedPeriods = filteredPeriods.map(p => formatPeriodName(p)).sort();
               return selectedVariables.map(variable => {
                 const row: { [key: string]: any } = { variabel: variable };
                 formattedPeriods.forEach(periodLabel => {
-                  const matching = variableGrowthData.find(d => 
+                  const matching = variableGrowthData.find(d =>
                     d.branch === selectedCampus &&
                     d.variable === variable &&
                     formatPeriodName(d.period) === periodLabel
@@ -518,15 +557,31 @@ export default function DashboardTab() {
             />
             {(() => {
               const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
-              const formattedPeriods = rawPeriods.map(p => formatPeriodName(p)).sort();
+              const filteredPeriods = rawPeriods.filter(period => {
+                const clean = formatPeriodName(period);
+                const isSemMatch = selectedSemester === 'all' || 
+                  (selectedSemester === 'Ganjil' && clean.startsWith('Ganjil')) ||
+                  (selectedSemester === 'Genap' && clean.startsWith('Genap'));
+                const isYearMatch = selectedYear === 'all' || (clean.match(/(\d{4})/)?.[1] === selectedYear);
+                return isSemMatch && isYearMatch;
+              });
+              const formattedPeriods = filteredPeriods.map(p => formatPeriodName(p)).sort();
               return formattedPeriods;
             })().map(periodLabel => (
               <Bar
                 key={periodLabel}
                 dataKey={periodLabel}
                 fill={getPeriodColor(periodLabel, (() => {
-                  const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
-                  return rawPeriods.map(p => formatPeriodName(p)).sort();
+                  const raw = Array.from(new Set(variableGrowthData.map(d => d.period)));
+                  const filtered = raw.filter(p => {
+                    const clean = formatPeriodName(p);
+                    const sm = selectedSemester === 'all' || 
+                      (selectedSemester === 'Ganjil' && clean.startsWith('Ganjil')) ||
+                      (selectedSemester === 'Genap' && clean.startsWith('Genap'));
+                    const ym = selectedYear === 'all' || (clean.match(/(\d{4})/)?.[1] === selectedYear);
+                    return sm && ym;
+                  });
+                  return filtered.map(p => formatPeriodName(p)).sort();
                 })())}
                 name={periodLabel}
                 radius={[6, 6, 0, 0]}
@@ -538,11 +593,9 @@ export default function DashboardTab() {
         </ResponsiveContainer>
       </div>
 
-      {/* Tabel */}
       <div className="mt-6">
         <AssessmentTable hideStartButton={true} />
       </div>
-      
     </div>
   );
 }
