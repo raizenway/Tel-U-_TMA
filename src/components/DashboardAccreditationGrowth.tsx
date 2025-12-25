@@ -73,23 +73,23 @@ export default function DashboardAccreditationGrowth() {
   const [filteredCampus, setFilteredCampus] = useState<string>('all');
   const [filteredYear, setFilteredYear] = useState<string>('all');
 
-  const apiDataRef = useRef<DashboardApiResponse | null>(null);
+    const apiDataRef = useRef<DashboardApiResponse | null>(null);
 
-  // --- FETCH DATA ---
-  const fetchData = async () => {
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!baseUrl) throw new Error('NEXT_PUBLIC_API_URL is not defined');
-      const response = await fetch(`${baseUrl}/assessment/dashboard`);
-      if (!response.ok) throw new Error('Failed to fetch dashboard data');
-      const result = await response.json();
-      const apiData = result.data as DashboardApiResponse;
-      apiDataRef.current = apiData;
+    // --- FETCH DATA ---
+    const fetchData = async () => {
+        try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!baseUrl) throw new Error('NEXT_PUBLIC_API_URL is not defined');
+        const response = await fetch(`${baseUrl}/assessment/dashboard`);
+        if (!response.ok) throw new Error('Failed to fetch dashboard data');
+        const result = await response.json();
+        const apiData = result.data as DashboardApiResponse;
+        apiDataRef.current = apiData;
 
       let branches = apiData.branches;
-      if (userRoleId !== 1 && userBranchId) {
+        if (userRoleId !== 1 && userBranchId) {
         branches = apiData.branches.filter((b) => b.id === userBranchId);
-      }
+        }
 
       const years = new Set<string>();
       const campuses = branches.map((b) => b.name);
@@ -110,16 +110,16 @@ export default function DashboardAccreditationGrowth() {
         const branch = branches.find((b) => b.name === campus);
         const cleaned = cleanYearlyData(branch?.yearlyAccreditationGrowth || []);
         data[campus] = sortedYears.map((yearStr) => {
-          const yearNum = Number(yearStr);
+            const yearNum = Number(yearStr);
           const item = cleaned.find((d) => d.year === yearNum);
           return item ? item.total : 0;
         });
       }
       setAccreditationData(data);
-    } catch (error) {
+        } catch (error) {
       console.error('Error fetching accreditation growth data', error);
-    }
-  };
+        }
+    };
 
   useEffect(() => {
     fetchData();
@@ -164,10 +164,10 @@ export default function DashboardAccreditationGrowth() {
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="bg-white rounded-xl shadow p-6">
+    return (
+            <div className="bg-white rounded-xl shadow p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-        <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
+                    <h3 className="text-sm font-semibold text-gray-700">📈 Pertumbuhan Akreditasi Prodi</h3>
 
         {/* Filter Controls */}
         <div className="flex flex-wrap gap-3 items-center">
@@ -205,18 +205,17 @@ export default function DashboardAccreditationGrowth() {
             className="text-gray-500 hover:text-gray-700"
             title="Unduh Data Akreditasi"
           >
-            <Download size={18} />
-          </button>
-        </div>
-      </div>
-
-      <ResponsiveContainer width="100%" height={300}>
+                        <Download size={18} />
+                    </button>
+                    </div>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData} key={`${filteredCampus}-${filteredYear}`}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="tahun" />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="tahun" />
           <YAxis domain={[0, 100]} tickCount={6} />
           <Tooltip formatter={(value) => `${Number(value).toFixed(2)}%`} />
-          <Legend />
+                    <Legend />
           {visibleCampuses.map((campus, idx) => (
             <Line
               key={campus}
@@ -227,8 +226,8 @@ export default function DashboardAccreditationGrowth() {
               activeDot={{ r: 5 }}
             />
           ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+                    </LineChart>
+                </ResponsiveContainer>
+        </div>
+    );
 }
