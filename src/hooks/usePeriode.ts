@@ -22,9 +22,9 @@ export function useListPeriode(refreshFlag: number) {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json' // 👈 TAMBAHKAN INI
+            'Accept': 'application/json'
           },
-          cache: 'no-store', // ✅ Tambahkan ini
+          cache: 'no-store', 
         });
 
         if (!response.ok) {
@@ -106,7 +106,7 @@ export function useCreatePeriode() {
 
   const mutate = async (data: { 
     tahun: number; 
-    semester: string;   // ✅ ubah dari number ke string
+    semester: string;   
     status: 'active' | 'inactive' 
   }) => {
     setLoading(true);
@@ -121,8 +121,8 @@ export function useCreatePeriode() {
         },
         body: JSON.stringify({
           year: data.tahun,
-          semester: data.semester, // ✅ kirim langsung string "Ganjil" atau "Genap"
-          status: data.status // ✅ ambil dari input user
+          semester: data.semester, 
+          status: data.status
         }),
       });
 

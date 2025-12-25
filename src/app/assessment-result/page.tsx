@@ -7,7 +7,7 @@ import Button from '@/components/button';
 import { getPeriodeLabel } from '@/utils/periode';
 import { getAssessmentResult } from '@/lib/api-assessment-result';
 import { useListPeriode } from '@/hooks/usePeriode';
-import { BRANCHES } from '@/interfaces/branch';
+import { useListBranch } from '@/hooks/useBranch';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -20,9 +20,6 @@ import {
   Legend,
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
-
-import { toPng } from 'dom-to-image-more';
-import jsPDF from 'jspdf';
 
 ChartJS.register(
   RadialLinearScale,
@@ -280,8 +277,12 @@ export default function AssessmentResultPage() {
   const [allBranches, setAllBranches] = useState<Option[]>([]);
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null); // ✅ Tambahkan state error
 
   const [radarLabels] = useState<string[]>(FIXED_LABELS);
+
+  const { data: branchData, isLoading: loadingBranches } = useListBranch(0);
+  const { data: periodeData } = useListPeriode(0);
 
   const allBranchIds = useMemo(() => {
     if (!user) return [];
@@ -289,7 +290,7 @@ export default function AssessmentResultPage() {
     const roleId = Number(user.role?.id ?? user.roleId ?? -1);
 
     if (roleId === 1 || roleId === 4) {
-      return BRANCHES.map((b) => b.id);
+      return branchData?.data.map((b) => b.id) || [];
     }
 
     if (roleId === 2 && user.branchId != null) {
@@ -297,10 +298,9 @@ export default function AssessmentResultPage() {
     }
 
     return [];
-  }, [user]);
+  }, [user, branchData]);
 
-  const { data:periodeData } = useListPeriode(0);
-
+  // ✅ Set periode aktif pertama kali
   useEffect(() => {
     if (!periodeData?.data) return;
     const active = periodeData.data
@@ -308,9 +308,13 @@ export default function AssessmentResultPage() {
       .map((p) => `${p.semester} ${p.tahun}`);
     setActivePeriods(active);
     if (active.length > 0) {
-      setFilterPeriode(active[0]);
-      const first = periodeData.data.find((p) => `${p.semester} ${p.tahun}` === active[0]);
-      setSelectedPeriodId(first?.id ?? null);
+      const firstLabel = active[0];
+      setFilterPeriode(firstLabel);
+      const first = periodeData.data.find((p) => `${p.semester} ${p.tahun}` === firstLabel);
+      if (first) {
+        setSelectedPeriodId(first.id);
+        console.log(`[INIT] Set period ID to ${first.id} for "${firstLabel}"`);
+      }
     }
   }, [periodeData]);
 
@@ -322,60 +326,88 @@ export default function AssessmentResultPage() {
     const tahunStr = parts[1];
     const tahun = parseInt(tahunStr, 10);
     if (isNaN(tahun)) return null;
-    return periodeData.data.find((p) => p.semester === semester && p.tahun === tahun)?.id ?? null;
-  };
-
-  const fetchAssessmentData = async (branchId: number, periodId: number) => {
-    try {
-      const res = await getAssessmentResult(branchId, periodId);
-      const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
-      const submitPeriode = `${period.semester} ${period.year}`;
-
-      const dataMap = new Map<string, any>();
-      (tmiData || []).forEach((item: any) => {
-        dataMap.set(normalizeLabel(item.name), {
-          value: parseFloat((item.value ?? 0).toFixed(2)),
-          item,
-        });
-      });
-
-      const radarData = FIXED_LABELS.map(label => {
-        const norm = normalizeLabel(label);
-        return dataMap.has(norm) ? dataMap.get(norm).value : 0;
-      });
-
-      const assessment: Assessment = {
-        id: String(branch.id),
-        name: branch.name,
-        submitPeriode,
-        email: branch.email,
-        studentBody: branch.studentBody,
-        jumlahProdi: branch.totalProdi,
-        jumlahProdiUnggul: branch.totalProdiUnggul,
-        maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
-      };
-
-      const reports = FIXED_LABELS.map(label => {
-        const norm = normalizeLabel(label);
-        const match = dataMap.get(norm)?.item;
-        const ml = match?.maturityLevel || {};
-        return {
-          code: match?.code || label,
-          name: label,
-          normalized: norm,
-          point: match ? parseFloat(match.value.toFixed(2)) : 0,
-          maturityLevel: ml.name || 'Unknown',
-          desc: ml.description || match?.description || 'Tidak ada deskripsi.',
-        };
-      });
-
-      return { assessment, reports, radarData, radarLabels: FIXED_LABELS };
-    } catch (err) {
-      console.error(`Fetch failed for branch ${branchId}, period ${periodId}:`, err);
+    const period = periodeData.data.find((p) => p.semester === semester && p.tahun === tahun);
+    if (period) {
+      console.log(`[PERIOD] Found ID ${period.id} for "${label}"`);
+      return period.id;
+    } else {
+      console.warn(`[PERIOD] Not found for "${label}"`);
       return null;
     }
   };
 
+  const fetchAssessmentData = async (branchId: number, periodId: number) => {
+  try {
+    console.log(`[API] Fetching for branch ${branchId}, period ${periodId}`);
+
+    const res = await getAssessmentResult(branchId, periodId);
+    const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
+
+    // ✅ Hanya return null jika branch atau period tidak ada
+    if (!branch || !period) {
+      console.warn(`[API] Branch or period not found for branch ${branchId}, period ${periodId}`);
+      return null;
+    }
+
+    // ✅ Jika assessment null, tetap lanjut dengan data default
+    const assessmentData = res.data.assessment || {
+      id: null,
+      branchId: branch.id,
+      periodId: period.id,
+      approvalStatus: 'not_submitted',
+    };
+
+    const targetYear = period.year; // 👈 pastikan pakai `year`, bukan `tahun`
+    const branchDetails = Array.isArray(branch.branchDetails) ? branch.branchDetails : [];
+    const detail = branchDetails.find((d: any) => d?.year === targetYear);
+
+    const submitPeriode = `${period.semester} ${period.year}`;
+
+    const dataMap = new Map<string, any>();
+    (tmiData || []).forEach((item: any) => {
+      dataMap.set(normalizeLabel(item.name), {
+        value: parseFloat((item.value ?? 0).toFixed(2)),
+        item,
+      });
+    });
+
+    const radarData = FIXED_LABELS.map(label => {
+      const norm = normalizeLabel(label);
+      return dataMap.has(norm) ? dataMap.get(norm).value : 0;
+    });
+
+    const assessment: Assessment = {
+      id: String(branch.id),
+      name: branch.name,
+      submitPeriode,
+      email: branch.email,
+      studentBody: detail?.studentBodyCount ?? 0,
+      jumlahProdi: detail?.studyProgramCount ?? 0,
+      jumlahProdiUnggul: detail?.superiorAccreditedStudyProgramCount ?? 0,
+      maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
+    };
+
+    const reports = FIXED_LABELS.map(label => {
+      const norm = normalizeLabel(label);
+      const match = dataMap.get(norm)?.item;
+      const ml = match?.maturityLevel || {};
+      return {
+        code: match?.code || label,
+        name: label,
+        normalized: norm,
+        point: match ? parseFloat(match.value.toFixed(2)) : 0,
+        maturityLevel: ml.name || 'Unknown',
+        desc: ml.description || match?.description || 'Tidak ada deskripsi.',
+      };
+    });
+
+    return { assessment, reports, radarData, radarLabels: FIXED_LABELS };
+  } catch (err) {
+    console.error(`[API] Fetch failed for branch ${branchId}, period ${periodId}:`, err);
+    return null;
+  }
+};
+  // ✅ Load data assessment
   useEffect(() => {
     if (!selectedPeriodId || allBranchIds.length === 0) {
       setAssessments([]);
@@ -383,16 +415,25 @@ export default function AssessmentResultPage() {
       setRadarDataByUPPS({});
       setAllBranches([]);
       setFilterIds([]);
+      setLoadError(null);
       return;
     }
 
+    console.log(`[LOAD] Starting load for period ID: ${selectedPeriodId}, branches:`, allBranchIds);
+
     const load = async () => {
+      setLoadError(null);
       const promises = allBranchIds.map((id) => fetchAssessmentData(id, selectedPeriodId));
       const results = (await Promise.all(promises)).filter(Boolean) as Awaited<
         ReturnType<typeof fetchAssessmentData>
       >[];
 
-      if (results.length === 0) return;
+      if (results.length === 0) {
+        const errorMsg = 'Tidak ada data assessment ditemukan untuk periode dan UPPS yang dipilih.';
+        console.warn('[LOAD]', errorMsg);
+        setLoadError(errorMsg);
+        return;
+      }
 
       setAssessments(results.map((r) => r.assessment));
       setReportsByUPPS(
@@ -408,22 +449,31 @@ export default function AssessmentResultPage() {
     load();
   }, [selectedPeriodId, allBranchIds]);
 
+  // ✅ Handle filter apply
   const handleApplyFilter = ({ periode, ids }: FilterPayload) => {
     setFilterPeriode(periode);
     setFilterIds(ids);
     const periodId = getPeriodIdByLabel(periode);
-    if (periodId) setSelectedPeriodId(periodId);
+    if (periodId !== null) {
+      setSelectedPeriodId(periodId);
+    } else {
+      // Jika tidak ditemukan, reset
+      setSelectedPeriodId(null);
+      setLoadError('Periode tidak ditemukan. Silakan pilih periode yang valid.');
+    }
   };
 
   const campusOptions = useMemo(() => {
     if (allBranches.length > 0) {
       return allBranches;
     }
-    return BRANCHES.filter((b) => allBranchIds.includes(b.id)).map((b) => ({
-      id: String(b.id),
-      name: b.name,
-    }));
-  }, [allBranches, allBranchIds]);
+    return (branchData?.data || [])
+      .filter((b) => allBranchIds.includes(b.id))
+      .map((b) => ({
+        id: String(b.id),
+        name: b.name,
+      }));
+  }, [allBranches, allBranchIds, branchData]);
 
   const periodeOptions = useMemo(() => [...new Set(activePeriods)], [activePeriods]);
 
@@ -444,15 +494,10 @@ export default function AssessmentResultPage() {
     return `${count} UPPS${periodePart}`;
   }, [filterIds, filterPeriode, assessments]);
 
-  const captureRadarAsImage = () => {
-    const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null;
-    if (canvas) {
-      const url = canvas.toDataURL('image/png');
-      setRadarImageUrls({ radar: url });
-    }
-  };
-
+  // ✅ Export PDF dengan dynamic import
   const handleDownloadAll = async () => {
+    if (!isClient) return;
+
     const original = document.getElementById('download-content');
     if (!original) {
       console.warn('Elemen #download-content tidak ditemukan');
@@ -463,8 +508,17 @@ export default function AssessmentResultPage() {
     setIsExporting(true);
 
     await new Promise((r) => setTimeout(r, 600));
-    captureRadarAsImage();
+
+    const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null;
+    if (canvas) {
+      const url = canvas.toDataURL('image/png');
+      setRadarImageUrls({ radar: url });
+    }
+
     await new Promise((r) => setTimeout(r, 300));
+
+    const { toPng } = await import('dom-to-image-more');
+    const { jsPDF } = await import('jspdf');
 
     const clone = original.cloneNode(true) as HTMLElement;
     clone.id = 'temp-clone-for-pdf';
@@ -497,7 +551,7 @@ export default function AssessmentResultPage() {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         width: clone.scrollWidth,
-        height: clone.scrollHeight, 
+        height: clone.scrollHeight,
         cacheBust: true,
       });
 
@@ -546,8 +600,8 @@ export default function AssessmentResultPage() {
     setIsClient(true);
   }, []);
 
-  if (!isClient) {
-    return <div className="p-6">Memuat...</div>;
+  if (!isClient || (user && (user.role?.id === 1 || user.role?.id === 4) && loadingBranches)) {
+    return <div className="p-6">Memuat daftar UPPS...</div>;
   }
 
   return (
@@ -586,12 +640,25 @@ export default function AssessmentResultPage() {
                 onReset={() => {
                   setFilterPeriode('');
                   setFilterIds([]);
+                  setSelectedPeriodId(null);
+                  setLoadError(null);
                 }}
               />
             </div>
 
+            {/* ✅ Tampilkan error jika ada */}
+            {loadError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                {loadError}
+              </div>
+            )}
+
             {columns.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">Belum ada UPPS/KC yang dipilih.</p>
+              <div className="text-center py-8">
+                {!loadError && (!filterIds.length || !filterPeriode) && (
+                  <p className="text-sm text-gray-500 italic">Belum ada UPPS/KC yang dipilih.</p>
+                )}
+              </div>
             ) : (
               <>
                 <div className="overflow-x-auto">
@@ -602,7 +669,7 @@ export default function AssessmentResultPage() {
                       isExporting && 'whitespace-nowrap overflow-auto'
                     )}
                   >
-
+                    {/* === TABEL 1: DATA UTAMA === */}
                     <table className="w-full table-auto text-sm border-collapse">
                       <thead>
                         <tr>
@@ -665,7 +732,7 @@ export default function AssessmentResultPage() {
                           <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10">
                             Transformation Maturity Index
                           </th>
-                          <td className="px-4 py-4 border-l-2 border-gray-200" colSpan={columns.length}>
+                          <td className="px-4 py-4 border-l-2 border-gray-100" colSpan={columns.length}>
                             <div className="w-full h-[420px] flex items-center justify-center">
                               {isExporting && radarImageUrls.radar ? (
                                 <img
@@ -688,10 +755,11 @@ export default function AssessmentResultPage() {
                       </tbody>
                     </table>
 
-                    <table className="w-full table-auto text-sm border-collapse">
+                    {/* === TABEL 2: LAPORAN VARIABEL === */}
+                    <table className="w-full table-auto text-sm border-collapse mt-6">
                       <thead>
                         <tr>
-                          <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[280px] sticky left-0 z-10" style={{ width: '280px' }}>
+                          <th className="p-4 font-semibold text-center bg-[#12263A] text-white border-r border-[#12263A] min-w-[80px] sticky left-0 z-10">
                             Report
                           </th>
                           {columns.map((c, i) => {
