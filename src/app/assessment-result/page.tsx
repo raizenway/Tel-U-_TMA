@@ -30,14 +30,7 @@ ChartJS.register(
   Legend
 );
 
-const FIXED_LABELS = [
-  'Budaya Mutu',
-  'Relevansi Pendidikan',
-  'Relevansi Penelitian',
-  'Relevansi Pengabdian Pada Masyarakat',
-  'Akuntabilitas',
-  'Diferensiasi Misi',
-];
+// Hapus FIXED_LABELS — kita gunakan dinamis dari API
 
 const normalizeLabel = (str: string) =>
   str.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -57,8 +50,7 @@ interface Assessment {
 }
 
 interface VariableReport {
-  code: string;
-  name: string;
+  name: string; // ✅ tidak perlu 'code'
   normalized: string;
   point: number;
   maturityLevel: string;
@@ -277,9 +269,9 @@ export default function AssessmentResultPage() {
   const [allBranches, setAllBranches] = useState<Option[]>([]);
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null); // ✅ Tambahkan state error
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [radarLabels] = useState<string[]>(FIXED_LABELS);
+  const [radarLabels, setRadarLabels] = useState<string[]>([]); // ✅ dinamis
 
   const { data: branchData, isLoading: loadingBranches } = useListBranch(0);
   const { data: periodeData } = useListPeriode(0);
@@ -300,7 +292,6 @@ export default function AssessmentResultPage() {
     return [];
   }, [user, branchData]);
 
-  // ✅ Set periode aktif pertama kali
   useEffect(() => {
     if (!periodeData?.data) return;
     const active = periodeData.data
@@ -313,7 +304,6 @@ export default function AssessmentResultPage() {
       const first = periodeData.data.find((p) => `${p.semester} ${p.tahun}` === firstLabel);
       if (first) {
         setSelectedPeriodId(first.id);
-        console.log(`[INIT] Set period ID to ${first.id} for "${firstLabel}"`);
       }
     }
   }, [periodeData]);
@@ -327,129 +317,119 @@ export default function AssessmentResultPage() {
     const tahun = parseInt(tahunStr, 10);
     if (isNaN(tahun)) return null;
     const period = periodeData.data.find((p) => p.semester === semester && p.tahun === tahun);
-    if (period) {
-      console.log(`[PERIOD] Found ID ${period.id} for "${label}"`);
-      return period.id;
-    } else {
-      console.warn(`[PERIOD] Not found for "${label}"`);
+    return period?.id || null;
+  };
+
+  const fetchAssessmentData = async (branchId: number, periodId: number) => {
+    try {
+      const res = await getAssessmentResult(branchId, periodId);
+      const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
+
+      if (!branch || !period) return null;
+
+      const targetYear = period.year;
+
+      // Ambil data langsung dari branch
+      let studentBody = branch.studentBody ?? 0;
+      let jumlahProdi = branch.totalProdi ?? 0;
+      let jumlahProdiUnggul = branch.totalProdiUnggul ?? 0;
+
+      // Jika branchDetails ada, override dengan data tahun spesifik
+      if (Array.isArray(branch.branchDetails)) {
+        const detail = branch.branchDetails.find((d: any) => d?.year === targetYear);
+        if (detail) {
+          studentBody = detail.studentBodyCount ?? studentBody;
+          jumlahProdi = detail.studyProgramCount ?? jumlahProdi;
+          jumlahProdiUnggul = detail.superiorAccreditedStudyProgramCount ?? jumlahProdiUnggul;
+        }
+      }
+
+      const submitPeriode = `${period.semester} ${period.year}`;
+
+      // ✅ Ambil semua variabel dari API
+      const labelsFromAPI = tmiData.map((item: any) => item.name);
+
+      const reports = labelsFromAPI.map((label) => {
+        const match = tmiData.find((item: any) => item.name === label);
+        const ml = match?.maturityLevel || {};
+        return {
+          name: label,
+          normalized: normalizeLabel(label),
+          point: match ? parseFloat((match.value ?? 0).toFixed(2)) : 0,
+          maturityLevel: ml.name || 'Unknown',
+          desc: ml.description || match?.description || 'Tidak ada deskripsi.',
+        };
+      });
+
+      const radarData = reports.map(r => r.point);
+
+      const assessment: Assessment = {
+        id: String(branch.id),
+        name: branch.name,
+        submitPeriode,
+        email: branch.email,
+        studentBody,
+        jumlahProdi,
+        jumlahProdiUnggul,
+        maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
+      };
+
+      return { assessment, reports, radarData, radarLabels: labelsFromAPI };
+    } catch (err) {
+      console.error(`[API] Fetch failed for branch ${branchId}, period ${periodId}:`, err);
       return null;
     }
   };
 
-  const fetchAssessmentData = async (branchId: number, periodId: number) => {
-  try {
-    console.log(`[API] Fetching for branch ${branchId}, period ${periodId}`);
-
-    const res = await getAssessmentResult(branchId, periodId);
-    const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
-
-    // ✅ Hanya return null jika branch atau period tidak ada
-    if (!branch || !period) {
-      console.warn(`[API] Branch or period not found for branch ${branchId}, period ${periodId}`);
-      return null;
-    }
-
-    // ✅ Jika assessment null, tetap lanjut dengan data default
-    const assessmentData = res.data.assessment || {
-      id: null,
-      branchId: branch.id,
-      periodId: period.id,
-      approvalStatus: 'not_submitted',
-    };
-
-    const targetYear = period.year; // 👈 pastikan pakai `year`, bukan `tahun`
-    const branchDetails = Array.isArray(branch.branchDetails) ? branch.branchDetails : [];
-    const detail = branchDetails.find((d: any) => d?.year === targetYear);
-
-    const submitPeriode = `${period.semester} ${period.year}`;
-
-    const dataMap = new Map<string, any>();
-    (tmiData || []).forEach((item: any) => {
-      dataMap.set(normalizeLabel(item.name), {
-        value: parseFloat((item.value ?? 0).toFixed(2)),
-        item,
-      });
-    });
-
-    const radarData = FIXED_LABELS.map(label => {
-      const norm = normalizeLabel(label);
-      return dataMap.has(norm) ? dataMap.get(norm).value : 0;
-    });
-
-    const assessment: Assessment = {
-      id: String(branch.id),
-      name: branch.name,
-      submitPeriode,
-      email: branch.email,
-      studentBody: detail?.studentBodyCount ?? 0,
-      jumlahProdi: detail?.studyProgramCount ?? 0,
-      jumlahProdiUnggul: detail?.superiorAccreditedStudyProgramCount ?? 0,
-      maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
-    };
-
-    const reports = FIXED_LABELS.map(label => {
-      const norm = normalizeLabel(label);
-      const match = dataMap.get(norm)?.item;
-      const ml = match?.maturityLevel || {};
-      return {
-        code: match?.code || label,
-        name: label,
-        normalized: norm,
-        point: match ? parseFloat(match.value.toFixed(2)) : 0,
-        maturityLevel: ml.name || 'Unknown',
-        desc: ml.description || match?.description || 'Tidak ada deskripsi.',
-      };
-    });
-
-    return { assessment, reports, radarData, radarLabels: FIXED_LABELS };
-  } catch (err) {
-    console.error(`[API] Fetch failed for branch ${branchId}, period ${periodId}:`, err);
-    return null;
-  }
-};
-  // ✅ Load data assessment
   useEffect(() => {
     if (!selectedPeriodId || allBranchIds.length === 0) {
       setAssessments([]);
       setReportsByUPPS({});
       setRadarDataByUPPS({});
+      setRadarLabels([]);
       setAllBranches([]);
       setFilterIds([]);
       setLoadError(null);
       return;
     }
 
-    console.log(`[LOAD] Starting load for period ID: ${selectedPeriodId}, branches:`, allBranchIds);
-
     const load = async () => {
       setLoadError(null);
       const promises = allBranchIds.map((id) => fetchAssessmentData(id, selectedPeriodId));
-      const results = (await Promise.all(promises)).filter(Boolean) as Awaited<
-        ReturnType<typeof fetchAssessmentData>
-      >[];
+      const results = await Promise.all(promises);
+      const validResults = results.filter((r) => r !== null) as Awaited<ReturnType<typeof fetchAssessmentData>>[];
 
-      if (results.length === 0) {
-        const errorMsg = 'Tidak ada data assessment ditemukan untuk periode dan UPPS yang dipilih.';
-        console.warn('[LOAD]', errorMsg);
-        setLoadError(errorMsg);
+      if (validResults.length === 0) {
+        setLoadError('Tidak ada data assessment ditemukan untuk periode dan UPPS yang dipilih.');
         return;
       }
 
-      setAssessments(results.map((r) => r.assessment));
+      // Ambil label dari UPPS pertama → untuk konsistensi tampilan
+      const labels = validResults[0].radarLabels;
+      setRadarLabels(labels);
+
+      setAssessments(validResults.map((r) => r.assessment));
       setReportsByUPPS(
-        results.reduce((acc, r) => ({ ...acc, [r.assessment.id]: r.reports }), {})
+        validResults.reduce((acc, r) => ({ ...acc, [r.assessment.id]: r.reports }), {})
       );
       setRadarDataByUPPS(
-        results.reduce((acc, r) => ({ ...acc, [r.assessment.id]: r.radarData }), {})
+        validResults.reduce((acc, r) => {
+          const id = r.assessment.id;
+          // Pastikan urutan data sesuai radarLabels
+          const data = labels.map(label => {
+            const report = r.reports.find((rep: VariableReport) => rep.name === label);
+            return report ? report.point : 0;
+          });
+          return { ...acc, [id]: data };
+        }, {})
       );
-      setAllBranches(results.map((r) => ({ id: r.assessment.id, name: r.assessment.name })));
-      setFilterIds(results.map((r) => r.assessment.id));
+      setAllBranches(validResults.map((r) => ({ id: r.assessment.id, name: r.assessment.name })));
+      setFilterIds(validResults.map((r) => r.assessment.id));
     };
 
     load();
   }, [selectedPeriodId, allBranchIds]);
 
-  // ✅ Handle filter apply
   const handleApplyFilter = ({ periode, ids }: FilterPayload) => {
     setFilterPeriode(periode);
     setFilterIds(ids);
@@ -457,7 +437,6 @@ export default function AssessmentResultPage() {
     if (periodId !== null) {
       setSelectedPeriodId(periodId);
     } else {
-      // Jika tidak ditemukan, reset
       setSelectedPeriodId(null);
       setLoadError('Periode tidak ditemukan. Silakan pilih periode yang valid.');
     }
@@ -494,7 +473,6 @@ export default function AssessmentResultPage() {
     return `${count} UPPS${periodePart}`;
   }, [filterIds, filterPeriode, assessments]);
 
-  // ✅ Export PDF dengan dynamic import
   const handleDownloadAll = async () => {
     if (!isClient) return;
 
@@ -646,7 +624,6 @@ export default function AssessmentResultPage() {
               />
             </div>
 
-            {/* ✅ Tampilkan error jika ada */}
             {loadError && (
               <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                 {loadError}
@@ -811,7 +788,7 @@ export default function AssessmentResultPage() {
                             {columns.map((c, i) => {
                               const pal = getPalette(i);
                               const report = (reportsByUPPS[c.id] || []).find(
-                                (r) => r.normalized === normalizeLabel(label)
+                                (r) => r.name === label // ✅ pakai name langsung
                               );
                               return (
                                 <React.Fragment key={`${c.id}-${label}`}>
