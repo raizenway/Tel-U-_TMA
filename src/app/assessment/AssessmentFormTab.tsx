@@ -711,7 +711,7 @@ Berhasil: ${successCount}/${totalCount}`);
                 />
               </div>
             )}
-            {!viewOnly && isLast && (
+            {false && !viewOnly && isLast && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                 <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center space-y-2">
                   <p className="text-sm text-gray-600">Download template jawaban</p>
