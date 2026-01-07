@@ -36,14 +36,14 @@ export default function WelcomePage() {
           {["welcome", "dashboard", "user-manual"].includes(tab) && (
             <div className="flex gap-6">
               {[
-                { name: "Welcome", path: "welcome" },
-                { name: "Dashboard", path: "dashboard" },
-                { name: "User Manual", path: "user-manual" },
-              ].map(({ name, path }) => (
+                { name: "Welcome", path: "welcome", isExternal: false },
+                { name: "Dashboard", path: "dashboard", isExternal: false },
+                { name: "User Manual", path: "https://transformasi.telkomuniversity.ac.id/user-manual-tma/", isExternal: true },
+              ].map(({ name, path, isExternal }) => (
                 <Button
                   key={name}
                   variant="ghost"
-                  onClick={() => router.push(`/${path}`)}
+                  onClick={() => (isExternal ? window.open(path, "_blank") : router.push(`/${path}`))}
                   className={clsx(
                     "pb-3 font-semibold rounded-none",
                     tab === path
