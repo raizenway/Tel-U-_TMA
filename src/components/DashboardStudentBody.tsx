@@ -69,13 +69,11 @@ export default function DashboardStudentBody() {
   const { saveToApi: saveStudentBody } = useStudentBodyData();
   const apiDataRef = useRef<DashboardApiResponse | null>(null);
 
-  // Warna dinamis (opsional, bisa diganti dengan skema warna responsif)
   const generateColor = (index: number) => {
     const colors = ['#FF6384', '#36A2EB', '#4BC0C0', '#FF9F40', '#9966FF', '#FFCD56', '#8E5EA2', '#329965'];
     return colors[index % colors.length];
   };
 
-  // --- FETCH DATA ---
   const fetchData = async () => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -86,7 +84,6 @@ export default function DashboardStudentBody() {
       const apiData = result.data as DashboardApiResponse;
       apiDataRef.current = apiData;
 
-      // Filter cabang berdasarkan peran
       let branches = apiData.branches;
       if (userRoleId !== 1 && userBranchId) {
         branches = apiData.branches.filter((b) => b.id === userBranchId);
@@ -95,7 +92,6 @@ export default function DashboardStudentBody() {
       const years = new Set<string>();
       const campuses = new Set<string>();
 
-      // Kumpulkan tahun dan kampus
       for (const branch of branches) {
         campuses.add(branch.name);
         const cleaned = cleanYearlyData(branch.yearlyStudentBody);
@@ -110,7 +106,6 @@ export default function DashboardStudentBody() {
       setYearList(sortedYears);
       setCampusList(sortedCampuses);
 
-      // Format data: [ { year: "2023", "Tel-U Bandung": 1200, ... }, ... ]
       const formatted = sortedYears.map((yearStr) => {
         const yearNum = Number(yearStr);
         const row: Record<string, string | number> = { year: yearStr };
@@ -133,7 +128,6 @@ export default function DashboardStudentBody() {
     fetchData();
   }, []);
 
-  // --- Siapkan data untuk chart ---
   const chartData = campusList
     .filter(campus => filteredCampus === 'all' || campus === filteredCampus)
     .map(campus => {
@@ -148,12 +142,14 @@ export default function DashboardStudentBody() {
 
   const visibleYears = filteredYear === 'all' ? yearList : [filteredYear];
 
+  // Hitung lebar minimum chart berdasarkan jumlah kampus
+  const minWidth = Math.max(600, chartData.length * 80); // minimal 600px, ~80px per kampus
+
   return (
     <div className="bg-white rounded-xl shadow p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
         <h3 className="text-base font-bold text-gray-700">📊 Student Body</h3>
         <div className="flex flex-wrap gap-3 items-center">
-          {/* Filter Kampus */}
           <select
             value={filteredCampus}
             onChange={(e) => setFilteredCampus(e.target.value)}
@@ -167,7 +163,6 @@ export default function DashboardStudentBody() {
             ))}
           </select>
 
-          {/* Filter Tahun */}
           <select
             value={filteredYear}
             onChange={(e) => setFilteredYear(e.target.value)}
@@ -181,30 +176,34 @@ export default function DashboardStudentBody() {
             ))}
           </select>
 
-          {/* Tombol Unduh */}
           <button className="text-gray-500 hover:text-gray-700" title="Unduh Data">
             <Download size={18} />
           </button>
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData} key={`${filteredCampus}-${filteredYear}`}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="kampus" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          {visibleYears.map((year, idx) => (
-            <Bar
-              key={year}
-              dataKey={year}
-              fill={generateColor(idx)}
-              radius={[6, 6, 0, 0]}
-            />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+      {/* Wrapper dengan scroll horizontal */}
+      <div className="overflow-x-auto pb-2">
+        <div style={{ minWidth: `${minWidth}px` }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData} key={`${filteredCampus}-${filteredYear}`}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="kampus" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {visibleYears.map((year, idx) => (
+                <Bar
+                  key={year}
+                  dataKey={year}
+                  fill={generateColor(idx)}
+                  radius={[6, 6, 0, 0]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }

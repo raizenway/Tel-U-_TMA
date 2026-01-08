@@ -11,6 +11,7 @@ import SearchTable from '@/components/SearchTable';
 import { useSort } from "@/hooks/useSort";
 import { useListBranch } from "@/hooks/useBranch";
 import { Branch, BranchDetail } from '@/interfaces/branch.interface';
+import { Info } from 'lucide-react';
 
 export default function KampusCabangPage() {
   const router = useRouter();
@@ -18,6 +19,20 @@ export default function KampusCabangPage() {
   const [refreshFlag, setRefreshFlag] = useState(0);
   const { data, isLoading, error } = useListBranch(refreshFlag);
   const branches = data?.data || [];
+
+  // Ambil roleId dari localStorage
+  const [roleId, setRoleId] = useState<number | null>(null);
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const parsed = JSON.parse(user);
+        setRoleId(Number(parsed.roleId));
+      } catch (e) {
+        console.error("Gagal parse user:", e);
+      }
+    }
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,7 +47,7 @@ export default function KampusCabangPage() {
   const [modalData, setModalData] = useState<BranchDetail[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // ✅ State untuk modal tambah
+  // State untuk modal tambah
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -40,7 +55,7 @@ export default function KampusCabangPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
-  // ✅ State untuk modal edit
+  // State untuk modal edit
   const [showEditModal, setShowEditModal] = useState(false);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
   const [editName, setEditName] = useState('');
@@ -49,12 +64,93 @@ export default function KampusCabangPage() {
   const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  // State untuk toggle status
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [targetBranchId, setTargetBranchId] = useState<number | null>(null);
+  const [targetStatus, setTargetStatus] = useState<'active' | 'inactive' | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   const ASSET_URL = process.env.NEXT_PUBLIC_ASSET_URL?.replace(/\/$/, '') || '';
 
+  // Toggle status
+  const toggleStatus = (branchId: number, currentStatus: 'active' | 'inactive') => {
+    if (roleId !== 1) return; // Hanya Super User
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    setTargetBranchId(branchId);
+    setTargetStatus(newStatus);
+    setShowStatusModal(true);
+  };
+
+  // ✅ SESUAIKAN DENGAN BACKEND YANG SUDAH ADA
+  const confirmToggleStatus = async () => {
+    if (targetBranchId === null || targetStatus === null) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!baseUrl) throw new Error('API URL tidak tersedia.');
+
+      // ✅ Gunakan endpoint yang sudah ada di backend
+      const endpoint = targetStatus === 'active'
+        ? `/branch/activate/${targetBranchId}`
+        : `/branch/deactivate/${targetBranchId}`;
+
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method: 'PUT', // bukan PATCH
+        headers: { 'Content-Type': 'application/json' },
+        // Tidak perlu body, karena backend sudah tahu status-nya
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Gagal: ${text}`);
+      }
+
+      setSuccessMessage(`Kampus berhasil ${targetStatus === 'active' ? 'diaktifkan' : 'dinonaktifkan'}!`);
+      setShowSuccess(true);
+      setRefreshFlag(f => f + 1);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Gagal mengubah status.');
+      setShowError(true);
+      setTimeout(() => setShowError(false), 4000);
+    } finally {
+      setShowStatusModal(false);
+      setTargetBranchId(null);
+      setTargetStatus(null);
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Kolom tabel
   const columns = [
     { header: 'No', key: 'id', width: '60px', sortable: true },
     { header: 'Nama UPPS/KC', key: 'name', width: '250px', sortable: true },
     { header: 'Email', key: 'email', width: '300px', sortable: true },
+   {
+  header: 'Status',
+  key: 'status',
+  width: '120px',
+  sortable: true,
+  renderCell: (item: Branch) => (
+    <div className="flex items-center gap-1">
+      {item.status === 'active' ? (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414l3.293 3.293a1 1 0 011.414 0l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          <span className="text-green-700 text-sm font-medium">Active</span>
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+          <span className="text-red-700 text-sm font-medium">Inactive</span>
+        </>
+      )}
+    </div>
+  ),
+},
     {
       header: 'Logo',
       key: 'logoFile',
@@ -82,34 +178,62 @@ export default function KampusCabangPage() {
         );
       },
     },
-    {
-      header: 'Aksi',
-      key: 'actions',
-      width: '80px',
-      sortable: false,
-      className: 'sticky right-0  z-10',
-      renderCell: (item: Branch) => (
-        <button
-          onClick={() => handleEditClick(item)}
-          className="text-gray-600 hover:text-blue-600"
-          title="Edit"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-          </svg>
-        </button>
-      ),
-    },
+   ...(roleId === 1 ? [{
+  header: 'Aksi',
+  key: 'actions',
+  width: '180px', // perbesar sedikit untuk 2 tombol
+  sortable: false,
+  renderCell: (item: Branch) => (
+    <div className="flex gap-2 sticky right-0 z-10 bg-white pl-2">
+      {/* ✅ TOMBOL EDIT */}
+      <button
+        onClick={() => handleEditClick(item)}
+        className="text-gray-600 hover:text-blue-600"
+        title="Edit"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+        </svg>
+      </button>
+
+      {/* ✅ TOMBOL ACTIVATE/DEACTIVATE */}
+      <button
+        onClick={() => toggleStatus(item.id, item.status)}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
+          item.status === 'active'
+            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+            : 'bg-green-100 text-green-700 hover:bg-green-200'
+        }`}
+        title={item.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}
+      >
+        {item.status === 'active' ? (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            <span>Deactivate</span>
+          </>
+        ) : (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414l3.293 3.293a1 1 0 011.414 0l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <span>Activate</span>
+          </>
+        )}
+      </button>
+    </div>
+  ),
+}] : []),
     {
       header: 'Detail',
       key: 'detail',
       width: '100px',
       sortable: false,
-      className: 'sticky right-0 bg-gray-100 z-10',
       renderCell: (item: Branch) => (
         <button
           onClick={() => handleDetailClick(item)}
-          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+          className="text-blue-600 hover:text-blue-800 font-medium text-sm sticky right-0 z-10"
         >
           Detail
         </button>
@@ -124,7 +248,8 @@ export default function KampusCabangPage() {
       const idMatch = b.id.toString().includes(term);
       const nameMatch = b.name.toLowerCase().includes(term);
       const emailMatch = b.email.toLowerCase().includes(term);
-      return idMatch || nameMatch || emailMatch;
+      const statusMatch = b.status.toLowerCase().includes(term);
+      return idMatch || nameMatch || emailMatch || statusMatch;
     });
   }, [branches, searchTerm]);
 
@@ -135,6 +260,8 @@ export default function KampusCabangPage() {
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentBranches = sortedData.slice(indexOfFirst, indexOfLast);
+
+  // --- FUNGSI HANDLE LAINNYA (TIDAK BERUBAH) ---
 
   const handleDetailClick = (branch: Branch) => {
     setSelectedBranch(branch);
@@ -183,8 +310,13 @@ export default function KampusCabangPage() {
   };
 
   const handleInputChange = (idOrYear: number, field: keyof BranchDetail, value: string) => {
-    const newValue = value.replace(/[^0-9]/g, '');
-    const numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
+    const newValue = value.replace(/[^0-9.]/g, '');
+    let numValue: number;
+    if (field === 'accreditationGrowth') {
+      numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
+    } else {
+      numValue = newValue === '' ? 0 : parseInt(newValue) || 0;
+    }
     setModalData(prev =>
       prev.map(item =>
         (item.id !== undefined && item.id === idOrYear) ||
@@ -227,7 +359,6 @@ export default function KampusCabangPage() {
     }
   };
 
-  // ✅ Handle logo tambah
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setLogoFile(file);
@@ -240,7 +371,6 @@ export default function KampusCabangPage() {
     }
   };
 
-  // ✅ Handle logo edit
   const handleEditLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setEditLogoFile(file);
@@ -254,24 +384,20 @@ export default function KampusCabangPage() {
   };
 
   const handleEditClick = (branch: Branch) => {
-  setEditBranch(branch);
-  setEditName(branch.name);
-  setEditEmail(branch.email);
-  setEditLogoFile(null); // Reset file baru (karena user belum pilih file baru)
-  
-  // ✅ Tampilkan preview logo lama jika ada
-  if (branch.logoFile?.path) {
-    const cleanPath = branch.logoFile.path.replace(/^\/+/, "");
-    const logoUrl = `${ASSET_URL}/${cleanPath}`;
-    setEditLogoPreview(logoUrl);
-  } else {
-    setEditLogoPreview(null);
-  }
+    setEditBranch(branch);
+    setEditName(branch.name);
+    setEditEmail(branch.email);
+    setEditLogoFile(null);
+    if (branch.logoFile?.path) {
+      const cleanPath = branch.logoFile.path.replace(/^\/+/, "");
+      const logoUrl = `${ASSET_URL}/${cleanPath}`;
+      setEditLogoPreview(logoUrl);
+    } else {
+      setEditLogoPreview(null);
+    }
+    setShowEditModal(true);
+  };
 
-  setShowEditModal(true);
-};
-
-  // ✅ Submit edit
   const handleEditSubmit = async () => {
     if (!editBranch) return;
 
@@ -312,7 +438,6 @@ export default function KampusCabangPage() {
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
-      console.log(formData)
 
       const response = await fetch(`${baseUrl}/branch/${editBranch.id}`, {
         method: 'POST',
@@ -338,7 +463,6 @@ export default function KampusCabangPage() {
     }
   };
 
-  // ✅ Submit tambah
   const handleAddSubmit = async () => {
     const name = newName.trim();
     const email = newEmail.trim();
@@ -419,6 +543,7 @@ export default function KampusCabangPage() {
         No: branch.id,
         'Nama UPPS/KC': branch.name,
         Email: branch.email,
+        Status: branch.status === 'active' ? 'Aktif' : 'Tidak Aktif',
         Tahun: firstDetail.year,
         'Jumlah Prodi': firstDetail.studyProgramCount,
         'Jumlah Prodi Terakreditasi Unggul': firstDetail.superiorAccreditedStudyProgramCount,
@@ -426,7 +551,7 @@ export default function KampusCabangPage() {
       for (let i = 1; i < branch.branchDetails.length; i++) {
         const detail = branch.branchDetails[i];
         rows.push({
-          No: "", 'Nama UPPS/KC': "", Email: "",
+          No: "", 'Nama UPPS/KC': "", Email: "", Status: "",
           Tahun: detail.year,
           'Jumlah Prodi': detail.studyProgramCount,
           'Jumlah Prodi Terakreditasi Unggul': detail.superiorAccreditedStudyProgramCount,
@@ -437,12 +562,13 @@ export default function KampusCabangPage() {
         No: branch.id,
         'Nama UPPS/KC': branch.name,
         Email: branch.email,
+        Status: branch.status === 'active' ? 'Aktif' : 'Tidak Aktif',
         Tahun: "Tidak ada data",
         'Jumlah Prodi': "",
         'Jumlah Prodi Terakreditasi Unggul': "",
       });
     }
-    rows.push({ No: "", 'Nama UPPS/KC': "", Email: "", Tahun: "", 'Jumlah Prodi': "", 'Jumlah Prodi Terakreditasi Unggul': "" });
+    rows.push({ No: "", 'Nama UPPS/KC': "", Email: "", Status: "", Tahun: "", 'Jumlah Prodi': "", 'Jumlah Prodi Terakreditasi Unggul': "" });
     return rows;
   });
 
@@ -490,6 +616,39 @@ export default function KampusCabangPage() {
             message={errorMessage}
             onClose={() => setShowError(false)}
           />
+        )}
+
+        {/* Modal Konfirmasi Status */}
+        {showStatusModal && (
+          <ModalConfirm
+            isOpen={showStatusModal}
+            onCancel={() => {
+              setShowStatusModal(false);
+              setTargetBranchId(null);
+              setTargetStatus(null);
+            }}
+            onConfirm={confirmToggleStatus}
+            header={targetStatus === 'active' ? 'Aktifkan Kembali Data' : 'Non Aktifkan Data'}
+            title={
+              targetStatus === 'active'
+                ? 'Apakah kamu yakin akan mengaktifkan kembali data ini?'
+                : 'Apakah kamu yakin akan menonaktifkan data ini?'
+            }
+            confirmLabel={isUpdatingStatus ? 'Memproses...' : 'Ya, lakukan'}
+            cancelLabel="Batal"
+          >
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md text-sm flex items-start gap-3 mt-2">
+              <Info size={20} className="mt-0.5 text-blue-500" />
+              <div>
+                <div className="font-semibold">Informasi</div>
+                <div className="text-sm">
+                  {targetStatus === 'active'
+                    ? 'Kamu bisa menampilkan kembali data yang sudah disembunyikan.'
+                    : 'Kamu bisa mengembalikan kembali data yang sudah dihilangkan.'}
+                </div>
+              </div>
+            </div>
+          </ModalConfirm>
         )}
 
         <div className="bg-white rounded-lg overflow-x-auto w-full p-10 mt-4">
@@ -634,7 +793,7 @@ export default function KampusCabangPage() {
                           variant="danger"
                           size="sm"
                           onClick={() => handleRemoveYear(row.year)}
-                          >
+                        >
                           Hapus
                         </Button>
                       </td>
@@ -646,7 +805,7 @@ export default function KampusCabangPage() {
           </div>
         </ModalConfirm>
 
-        {/* ✅ Modal Tambah Kampus */}
+        {/* Modal Tambah Kampus */}
         <ModalConfirm
           isOpen={showAddModal}
           onCancel={() => {
@@ -726,7 +885,7 @@ export default function KampusCabangPage() {
           </div>
         </ModalConfirm>
 
-        {/* ✅ Modal Edit Kampus */}
+        {/* Modal Edit Kampus */}
         <ModalConfirm
           isOpen={showEditModal}
           onCancel={() => {

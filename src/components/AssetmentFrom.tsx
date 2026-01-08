@@ -80,7 +80,7 @@ export default function AssessmentSelector({
                 iconPosition="right"
                 onClick={() => onSelectCampus(branch.id, branch.name)}
               >
-                Pilih
+                Pilih 
               </Button>
             </div>
           ))}

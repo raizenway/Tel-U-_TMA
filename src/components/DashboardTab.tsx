@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   RadarChart,
   Radar,
@@ -23,8 +23,11 @@ import { Building2, ClipboardList, ClipboardCheck, BookOpenCheckIcon } from 'luc
 import { useRouter } from 'next/navigation';
 import DashboardStudentBody from './DashboardStudentBody';
 import DashboardAccreditationGrowth from './DashboardAccreditationGrowth';
+import { getAssessmentResult } from '@/lib/api-assessment-result';
+import { useListPeriode } from '@/hooks/usePeriode';
+import { useListBranch } from '@/hooks/useBranch';
 
-// --- Tipe Data (SESUAI API) ---
+// --- Tipe Data ---
 interface YearlyData { year: number; total: number; }
 interface Branch {
   id: number;
@@ -37,13 +40,16 @@ interface TransformationMaturityItem { name: string; value: number; }
 interface GrowthDataPoint { periodName: string; score: number; }
 interface VariableGrowth {
   variable: { id: number; name: string };
-   data:GrowthDataPoint[]; // ✅ 'data' untuk GrowthDataPoint
+  data: GrowthDataPoint[];
 }
 interface BranchGrowth {
   branch: { id: number; name: string };
-  growth: VariableGrowth[]; // ✅ 'growth' untuk array VariableGrowth
+  growth: VariableGrowth[];
 }
-interface TmiEntry { branch: { id: number; name: string }; tmi: TransformationMaturityItem[]; }
+interface TmiEntry {
+  branch: { id: number; name: string };
+  tmi: TransformationMaturityItem[];
+}
 interface DashboardApiResponse {
   totalBranches: number;
   totalVariable: number;
@@ -78,6 +84,14 @@ const getPeriodColor = (period: string, allPeriods: string[]): string => {
   return colors[idx >= 0 ? idx % colors.length : 0];
 };
 
+const generateColor = (index: number) => {
+  const colors = [
+    '#FF6384', '#36A2EB', '#4BC0C0', '#FF9F40', '#9966FF',
+    '#FFCD56', '#8E5EA2', '#329965', '#C9CBCF', '#F66B6B',
+  ];
+  return colors[index % colors.length];
+};
+
 interface CustomRadarTooltipProps {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
@@ -86,15 +100,31 @@ interface CustomRadarTooltipProps {
 
 const CustomRadarTooltip = ({ active, payload, label }: CustomRadarTooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
+
   return (
-    <div className="bg-white p-3 border rounded shadow-md text-sm">
+    <div 
+      className="bg-white p-3 border rounded shadow-md text-sm"
+      style={{
+        maxHeight: '300px',
+        overflowY: 'auto',
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#cbd5e1 #f8fafc',
+        pointerEvents: 'auto', 
+        userSelect: 'text',    
+      }}
+    >
       <p className="font-semibold text-gray-700">{label}</p>
       <ul className="mt-1 space-y-1">
-        {payload.map((entry, index) => (
-          <li key={index} style={{ color: entry.color }}>
-            <span className="font-medium">{entry.name}</span>: {Number(entry.value).toFixed(2)}
-          </li>
-        ))}
+        {payload.map((entry, index) => {
+          const parts = entry.name.split(' - ');
+          const campus = parts[0];
+          const period = parts.slice(1).join(' - ');
+          return (
+            <li key={index} style={{ color: entry.color }}>
+              <span className="font-medium">{campus}</span> ({period}): {Number(entry.value).toFixed(2)}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -105,19 +135,10 @@ interface TmiRadarRow {
   [key: string]: number | string;
 }
 
-const CAMPUS_LIST = [
-  "Tel-U Jakarta",
-  "Tel-U Surabaya",
-  "Tel-U Purwokerto",
-  "Tel-U Bandung",
-] as const;
-
-const branchIdToName: Record<number, string> = {
-  1: "Tel-U Bandung",
-  2: "Tel-U Jakarta",
-  3: "Tel-U Surabaya",
-  4: "Tel-U Purwokerto",
-};
+const periodColors = [
+  '#FF6384', '#36A2EB', '#4BC0C0', '#FF9F40', '#9966FF',
+  '#FFCD56', '#8E5EA2', '#329965', '#C9CBCF', '#F66B6B',
+];
 
 export default function DashboardTab() {
   const currentUser = getCurrentUser();
@@ -138,6 +159,10 @@ export default function DashboardTab() {
   });
 
   const [tmiRadarData, setTmiRadarData] = useState<TmiRadarRow[]>([]);
+  const [tmiCampusList, setTmiCampusList] = useState<string[]>([]);
+  const [tmiRadarConfig, setTmiRadarConfig] = useState<{ name: string; color: string }[]>([]);
+
+  const [selectedPriodeId, setSelectedPriodeId] = useState<string>('');
   const [apiVariables, setApiVariables] = useState<string[]>([]);
   const [variableGrowthData, setVariableGrowthData] = useState<
     { branch: string; variable: string; period: string; score: number }[]
@@ -147,98 +172,224 @@ export default function DashboardTab() {
   const [selectedCampus, setSelectedCampus] = useState<string>('');
   const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   const [showVariableDropdown, setShowVariableDropdown] = useState(false);
-  
+
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
-  
-  const apiDataRef = useRef<DashboardApiResponse | null>(null);
+
+  // Ganti useRef dengan state untuk data API agar reaktif
+  const [dashboardApiResponse, setDashboardApiResponse] = useState<DashboardApiResponse | null>(null);
+
+  const { data: periodeData } = useListPeriode(0);
+  const { data: branchData } = useListBranch(0);
+
+  const [selectedTmiCampus, setSelectedTmiCampus] = useState<string>('');
+  const [activePeriods, setActivePeriods] = useState<{ id: string; label: string; tahun: number }[]>([]);
+
+  // Efek untuk menyiapkan periode aktif
+  useEffect(() => {
+    if (periodeData?.data) {
+      const active = periodeData.data
+        .filter(p => p.status === 'active')
+        .map(p => ({
+          id: String(p.id),
+          label: `${p.semester} ${p.tahun}`,
+          tahun: p.tahun,
+        }));
+      setActivePeriods(active);
+
+      const years = Array.from(new Set(active.map(p => String(p.tahun)))).sort((a, b) => parseInt(b) - parseInt(a));
+      setAvailableYears(years);
+    }
+  }, [periodeData]);
+
+  // ✅ SATU-SATUNYA useEffect yang memanggil fetchData
+  useEffect(() => {
+    const isReady = periodeData?.data && branchData?.data && activePeriods.length > 0;
+    if (isReady) {
+      fetchData();
+    }
+  }, [selectedPriodeId, selectedTmiCampus, periodeData, branchData, activePeriods.length]);
 
   const fetchData = async () => {
+    if (!branchData?.data || !activePeriods.length) return;
+
     setLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL;
       if (!baseUrl) throw new Error('NEXT_PUBLIC_API_URL is not defined');
-      const response = await fetch(`${baseUrl}/assessment/dashboard`);
-      if (!response.ok) throw new Error('Failed to fetch dashboard data');
-      const result = await response.json();
-      const apiData = result.data as DashboardApiResponse;
-      apiDataRef.current = apiData;
 
-      let filteredBranches = apiData.branches;
-      if (userRoleId !== 1 && userBranchId) {
-        filteredBranches = apiData.branches.filter(b => b.id === userBranchId);
+      let filteredTmi: { branch: { id: number; name: string }; tmi: TransformationMaturityItem[]; periodId: string }[] = [];
+
+      if (userRoleId === 1 || userRoleId === 4) {
+        const branchPromises = branchData.data.map(async (branch) => {
+          try {
+            if (selectedPriodeId) {
+              const res = await getAssessmentResult(branch.id, Number(selectedPriodeId));
+              return {
+                branch: { id: branch.id, name: branch.name },
+                tmi: res.data.transformationMaturityIndex.map((item: any) => ({
+                  name: item.name,
+                  value: item.value
+                })),
+                periodId: selectedPriodeId
+              };
+            } else {
+              const periodPromises = activePeriods.map(async (period) => {
+                try {
+                  const res = await getAssessmentResult(branch.id, Number(period.id));
+                  return {
+                    branch: { id: branch.id, name: branch.name },
+                    tmi: res.data.transformationMaturityIndex.map((item: any) => ({
+                      name: item.name,
+                      value: item.value
+                    })),
+                    periodId: period.id
+                  };
+                } catch {
+                  return null;
+                }
+              });
+
+              const results = await Promise.all(periodPromises);
+              return results.filter(Boolean);
+            }
+          } catch (err) {
+            console.warn(`Gagal ambil data untuk branch ${branch.name}`, err);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(branchPromises);
+        filteredTmi = results.flat().filter(Boolean) as any;
+      } else if (userRoleId === 2 && userBranchId) {
+        try {
+          if (selectedPriodeId) {
+            const res = await getAssessmentResult(Number(userBranchId), Number(selectedPriodeId));
+            filteredTmi = [{
+              branch: { id: res.data.branch.id, name: res.data.branch.name },
+              tmi: res.data.transformationMaturityIndex.map((item: any) => ({
+                name: item.name,
+                value: item.value
+              })),
+              periodId: selectedPriodeId
+            }];
+          } else {
+            const periodPromises = activePeriods.map(async (period) => {
+              try {
+                const res = await getAssessmentResult(Number(userBranchId), Number(period.id));
+                return {
+                  branch: { id: res.data.branch.id, name: res.data.branch.name },
+                  tmi: res.data.transformationMaturityIndex.map((item: any) => ({
+                    name: item.name,
+                    value: item.value
+                  })),
+                  periodId: period.id
+                };
+              } catch {
+                return null;
+              }
+            });
+
+            const results = await Promise.all(periodPromises);
+            filteredTmi = results.filter(Boolean) as any;
+          }
+        } catch (err) {
+          console.warn('Gagal ambil data TMI untuk user KC', err);
+          filteredTmi = [];
+        }
       }
 
-      setDashboardData({
-        totalBranches: filteredBranches.length,
-        totalVariable: apiData.totalVariable || 0,
-        submittedAssessments: apiData.submittedAssessments || 0,
-        approvedAssessments: apiData.approvedAssessments || 0,
-        assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
+      const allCampuses = [...new Set(filteredTmi.map(t => t.branch.name))];
+      setTmiCampusList(allCampuses);
+
+      let finalTmi = filteredTmi;
+      if (userRoleId === 1 && selectedTmiCampus) {
+        finalTmi = filteredTmi.filter(t => t.branch.name === selectedTmiCampus);
+      }
+
+      const periodColorMap = new Map<string, string>();
+      activePeriods.forEach((p, idx) => {
+        periodColorMap.set(p.id, periodColors[idx % periodColors.length]);
       });
 
-      let filteredTmi = apiData.transformationMaturityIndex;
-      if (userRoleId !== 1 && userBranchId) {
-        filteredTmi = apiData.transformationMaturityIndex.filter(t => t.branch.id === userBranchId);
-      }
-
-      const firstTmi = filteredTmi[0]?.tmi || [];
-      const rawNames = firstTmi.map(i => i.name.trim());
-      const uniqueNames = Array.from(new Set(rawNames)).filter(name => name !== '');
-      const radarRows = uniqueNames.map(subject => {
+      const uniqueSubjects = Array.from(new Set(finalTmi.flatMap(t => t.tmi.map(i => i.name.trim())).filter(name => name !== '')));
+      const radarRows = uniqueSubjects.map(subject => {
         const row: TmiRadarRow = { subject };
-        filteredTmi.forEach(entry => {
+        finalTmi.forEach(entry => {
           const campus = entry.branch.name;
           const found = entry.tmi.find(item => item.name.trim() === subject);
           if (found) {
-            row[campus] = Number(found.value.toFixed(2));
-          }
-        });
-        CAMPUS_LIST.forEach(campus => {
-          if (!(campus in row)) {
-            row[campus] = 0;
+            const periodLabel = activePeriods.find(p => p.id === entry.periodId)?.label || entry.periodId;
+            const key = `${campus} - ${periodLabel}`;
+            row[key] = Number(found.value.toFixed(2));
           }
         });
         return row;
       });
-      setTmiRadarData(radarRows);
 
-      const allVariablesSet = new Set<string>();
-      const growthData: { branch: string; variable: string; period: string; score: number }[] = [];
-      for (const branch of filteredBranches) {
-        const branchName = branch.name;
-        // ✅ Akses dengan .growth (sesuai API)
-        const growth = apiData.transformationVariableBranchGrowth.find(b => b.branch.name === branchName)?.growth || [];
-        for (const variableEntry of growth) {
-          const varName = variableEntry.variable.name.trim();
-          if (varName === '') continue;
-          allVariablesSet.add(varName);
-          // ✅ Akses data point dengan .data
-          for (const dataPoint of variableEntry.data) {
-            if (typeof dataPoint.score === 'number') {
-              growthData.push({
-                branch: branchName,
-                variable: varName,
-                period: dataPoint.periodName,
-                score: dataPoint.score,
-              });
+      setTmiRadarData(radarRows);
+      const radarConfig = finalTmi.map(entry => {
+        const periodLabel = activePeriods.find(p => p.id === entry.periodId)?.label || entry.periodId;
+        return {
+          name: `${entry.branch.name} - ${periodLabel}`,
+          color: periodColorMap.get(entry.periodId) || generateColor(0),
+        };
+      });
+      setTmiRadarConfig(radarConfig);
+
+      // --- Fetch data dashboard ---
+      const periodeForStats = selectedPriodeId || activePeriods[0]?.id;
+      if (periodeForStats) {
+        const statsUrl = `${baseUrl}/assessment/dashboard?priodeId=${periodeForStats}`;
+        const statsResponse = await fetch(statsUrl);
+        if (statsResponse.ok) {
+          const statsResult = await statsResponse.json();
+          const apiData = statsResult.data as DashboardApiResponse;
+          setDashboardApiResponse(apiData); // Simpan ke state
+
+          let filteredBranches = apiData.branches;
+          if (userRoleId !== 1 && userBranchId) {
+            filteredBranches = apiData.branches.filter(b => b.id === userBranchId);
+          }
+
+          setDashboardData({
+            totalBranches: filteredBranches.length,
+            totalVariable: apiData.totalVariable || 0,
+            submittedAssessments: apiData.submittedAssessments || 0,
+            approvedAssessments: apiData.approvedAssessments || 0,
+            assessmentProgress: apiData.assessmentProgress || { onprogress: 0, submitted: 0, approved: 0, rejected: 0 },
+          });
+
+          // --- Proses Growth Data ---
+          const allVariablesSet = new Set<string>();
+          const growthData: { branch: string; variable: string; period: string; score: number }[] = [];
+          for (const branch of filteredBranches) {
+            const branchName = branch.name;
+            const growth = apiData.transformationVariableBranchGrowth.find(b => b.branch.name === branchName)?.growth || [];
+            for (const variableEntry of growth) {
+              const varName = variableEntry.variable.name.trim();
+              if (varName === '') continue;
+              allVariablesSet.add(varName);
+              for (const dataPoint of variableEntry.data) {
+                if (typeof dataPoint.score === 'number') {
+                  growthData.push({
+                    branch: branchName,
+                    variable: varName,
+                    period: dataPoint.periodName,
+                    score: dataPoint.score,
+                  });
+                }
+              }
             }
           }
+          setApiVariables(Array.from(allVariablesSet));
+          setVariableGrowthData(growthData);
+
+          const defaultCampus = filteredBranches.length > 0 ? filteredBranches[0].name : '';
+          setSelectedCampus(defaultCampus);
         }
       }
-      setApiVariables(Array.from(allVariablesSet));
-      setVariableGrowthData(growthData);
-
-      const yearsSet = new Set<string>();
-      growthData.forEach(item => {
-        const match = item.period.match(/(\d{4})/);
-        if (match) yearsSet.add(match[1]);
-      });
-      setAvailableYears(Array.from(yearsSet).sort((a, b) => parseInt(b) - parseInt(a)));
-
-      const defaultCampus = filteredBranches.length > 0 ? filteredBranches[0].name : '';
-      setSelectedCampus(defaultCampus);
 
       setLoading(false);
     } catch (error) {
@@ -264,11 +415,59 @@ export default function DashboardTab() {
     }
   }, [apiVariables, selectedVariables]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const periodeOptions = useMemo(() => {
+    return [
+      { id: '', label: 'Semua Periode' },
+      ...activePeriods
+    ];
+  }, [activePeriods]);
 
   const router = useRouter();
+
+  // ✅ Memo untuk data chart
+  const chartData = useMemo(() => {
+    if (!selectedCampus || selectedVariables.length === 0 || !dashboardApiResponse) return [];
+
+    const allPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)))
+      .map(p => formatPeriodName(p))
+      .sort();
+
+    const filteredPeriods = allPeriods.filter(period => {
+      const isSemMatch = selectedSemester === 'all' ||
+        (selectedSemester === 'Ganjil' && period.startsWith('Ganjil')) ||
+        (selectedSemester === 'Genap' && period.startsWith('Genap'));
+      const isYearMatch = selectedYear === 'all' || period.includes(selectedYear);
+      return isSemMatch && isYearMatch;
+    });
+
+    return selectedVariables.map(variable => {
+      const row: Record<string, any> = { variabel: variable };
+      filteredPeriods.forEach(period => {
+        const match = variableGrowthData.find(d =>
+          d.branch === selectedCampus &&
+          d.variable === variable &&
+          formatPeriodName(d.period) === period
+        );
+        row[period] = match ? match.score : 0;
+      });
+      return row;
+    });
+  }, [selectedCampus, selectedVariables, selectedSemester, selectedYear, variableGrowthData, dashboardApiResponse]);
+
+  const formattedPeriodsForBars = useMemo(() => {
+    if (!dashboardApiResponse) return [];
+    const allPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)))
+      .map(p => formatPeriodName(p))
+      .sort();
+
+    return allPeriods.filter(period => {
+      const isSemMatch = selectedSemester === 'all' ||
+        (selectedSemester === 'Ganjil' && period.startsWith('Ganjil')) ||
+        (selectedSemester === 'Genap' && period.startsWith('Genap'));
+      const isYearMatch = selectedYear === 'all' || period.includes(selectedYear);
+      return isSemMatch && isYearMatch;
+    });
+  }, [selectedSemester, selectedYear, variableGrowthData, dashboardApiResponse]);
 
   return (
     <div className="space-y-8 px-4 py-6">
@@ -327,36 +526,82 @@ export default function DashboardTab() {
           />
         </div>
         <div className="bg-white rounded-xl shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">Transformation Maturity Index</h3>
-            <div className="flex space-x-3">
+          <div className="flex items-center justify-between mb-2 gap-6">
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-semibold text-gray-700">Transformation Maturity Index</h3>
+              <div className="flex items-left gap-1">
+                <select
+                  value={selectedPriodeId}
+                  onChange={(e) => setSelectedPriodeId(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs min-w-[150px]"
+                >
+                  {periodeOptions.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+
+                </select>
+              </div>
+              {userRoleId === 1 && tmiCampusList.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedTmiCampus}
+                    onChange={(e) => setSelectedTmiCampus(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-xs min-w-[150px]"
+                  >
+                    <option value="">Semua Kampus</option>
+                    {tmiCampusList.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div>
               <Button
                 variant="primary"
                 onClick={() => router.push('/assessment-result')}
                 className="h-8 px-4 py-1 text-sm font-semibold rounded flex items-center gap-2"
               >
-                Lihat Detail
+                Detail
               </Button>
             </div>
           </div>
+
           <div className="flex flex-col items-center">
-            <div className="flex flex-wrap justify-center gap-6 mb-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-4 bg-[#FF6384] rounded-sm"></span>
-                <span>Tel-U Bandung</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-4 bg-[#36A2EB] rounded-sm"></span>
-                <span>Tel-U Jakarta</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-4 bg-[#4BC0C0] rounded-sm"></span>
-                <span>Tel-U Surabaya</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-4 bg-[#FF9F40] rounded-sm"></span>
-                <span>Tel-U Purwokerto</span>
-              </div>
+            <div className="flex flex-wrap justify-center gap-4 mb-4 text-sm">
+              {(() => {
+                if (userRoleId === 1 && selectedTmiCampus) {
+                  const firstEntry = tmiRadarConfig.find(entry => entry.name.startsWith(selectedTmiCampus));
+                  if (!firstEntry) return null;
+                  const [campus] = firstEntry.name.split(' - ', 1);
+                  return (
+                    <div key={campus} className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-sm" style={{ backgroundColor: firstEntry.color }}></span>
+                      <span>{campus}</span>
+                    </div>
+                  );
+                }
+
+                const uniqueCampuses = new Map<string, { name: string; color: string }>();
+                tmiRadarConfig.forEach(entry => {
+                  const [campus] = entry.name.split(' - ', 1);
+                  if (!uniqueCampuses.has(campus)) {
+                    uniqueCampuses.set(campus, entry);
+                  }
+                });
+
+                return Array.from(uniqueCampuses.values()).map(entry => {
+                  const [campus] = entry.name.split(' - ', 1);
+                  return (
+                    <div key={campus} className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-sm" style={{ backgroundColor: entry.color }}></span>
+                      <span>{campus}</span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
             <div style={{ width: '100%', height: '300px', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -373,11 +618,17 @@ export default function DashboardTab() {
                     tick={{ fontSize: 10, fill: '#9ca3af' }}
                     axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                   />
-                  <Radar name="Tel-U Bandung" dataKey="Tel-U Bandung" stroke="#FF6384" fill="#FF6384" fillOpacity={0.4} />
-                  <Radar name="Tel-U Jakarta" dataKey="Tel-U Jakarta" stroke="#36A2EB" fill="#36A2EB" fillOpacity={0.4} />
-                  <Radar name="Tel-U Surabaya" dataKey="Tel-U Surabaya" stroke="#4BC0C0" fill="#4BC0C0" fillOpacity={0.4} />
-                  <Radar name="Tel-U Purwokerto" dataKey="Tel-U Purwokerto" stroke="#FF9F40" fill="#FF9F40" fillOpacity={0.4} />
-                  <Tooltip content={<CustomRadarTooltip />} />
+                  {tmiRadarConfig.map(({ name, color }) => (
+                    <Radar
+                      key={name}
+                      name={name}
+                      dataKey={name}
+                      stroke={color}
+                      fill={color}
+                      fillOpacity={0.4}
+                    />
+                  ))}
+                  <Tooltip content={<CustomRadarTooltip />} wrapperStyle={{ pointerEvents: 'none' }} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -385,13 +636,13 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ✅ CHARTS DI BAWAH DALAM SATU KOLOM (VERTIKAL) */}
+      <div className="space-y-6">
         <DashboardStudentBody />
         <DashboardAccreditationGrowth />
       </div>
 
-      {/* ✅ Perkembangan Variabel per Kampus — Final */}
+      {/* Perkembangan Variabel per Kampus */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -401,7 +652,7 @@ export default function DashboardTab() {
             </p>
           </div>
           <div className="flex flex-wrap gap-4 ml-auto">
-            {userRoleId === 1 && (
+            {userRoleId === 1 && dashboardApiResponse && (
               <div className="min-w-[180px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kampus</label>
                 <select
@@ -409,7 +660,7 @@ export default function DashboardTab() {
                   onChange={(e) => setSelectedCampus(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
-                  {apiDataRef.current?.branches.map((branch) => (
+                  {dashboardApiResponse.branches.map((branch) => (
                     <option key={branch.name} value={branch.name}>
                       {branch.name}
                     </option>
@@ -492,31 +743,7 @@ export default function DashboardTab() {
 
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
-            data={(() => {
-              if (selectedVariables.length === 0 || !selectedCampus) return [];
-              const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
-              const filteredPeriods = rawPeriods.filter(period => {
-                const clean = formatPeriodName(period);
-                const isSemMatch = selectedSemester === 'all' || 
-                  (selectedSemester === 'Ganjil' && clean.startsWith('Ganjil')) ||
-                  (selectedSemester === 'Genap' && clean.startsWith('Genap'));
-                const isYearMatch = selectedYear === 'all' || (clean.match(/(\d{4})/)?.[1] === selectedYear);
-                return isSemMatch && isYearMatch;
-              });
-              const formattedPeriods = filteredPeriods.map(p => formatPeriodName(p)).sort();
-              return selectedVariables.map(variable => {
-                const row: { [key: string]: any } = { variabel: variable };
-                formattedPeriods.forEach(periodLabel => {
-                  const matching = variableGrowthData.find(d =>
-                    d.branch === selectedCampus &&
-                    d.variable === variable &&
-                    formatPeriodName(d.period) === periodLabel
-                  );
-                  row[periodLabel] = matching ? matching.score : 0;
-                });
-                return row;
-              });
-            })()}
+            data={chartData}
             margin={{ top: 20, right: 30, left: 10, bottom: 60 }}
           >
             <CartesianGrid stroke="#f0f0f0" strokeDasharray="4 4" />
@@ -555,34 +782,11 @@ export default function DashboardTab() {
                 );
               }}
             />
-            {(() => {
-              const rawPeriods = Array.from(new Set(variableGrowthData.map(d => d.period)));
-              const filteredPeriods = rawPeriods.filter(period => {
-                const clean = formatPeriodName(period);
-                const isSemMatch = selectedSemester === 'all' || 
-                  (selectedSemester === 'Ganjil' && clean.startsWith('Ganjil')) ||
-                  (selectedSemester === 'Genap' && clean.startsWith('Genap'));
-                const isYearMatch = selectedYear === 'all' || (clean.match(/(\d{4})/)?.[1] === selectedYear);
-                return isSemMatch && isYearMatch;
-              });
-              const formattedPeriods = filteredPeriods.map(p => formatPeriodName(p)).sort();
-              return formattedPeriods;
-            })().map(periodLabel => (
+            {formattedPeriodsForBars.map(periodLabel => (
               <Bar
                 key={periodLabel}
                 dataKey={periodLabel}
-                fill={getPeriodColor(periodLabel, (() => {
-                  const raw = Array.from(new Set(variableGrowthData.map(d => d.period)));
-                  const filtered = raw.filter(p => {
-                    const clean = formatPeriodName(p);
-                    const sm = selectedSemester === 'all' || 
-                      (selectedSemester === 'Ganjil' && clean.startsWith('Ganjil')) ||
-                      (selectedSemester === 'Genap' && clean.startsWith('Genap'));
-                    const ym = selectedYear === 'all' || (clean.match(/(\d{4})/)?.[1] === selectedYear);
-                    return sm && ym;
-                  });
-                  return filtered.map(p => formatPeriodName(p)).sort();
-                })())}
+                fill={getPeriodColor(periodLabel, formattedPeriodsForBars)}
                 name={periodLabel}
                 radius={[6, 6, 0, 0]}
                 animationDuration={600}

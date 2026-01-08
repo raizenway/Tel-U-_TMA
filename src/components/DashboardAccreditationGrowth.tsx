@@ -214,7 +214,7 @@ export default function DashboardAccreditationGrowth() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="tahun" />
           <YAxis domain={[0, 100]} tickCount={6} />
-          <Tooltip formatter={(value) => `${Number(value).toFixed(2)}%`} />
+          <Tooltip formatter={(value) => `${Number(value).toFixed(2)}`} />
                     <Legend />
           {visibleCampuses.map((campus, idx) => (
             <Line
