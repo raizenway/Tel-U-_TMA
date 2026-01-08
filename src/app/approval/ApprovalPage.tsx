@@ -28,9 +28,6 @@ const getCurrentUser = () => {
   return null;
 };
 
-// ❌ HAPUS HARD-CODED BRANCHES
-// const BRANCHES = [ ... ];
-
 const TablePage = () => {
   const [selectedCampusId, setSelectedCampusId] = useState<number | null>(null);
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<number | null>(null);
@@ -118,7 +115,6 @@ const TablePage = () => {
         const res = await axios.get(`${API_BASE}/branch`);
         const branchList = res.data.data || [];
 
-        // Pastikan struktur sesuai: id dan name
         const formatted = branchList.map((b: any) => ({
           id: b.id,
           name: b.name,
@@ -127,22 +123,19 @@ const TablePage = () => {
         setBranches(formatted);
         setLoadingBranches(false);
 
-        // Set default ke kampus pertama jika belum ada yang dipilih
         if (formatted.length > 0 && selectedCampusId === null) {
           setSelectedCampusId(formatted[0].id);
         }
       } catch (err) {
         console.error("Gagal memuat daftar kampus cabang:", err);
         setLoadingBranches(false);
-        // Opsional: fallback jika API gagal
-        // setBranches([{ id: 1, name: "Tel-U Bandung" }]);
-        // if (selectedCampusId === null) setSelectedCampusId(1);
       }
     };
 
     fetchBranches();
   }, []);
 
+  // ✅ Fetch hanya periode AKTIF, dengan fallback ke terbaru jika tidak ada
   useEffect(() => {
     const fetchPeriodeOptions = async () => {
       try {
@@ -152,12 +145,24 @@ const TablePage = () => {
         const res = await axios.get(`${API_BASE}/assessment-period`);
         const periods = res.data.data || [];
 
-        const options = periods.map((p: any) => ({
+        // ✅ Filter hanya periode dengan status "active"
+        const activePeriods = periods.filter((p: any) => p.status === "active");
+
+        let finalPeriods = activePeriods;
+
+        // 🔄 Jika tidak ada periode aktif, gunakan periode terbaru (ID terbesar)
+        if (finalPeriods.length === 0 && periods.length > 0) {
+          console.warn("Tidak ada periode aktif. Menggunakan periode terbaru sebagai fallback.");
+          finalPeriods = [periods.reduce((max: any, p: any) => (p.id > max.id ? p : max))];
+        }
+
+        const options = finalPeriods.map((p: any) => ({
           id: p.id,
           label: `${p.year} ${p.semester}`,
         }));
 
         setPeriodeOptions(options);
+
         if (options.length > 0 && selectedPeriodeId === null) {
           setSelectedPeriodeId(options[0].id);
         }
@@ -175,6 +180,7 @@ const TablePage = () => {
     fetchPeriodeOptions();
   }, []);
 
+  // ✅ Fetch data assessment berdasarkan kampus & periode
   const fetchData = async () => {
     if (selectedPeriodeId === null || selectedCampusId === null) {
       setLoading(false);
@@ -385,6 +391,10 @@ const TablePage = () => {
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
+  // Cari nama kampus aktif
+  const selectedCampusName = branches.find(b => b.id === selectedCampusId)?.name || "Kampus tidak ditemukan";
+  const selectedPeriodeLabel = periodeOptions.find(p => p.id === selectedPeriodeId)?.label || "Periode tidak ditemukan";
+
   return (
     <div className="flex">
       {tab === "approval-assessment" && (
@@ -464,13 +474,23 @@ const TablePage = () => {
             </div>
           </div>
 
-          {/* Tabel */}
+          {/* Tabel atau pesan */}
           {loading ? (
             <div className="p-6 text-center">Memuat data approval...</div>
           ) : error ? (
             <div className="p-6 text-center text-red-500">❌ {error}</div>
           ) : tableData.length === 0 ? (
-            <div className="p-6 text-center">Tidak ada data untuk kampus dan periode ini.</div>
+            <div className="p-6 text-center text-gray-500">
+              {selectedPeriodeId && selectedCampusId ? (
+                <>
+                  ❌ Tidak ada data assessment untuk <strong>{selectedCampusName}</strong> pada periode <strong>{selectedPeriodeLabel}</strong>.
+                  <br />
+                  Silakan periksa apakah data sudah dimasukkan oleh tim pengisi.
+                </>
+              ) : (
+                "Silakan pilih kampus dan periode terlebih dahulu."
+              )}
+            </div>
           ) : (
             <TableUpdate
               columns={columns}

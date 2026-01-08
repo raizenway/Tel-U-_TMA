@@ -210,50 +210,58 @@ export default function AssessmentPage() {
           </div>
         )}
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-5">
-          {branchesToShow.map((branch) => {
-            const cleanPath = branch.logoFile?.path?.replace(/^\/+/, "");
-            const logoUrl = cleanPath ? `${ASSET_URL}/${cleanPath}` : null;
+       <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+  {branchesToShow.map((branch) => {
+    const cleanPath = branch.logoFile?.path?.replace(/^\/+/, "");
+    const logoUrl = cleanPath ? `${ASSET_URL}/${cleanPath}` : null;
 
-            return (
-              <div
-                key={branch.id}
-                className="w-[300px] sm:w-[380px] md:w-[420px] lg:w-[450px] h-[320px] bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center space-y-4"
-              >
-                <div className="w-full h-auto flex justify-center">
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt={branch.name}
-                      width={243}
-                      height={107}
-                      className="object-contain"
-                    />
-                  ) : (
-                    <p className="text-gray-500 text-sm">Logo tidak tersedia</p>
-                  )}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">{branch.name}</h3>
-                <Button
-                  variant="primary"
-                  icon={ArrowRight}
-                  iconPosition="right"
-                  onClick={() => handleSelectCampus(branch.id)}
-                  disabled={
-                    isCreating ||
-                    submittingBranchId === branch.id ||
-                    loadingPeriodsFromHook
-                  }
-                  className="rounded-[12px] px-6 py-2 text-sm font-semibold"
-                >
-                  {loadingPeriodsFromHook || submittingBranchId === branch.id
-                    ? "Memuat..."
-                    : "Pilih"}
-                </Button>
-              </div>
-            );
-          })}
+    // Fallback jika tidak ada logo
+    const fallbackIcon = (
+      <div className="w-12 h-12 bg-gray-300 rounded-xl flex items-center justify-center text-xs text-gray-600">
+        {branch.name.charAt(0).toUpperCase()}
+      </div>
+    );
+
+    return (
+      <div
+        key={branch.id}
+        onClick={() => !submittingBranchId && handleSelectCampus(branch.id)}
+        className={`group relative cursor-pointer flex flex-col items-center p-3 rounded-xl transition-all duration-150 ${
+          submittingBranchId === branch.id
+            ? "opacity-70 pointer-events-none"
+            : ""
+        }`}
+        style={{
+        }}
+      >
+        {/* Kotak Ikon Merah dengan Sudut Melengkung */}
+        <div className="w-40 h-40 bg-red-600 rounded-2xl flex items-center justify-center mb-2">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={branch.name}
+              className="w-30 h-14 object-contain filter invert brightness-200"
+            />
+          ) : (
+            fallbackIcon
+          )}
         </div>
+
+        {/* Nama Kampus - Center, kecil, truncate */}
+        <span className="text-xs font-medium text-gray-800 text-center leading-tight max-w-[90px] truncate">
+          {branch.name}
+        </span>
+
+        {/* Loading Spinner (opsional, bisa dihilangkan) */}
+        {submittingBranchId === branch.id && (
+          <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center rounded-xl">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-500"></div>
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
       </div>
 
       {showPeriodModal && selectedBranchId !== null && (
