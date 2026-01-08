@@ -249,7 +249,7 @@ export default function AssessmentPage() {
             <img
               src={logoUrl}
               alt={branch.name}
-              className="w-18 object-contain filter"
+              className="w-24 object-contain filter"
             />
           ) : (
             fallbackIcon
