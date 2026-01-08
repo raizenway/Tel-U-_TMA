@@ -63,7 +63,7 @@ export default function AssessmentSelector({
           {branchesToShow.map((branch: any) => (
             <div
               key={branch.id}
-              className="w-[450px] h-[320px] bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center space-y-4"
+              className="w-[450px] h-[320px] bg-white border border-gray-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center space-y-4"
             >
               <div className="w-full h-auto flex justify-center">
                 <Image
