@@ -68,6 +68,15 @@ export default function AssessmentPage() {
   const branches = useMemo(() => {
     const branchDataWrapper = branchHookResult.data;
     if (!branchDataWrapper || !branchDataWrapper.data) return [];
+
+    const activeBranches = []
+    for(const item of branchDataWrapper.data){
+      if(item.status == 'active'){
+        activeBranches.push(item)
+      }
+    }
+
+    branchDataWrapper.data = activeBranches
     return branchDataWrapper.data as Branch[];
   }, [branchHookResult]);
 
@@ -210,7 +219,7 @@ export default function AssessmentPage() {
           </div>
         )}
 
-       <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+       <div className="mt-12 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-10">
   {branchesToShow.map((branch) => {
     const cleanPath = branch.logoFile?.path?.replace(/^\/+/, "");
     const logoUrl = cleanPath ? `${ASSET_URL}/${cleanPath}` : null;
@@ -235,12 +244,12 @@ export default function AssessmentPage() {
         }}
       >
         {/* Kotak Ikon Merah dengan Sudut Melengkung */}
-        <div className="w-40 h-40 bg-red-600 rounded-2xl flex items-center justify-center mb-2">
+        <div className="w-40 h-40 flex items-center justify-center mb-2" style={{backgroundColor: '#E01A3E', borderRadius: '40px'}}>
           {logoUrl ? (
             <img
               src={logoUrl}
               alt={branch.name}
-              className="w-30 h-14 object-contain filter invert brightness-200"
+              className="w-18 object-contain filter"
             />
           ) : (
             fallbackIcon
@@ -248,7 +257,7 @@ export default function AssessmentPage() {
         </div>
 
         {/* Nama Kampus - Center, kecil, truncate */}
-        <span className="text-xs font-medium text-gray-800 text-center leading-tight max-w-[90px] truncate">
+        <span className="text-s font-medium text-gray-800 text-center leading-tight max-w-[90px]">
           {branch.name}
         </span>
 
