@@ -214,6 +214,15 @@ export default function DashboardTab() {
   const fetchData = async () => {
     if (!branchData?.data || !activePeriods.length) return;
 
+    const activeBranches = [];
+    for(const item of branchData.data){
+      if(item.status == 'active'){
+        activeBranches.push(item)
+      }
+    }
+
+    branchData.data = activeBranches
+
     setLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -222,6 +231,7 @@ export default function DashboardTab() {
       let filteredTmi: { branch: { id: number; name: string }; tmi: TransformationMaturityItem[]; periodId: string }[] = [];
 
       if (userRoleId === 1 || userRoleId === 4) {
+        console.log('branchData', branchData)
         const branchPromises = branchData.data.map(async (branch) => {
           try {
             if (selectedPriodeId) {
