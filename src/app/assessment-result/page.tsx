@@ -30,8 +30,6 @@ ChartJS.register(
   Legend
 );
 
-// Hapus FIXED_LABELS — kita gunakan dinamis dari API
-
 const normalizeLabel = (str: string) =>
   str.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -50,7 +48,7 @@ interface Assessment {
 }
 
 interface VariableReport {
-  name: string; // ✅ tidak perlu 'code'
+  name: string;
   normalized: string;
   point: number;
   maturityLevel: string;
@@ -270,8 +268,9 @@ export default function AssessmentResultPage() {
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [pdfExportMode, setPdfExportMode] = useState(false);
 
-  const [radarLabels, setRadarLabels] = useState<string[]>([]); // ✅ dinamis
+  const [radarLabels, setRadarLabels] = useState<string[]>([]);
 
   const { data: branchData, isLoading: loadingBranches } = useListBranch(0);
   const { data: periodeData } = useListPeriode(0);
@@ -329,12 +328,10 @@ export default function AssessmentResultPage() {
 
       const targetYear = period.year;
 
-      // Ambil data langsung dari branch
       let studentBody = branch.studentBody ?? 0;
       let jumlahProdi = branch.totalProdi ?? 0;
       let jumlahProdiUnggul = branch.totalProdiUnggul ?? 0;
 
-      // Jika branchDetails ada, override dengan data tahun spesifik
       if (Array.isArray(branch.branchDetails)) {
         const detail = branch.branchDetails.find((d: any) => d?.year === targetYear);
         if (detail) {
@@ -346,7 +343,6 @@ export default function AssessmentResultPage() {
 
       const submitPeriode = `${period.semester} ${period.year}`;
 
-      // ✅ Ambil semua variabel dari API
       const labelsFromAPI = tmiData.map((item: any) => item.name);
 
       const reports = labelsFromAPI.map((label) => {
@@ -404,7 +400,6 @@ export default function AssessmentResultPage() {
         return;
       }
 
-      // Ambil label dari UPPS pertama → untuk konsistensi tampilan
       const labels = validResults[0].radarLabels;
       setRadarLabels(labels);
 
@@ -415,7 +410,6 @@ export default function AssessmentResultPage() {
       setRadarDataByUPPS(
         validResults.reduce((acc, r) => {
           const id = r.assessment.id;
-          // Pastikan urutan data sesuai radarLabels
           const data = labels.map(label => {
             const report = r.reports.find((rep: VariableReport) => rep.name === label);
             return report ? report.point : 0;
@@ -474,103 +468,52 @@ export default function AssessmentResultPage() {
   }, [filterIds, filterPeriode, assessments]);
 
   const handleDownloadAll = async () => {
-    if (!isClient) return;
+    if (!isClient || columns.length === 0) return;
 
-    const original = document.getElementById('download-content');
-    if (!original) {
-      console.warn('Elemen #download-content tidak ditemukan');
+    setIsDownloading(true);
+    setPdfExportMode(true);
+
+    await new Promise(r => setTimeout(r, 800));
+
+    const exportEl = document.getElementById('hedr-pdf-export');
+    if (!exportEl) {
+      alert('Gagal memuat konten PDF');
+      setPdfExportMode(false);
+      setIsDownloading(false);
       return;
     }
 
-    setIsDownloading(true);
-    setIsExporting(true);
-
-    await new Promise((r) => setTimeout(r, 600));
-
-    const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null;
-    if (canvas) {
-      const url = canvas.toDataURL('image/png');
-      setRadarImageUrls({ radar: url });
-    }
-
-    await new Promise((r) => setTimeout(r, 300));
-
-    const { toPng } = await import('dom-to-image-more');
-    const { jsPDF } = await import('jspdf');
-
-    const clone = original.cloneNode(true) as HTMLElement;
-    clone.id = 'temp-clone-for-pdf';
-
-    Object.assign(clone.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      width: 'fit-content',
-      minWidth: '100%',
-      overflow: 'visible',
-      whiteSpace: 'nowrap',
-      backgroundColor: 'white',
-      padding: '24px',
-      zIndex: '-1000',
-      transform: 'scale(1)',
-      transformOrigin: 'top left',
-      height: 'auto',
-      minHeight: 'auto',
-      paddingBottom: '24px',
-    });
-
-    document.body.appendChild(clone);
-    clone.getBoundingClientRect();
-
     try {
-      await new Promise((r) => setTimeout(r, 500));
+      const { default: html2canvas } = await import('html2canvas');
+      const { jsPDF } = await import('jspdf');
 
-      const dataUrl = await toPng(clone, {
+      exportEl.style.visibility = 'visible';
+      exportEl.style.opacity = '1';
+
+      const canvas = await html2canvas(exportEl, {
+        scale: 2,
         backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        width: clone.scrollWidth,
-        height: clone.scrollHeight,
-        cacheBust: true,
+        useCORS: true,
+        logging: false,
       });
 
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
-      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      const img = new Image();
-      img.src = dataUrl;
-      await img.decode();
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`HEDR_Report_${filterPeriode || 'all'}.pdf`);
 
-      const px2mm = 25.4 / 96;
-      const imgW = img.width * px2mm;
-      const imgH = img.height * px2mm;
-      const pageW = 297;
-      const pageH = 210;
-
-      const scale = Math.min(pageW / imgW, pageH / imgH, 1);
-      const finalW = imgW * scale;
-      const finalH = imgH * scale;
-
-      pdf.addImage(
-        dataUrl,
-        'PNG',
-        (pageW - finalW) / 2,
-        (pageH - finalH) / 2,
-        finalW,
-        finalH
-      );
-
-      pdf.save(`Laporan_Assessment_${filterPeriode || 'semua_periode'}.pdf`);
+      exportEl.style.visibility = 'hidden';
+      exportEl.style.opacity = '0';
     } catch (err) {
-      console.error('Gagal generate PDF:', err);
+      console.error('PDF Export Error:', err);
       alert('Gagal membuat PDF. Coba lagi.');
     } finally {
-      if (clone.parentNode) clone.parentNode.removeChild(clone);
+      setPdfExportMode(false);
       setIsDownloading(false);
-      setIsExporting(false);
-      setRadarImageUrls({});
     }
   };
 
@@ -646,7 +589,6 @@ export default function AssessmentResultPage() {
                       isExporting && 'whitespace-nowrap overflow-auto'
                     )}
                   >
-                    {/* === TABEL 1: DATA UTAMA === */}
                     <table className="w-full table-auto text-sm border-collapse">
                       <thead>
                         <tr>
@@ -732,7 +674,6 @@ export default function AssessmentResultPage() {
                       </tbody>
                     </table>
 
-                    {/* === TABEL 2: LAPORAN VARIABEL === */}
                     <table className="w-full table-auto text-sm border-collapse mt-6">
                       <thead>
                         <tr>
@@ -788,7 +729,7 @@ export default function AssessmentResultPage() {
                             {columns.map((c, i) => {
                               const pal = getPalette(i);
                               const report = (reportsByUPPS[c.id] || []).find(
-                                (r) => r.name === label // ✅ pakai name langsung
+                                (r) => r.name === label
                               );
                               return (
                                 <React.Fragment key={`${c.id}-${label}`}>
@@ -830,6 +771,143 @@ export default function AssessmentResultPage() {
             )}
           </div>
         </div>
+
+       {/* Hidden PDF Export Layout — HARUS DI DALAM <main> */}
+{/* Hidden PDF Export Layout — 100% inline style */}
+{pdfExportMode && (
+  <div
+    id="hedr-pdf-export"
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '210mm',
+      minHeight: '297mm',
+      backgroundColor: '#ffffff',
+      padding: '24px',
+      fontSize: '12px',
+      fontFamily: 'Arial, sans-serif',
+      zIndex: -1000,
+      opacity: 0,
+      pointerEvents: 'none',
+    }}
+  >
+    {columns.map((col) => {
+      // Fungsi bantu level → warna
+      const getLevelColor = (level: string) => {
+        const l = level.toUpperCase();
+        if (l === 'BASIC') return { bg: '#f3f4f6', text: '#1f2937' };
+        if (l === 'ADOPTING') return { bg: '#dbeafe', text: '#1e40af' };
+        if (l === 'IMPROVING') return { bg: '#dcfce7', text: '#166534' };
+        if (l === 'DIFFERENTIATING') return { bg: '#ede9fe', text: '#7e22ce' };
+        if (l === 'TRANSFORMATIONAL') return { bg: '#fef3c7', text: '#b45309' };
+        return { bg: '#f3f4f6', text: '#1f2937' };
+      };
+
+      return (
+        <div key={col.id} style={{ marginBottom: '48px', pageBreakAfter: 'always' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>Higher Education Digital Readiness</h1>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>RESULT</h2>
+            <p style={{ fontSize: '12px', marginTop: '4px', color: '#6b7280' }}>
+              Test taken on: {new Date().toLocaleString('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                weekday: 'short',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })} (Western Indonesia Time)
+            </p>
+          </div>
+
+          {/* Info Kampus */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
+            <tbody>
+              {[
+                ['Nama Kampus', col.name],
+                ['Email Kampus', col.email],
+                ['Student Body', col.studentBody.toString()],
+                ['Jumlah Prodi', col.jumlahProdi.toString()],
+                ['Jumlah Prodi Terakreditasi Unggul', col.jumlahProdiUnggul.toString()],
+              ].map(([label, value], i) => (
+                <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
+                  <td style={{ padding: '6px', fontWeight: 'bold', width: '40%', border: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>{label}</td>
+                  <td style={{ padding: '6px', width: '60%', border: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Overall */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{col.submitPeriode.split(' ')[1] || '2024'}</div>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '16px', color: '#111827' }}>OVERALL DIGITAL READINESS</h3>
+            {(() => {
+              const color = getLevelColor(col.maturityLevel.name);
+              return (
+                <div style={{
+                  display: 'inline-block',
+                  padding: '8px 16px',
+                  borderRadius: '9999px',
+                  fontWeight: 'bold',
+                  marginTop: '8px',
+                  backgroundColor: color.bg,
+                  color: color.text,
+                }}>
+                  {col.maturityLevel.name}
+                </div>
+              );
+            })()}
+            <p style={{ marginTop: '8px', color: '#374151', maxWidth: '600px', margin: '8px auto 0' }}>
+              {col.maturityLevel.description}
+            </p>
+          </div>
+
+          {/* Variabel */}
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: '#111827' }}>
+            Nama Variabel | Poin | Level | Index dan Deskripsi
+          </h3>
+          <div>
+            {(reportsByUPPS[col.id] || []).map((r, idx) => {
+              const color = getLevelColor(r.maturityLevel);
+              return (
+                <div key={idx} style={{ borderLeft: '4px solid #d1d5db', paddingLeft: '12px', marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <strong style={{ color: '#111827' }}>{r.name}</strong>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'bold', color: '#111827' }}>{r.point} POIN</div>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        backgroundColor: color.bg,
+                        color: color.text,
+                      }}>
+                        {r.maturityLevel}
+                      </span>
+                    </div>
+                  </div>
+                  <p style={{ color: '#374151', fontSize: '10px', whiteSpace: 'pre-line', lineHeight: 1.4 }}>{r.desc}</p>
+                  <div style={{ marginTop: '8px', fontSize: '10px', fontWeight: 'bold', color: '#16a34a' }}>DISETUJUI</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: '32px', fontSize: '10px', color: '#6b7280' }}>
+            ID Result: {col.id}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
       </main>
     </div>
   );
