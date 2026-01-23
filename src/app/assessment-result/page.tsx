@@ -9,6 +9,8 @@ import { getAssessmentResult } from '@/lib/api-assessment-result';
 import { useListPeriode } from '@/hooks/usePeriode';
 import { useListBranch } from '@/hooks/useBranch';
 import { useRouter } from 'next/navigation';
+import { pdf } from '@react-pdf/renderer';
+import { AssessmentResultPDFDocument } from '@/components/AssessmentResultPDFDocument';
 
 import {
   Chart as ChartJS,
@@ -19,18 +21,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 import { Radar } from 'react-chartjs-2';
-
-ChartJS.register(
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend
-);
-
-// Hapus FIXED_LABELS — kita gunakan dinamis dari API
 
 const normalizeLabel = (str: string) =>
   str.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -43,6 +35,7 @@ interface Assessment {
   studentBody: number;
   jumlahProdi: number;
   jumlahProdiUnggul: number;
+  status: string;
   maturityLevel: {
     name: string;
     description: string;
@@ -50,7 +43,7 @@ interface Assessment {
 }
 
 interface VariableReport {
-  name: string; // ✅ tidak perlu 'code'
+  name: string;
   normalized: string;
   point: number;
   maturityLevel: string;
@@ -83,6 +76,7 @@ function hexWithAlpha(hex: string, alpha: number) {
   return `${hex}${a}`;
 }
 
+// ✅ Komponen RadarChart yang benar
 function RadarChart({
   selectedIds,
   radarDataByUPPS,
@@ -259,10 +253,7 @@ export default function AssessmentResultPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPeriode, setFilterPeriode] = useState('');
   const [filterIds, setFilterIds] = useState<string[]>([]);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [radarImageUrls, setRadarImageUrls] = useState<Record<string, string>>({});
-
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [reportsByUPPS, setReportsByUPPS] = useState<Record<string, VariableReport[]>>({});
   const [radarDataByUPPS, setRadarDataByUPPS] = useState<Record<string, number[]>>({});
@@ -270,25 +261,20 @@ export default function AssessmentResultPage() {
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [radarLabels, setRadarLabels] = useState<string[]>([]); // ✅ dinamis
+  const [radarLabels, setRadarLabels] = useState<string[]>([]);
 
   const { data: branchData, isLoading: loadingBranches } = useListBranch(0);
   const { data: periodeData } = useListPeriode(0);
 
   const allBranchIds = useMemo(() => {
     if (!user) return [];
-
     const roleId = Number(user.role?.id ?? user.roleId ?? -1);
-
     if (roleId === 1 || roleId === 4) {
       return branchData?.data.map((b) => b.id) || [];
     }
-
     if (roleId === 2 && user.branchId != null) {
       return [Number(user.branchId)];
     }
-
     return [];
   }, [user, branchData]);
 
@@ -328,13 +314,10 @@ export default function AssessmentResultPage() {
       if (!branch || !period) return null;
 
       const targetYear = period.year;
-
-      // Ambil data langsung dari branch
       let studentBody = branch.studentBody ?? 0;
       let jumlahProdi = branch.totalProdi ?? 0;
       let jumlahProdiUnggul = branch.totalProdiUnggul ?? 0;
 
-      // Jika branchDetails ada, override dengan data tahun spesifik
       if (Array.isArray(branch.branchDetails)) {
         const detail = branch.branchDetails.find((d: any) => d?.year === targetYear);
         if (detail) {
@@ -345,8 +328,6 @@ export default function AssessmentResultPage() {
       }
 
       const submitPeriode = `${period.semester} ${period.year}`;
-
-      // ✅ Ambil semua variabel dari API
       const labelsFromAPI = tmiData.map((item: any) => item.name);
 
       const reports = labelsFromAPI.map((label) => {
@@ -371,6 +352,7 @@ export default function AssessmentResultPage() {
         studentBody,
         jumlahProdi,
         jumlahProdiUnggul,
+        status: period.status,
         maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
       };
 
@@ -404,7 +386,6 @@ export default function AssessmentResultPage() {
         return;
       }
 
-      // Ambil label dari UPPS pertama → untuk konsistensi tampilan
       const labels = validResults[0].radarLabels;
       setRadarLabels(labels);
 
@@ -415,7 +396,6 @@ export default function AssessmentResultPage() {
       setRadarDataByUPPS(
         validResults.reduce((acc, r) => {
           const id = r.assessment.id;
-          // Pastikan urutan data sesuai radarLabels
           const data = labels.map(label => {
             const report = r.reports.find((rep: VariableReport) => rep.name === label);
             return report ? report.point : 0;
@@ -473,104 +453,118 @@ export default function AssessmentResultPage() {
     return `${count} UPPS${periodePart}`;
   }, [filterIds, filterPeriode, assessments]);
 
-  const handleDownloadAll = async () => {
-    if (!isClient) return;
+  // ✅ Fungsi download per UPPS — sudah diperbaiki
+  const handleDownloadPDFPerUPPS = async (uppsId: string) => {
+    const assessment = assessments.find(a => a.id === uppsId);
+    if (!assessment || !radarLabels.length) return;
 
-    const original = document.getElementById('download-content');
-    if (!original) {
-      console.warn('Elemen #download-content tidak ditemukan');
-      return;
-    }
-
-    setIsDownloading(true);
-    setIsExporting(true);
-
-    await new Promise((r) => setTimeout(r, 600));
-
-    const canvas = document.querySelector('#download-content canvas') as HTMLCanvasElement | null;
-    if (canvas) {
-      const url = canvas.toDataURL('image/png');
-      setRadarImageUrls({ radar: url });
-    }
-
-    await new Promise((r) => setTimeout(r, 300));
-
-    const { toPng } = await import('dom-to-image-more');
-    const { jsPDF } = await import('jspdf');
-
-    const clone = original.cloneNode(true) as HTMLElement;
-    clone.id = 'temp-clone-for-pdf';
-
-    Object.assign(clone.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      width: 'fit-content',
-      minWidth: '100%',
-      overflow: 'visible',
-      whiteSpace: 'nowrap',
-      backgroundColor: 'white',
-      padding: '24px',
-      zIndex: '-1000',
-      transform: 'scale(1)',
-      transformOrigin: 'top left',
-      height: 'auto',
-      minHeight: 'auto',
-      paddingBottom: '24px',
-    });
-
-    document.body.appendChild(clone);
-    clone.getBoundingClientRect();
+    setIsDownloading(uppsId);
 
     try {
-      await new Promise((r) => setTimeout(r, 500));
+      const reports = reportsByUPPS[uppsId] || [];
+      const radarData = radarDataByUPPS[uppsId] || new Array(radarLabels.length).fill(0);
+      const pal = getPalette(0);
 
-      const dataUrl = await toPng(clone, {
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        width: clone.scrollWidth,
-        height: clone.scrollHeight,
-        cacheBust: true,
-      });
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 450;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
-      });
+      const chartConfig = {
+        type: 'radar' as const,
+        data: {
+          labels: radarLabels,
+          datasets: [{
+            label: 'Transformation Maturity Index',
+            data: radarData,
+            backgroundColor: hexWithAlpha(pal.hex, 0.15),
+            borderColor: pal.hex,
+            borderWidth: 2,
+            pointBackgroundColor: pal.hex,
+            pointBorderColor: '#fff',
+            pointRadius: 4,
+          }],
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top' as const,
+              labels: {
+                font: { size: 12 },
+                usePointStyle: true,
+                padding: 10,
+              },
+            },
+            tooltip: { enabled: false },
+          },
+            scales: {
+              r: {
+                beginAtZero: true,
+                max: 100,
+                ticks: { stepSize: 20 },
+                grid: { circular: false },
+                angleLines: { display: true, color: '#ccc' },
+                pointLabels: { font: { size: 12, weight: 'bold' as const } },
+              },
+              
+          },
+        },
+      };
 
-      const img = new Image();
-      img.src = dataUrl;
-      await img.decode();
+      const chart = new ChartJS(ctx, chartConfig);
 
-      const px2mm = 25.4 / 96;
-      const imgW = img.width * px2mm;
-      const imgH = img.height * px2mm;
-      const pageW = 297;
-      const pageH = 210;
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const image = canvas.toDataURL('image/png', 1.0);
+      chart.destroy();
 
-      const scale = Math.min(pageW / imgW, pageH / imgH, 1);
-      const finalW = imgW * scale;
-      const finalH = imgH * scale;
+      const pdfData = {
+        assessment: {
+          name: assessment.name,
+          email: assessment.email,
+          alamat: "-",
+          studentBody: assessment.studentBody,
+          jumlahProdi: assessment.jumlahProdi,
+          jumlahProdiUnggul: String(assessment.jumlahProdiUnggul),
+          maturityLevelName: assessment.maturityLevel.name,
+          maturityLevelDescription: assessment.maturityLevel.description,
+          periodeAssessment: assessment.submitPeriode,
+        },
+        variables: reports.map(v => ({
+          id: v.name,
+          name: v.name,
+          pointPercent: v.point,
+          maturityLevel: v.maturityLevel,
+          desc: v.desc,
+        })),
+        radarChartImage: image,
+      };
 
-      pdf.addImage(
-        dataUrl,
-        'PNG',
-        (pageW - finalW) / 2,
-        (pageH - finalH) / 2,
-        finalW,
-        finalH
+      const doc = (
+        <AssessmentResultPDFDocument
+          assessments={[pdfData.assessment]}
+          variablesList={[pdfData.variables]}
+          radarChartImages={[pdfData.radarChartImage]}
+        />
       );
 
-      pdf.save(`Laporan_Assessment_${filterPeriode || 'semua_periode'}.pdf`);
-    } catch (err) {
-      console.error('Gagal generate PDF:', err);
-      alert('Gagal membuat PDF. Coba lagi.');
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HEDR_${assessment.name.replace(/[^a-zA-Z0-9\s_-]/g, '_').replace(/\s+/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Error generating PDF for UPPS:", uppsId, error);
+      alert(`Gagal mengekspor PDF untuk ${assessment.name}.`);
     } finally {
-      if (clone.parentNode) clone.parentNode.removeChild(clone);
-      setIsDownloading(false);
-      setIsExporting(false);
-      setRadarImageUrls({});
+      setIsDownloading(null);
     }
   };
 
@@ -639,13 +633,7 @@ export default function AssessmentResultPage() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <div
-                    id="download-content"
-                    className={clsx(
-                      'inline-block min-w-full space-y-6 p-4 bg-white',
-                      isExporting && 'whitespace-nowrap overflow-auto'
-                    )}
-                  >
+                  <div className="inline-block min-w-full space-y-6 p-4 bg-white">
                     {/* === TABEL 1: DATA UTAMA === */}
                     <table className="w-full table-auto text-sm border-collapse">
                       <thead>
@@ -659,12 +647,23 @@ export default function AssessmentResultPage() {
                               <th
                                 key={c.id}
                                 className={clsx(
-                                  'px-4 py-3 text-center font-semibold border-l-2 min-w-[220px]',
+                                  'px-4 py-3 text-center font-semibold border-l-2 min-w-[220px] relative',
                                   pal.header,
                                   pal.border
                                 )}
                               >
-                                {c.name}
+                                <div className="flex flex-col items-center">
+                                  <span>{c.name}</span>
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => handleDownloadPDFPerUPPS(c.id)}
+                                    disabled={isDownloading === c.id}
+                                    className="mt-2 px-3 py-1 text-xs"
+                                  >
+                                    {isDownloading === c.id ? 'Mengunduh...' : 'Download'}
+                                  </Button>
+                                </div>
                               </th>
                             );
                           })}
@@ -711,21 +710,13 @@ export default function AssessmentResultPage() {
                           </th>
                           <td className="px-4 py-4 border-l-2 border-gray-100" colSpan={columns.length}>
                             <div className="w-full h-[420px] flex items-center justify-center">
-                              {isExporting && radarImageUrls.radar ? (
-                                <img
-                                  src={radarImageUrls.radar}
-                                  alt="Radar Chart"
-                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                />
-                              ) : (
-                                <RadarChart
-                                  key={`radar-${isExporting ? 'export' : 'view'}`} 
-                                  selectedIds={columns.map((c) => c.id)}
-                                  radarDataByUPPS={radarDataByUPPS}
-                                  assessments={assessments}
-                                  radarLabels={radarLabels}
-                                />
-                              )}
+                              <RadarChart
+                                key={`radar-${columns.map(c => c.id).join('-')}`} 
+                                selectedIds={columns.map((c) => c.id)}
+                                radarDataByUPPS={radarDataByUPPS}
+                                assessments={assessments}
+                                radarLabels={radarLabels}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -788,7 +779,7 @@ export default function AssessmentResultPage() {
                             {columns.map((c, i) => {
                               const pal = getPalette(i);
                               const report = (reportsByUPPS[c.id] || []).find(
-                                (r) => r.name === label // ✅ pakai name langsung
+                                (r) => r.name === label
                               );
                               return (
                                 <React.Fragment key={`${c.id}-${label}`}>
@@ -811,20 +802,7 @@ export default function AssessmentResultPage() {
                         ))}
                       </tbody>
                     </table>
-
-                    {isExporting && <div className="h-16"></div>}
                   </div>
-                </div>
-
-                <div className="flex justify-center mt-6">
-                  <Button
-                    variant="primary"
-                    onClick={handleDownloadAll}
-                    disabled={isDownloading}
-                    className="px-6 py-2 text-sm"
-                  >
-                    {isDownloading ? 'Mengunduh...' : 'Download'}
-                  </Button>
                 </div>
               </>
             )}
