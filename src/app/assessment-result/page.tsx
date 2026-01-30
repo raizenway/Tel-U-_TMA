@@ -32,11 +32,14 @@ interface Assessment {
   name: string;
   submitPeriode: string;
   email: string;
+  address: string;
   studentBody: number;
   jumlahProdi: number;
   jumlahProdiUnggul: number;
   status: string;
   maturityLevel: {
+    minScore: number;
+    maxScore: number;
     name: string;
     description: string;
   };
@@ -46,6 +49,8 @@ interface VariableReport {
   name: string;
   normalized: string;
   point: number;
+  minScore: number;
+  maxScore: number;
   maturityLevel: string;
   desc: string;
 }
@@ -310,6 +315,7 @@ export default function AssessmentResultPage() {
     try {
       const res = await getAssessmentResult(branchId, periodId);
       const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
+      console.log('overallMaturity', overallMaturity)
 
       if (!branch || !period) return null;
 
@@ -337,6 +343,8 @@ export default function AssessmentResultPage() {
           name: label,
           normalized: normalizeLabel(label),
           point: match ? parseFloat((match.value ?? 0).toFixed(2)) : 0,
+          minScore: ml.minScore || 0,
+          maxScore: ml.maxScore || 0,
           maturityLevel: ml.name || 'Unknown',
           desc: ml.description || match?.description || 'Tidak ada deskripsi.',
         };
@@ -349,6 +357,7 @@ export default function AssessmentResultPage() {
         name: branch.name,
         submitPeriode,
         email: branch.email,
+        address: branch.address,
         studentBody,
         jumlahProdi,
         jumlahProdiUnggul,
@@ -471,6 +480,21 @@ export default function AssessmentResultPage() {
       const ctx = canvas.getContext('2d')!;
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      console.log(radarData)
+
+      const radarDataFormatted = []
+      let maxScore = 0;
+      for(const item of radarData){
+        radarDataFormatted.push(item * 4)
+        if(item > maxScore){
+          maxScore = item
+        }
+      }
+
+      let maxScale = Math.ceil(maxScore / 10) * 10 
+      if(maxScale < 50){
+        maxScale = 50
+      }
 
       const chartConfig = {
         type: 'radar' as const,
@@ -478,7 +502,7 @@ export default function AssessmentResultPage() {
           labels: radarLabels,
           datasets: [{
             label: 'Transformation Maturity Index',
-            data: radarData,
+            data: radarDataFormatted,
             backgroundColor: hexWithAlpha(pal.hex, 0.15),
             borderColor: pal.hex,
             borderWidth: 2,
@@ -505,7 +529,7 @@ export default function AssessmentResultPage() {
             scales: {
               r: {
                 beginAtZero: true,
-                max: 100,
+                max: maxScale,
                 ticks: { stepSize: 20 },
                 grid: { circular: false },
                 angleLines: { display: true, color: '#ccc' },
@@ -526,10 +550,12 @@ export default function AssessmentResultPage() {
         assessment: {
           name: assessment.name,
           email: assessment.email,
-          alamat: "-",
+          address: assessment.address,
           studentBody: assessment.studentBody,
           jumlahProdi: assessment.jumlahProdi,
           jumlahProdiUnggul: String(assessment.jumlahProdiUnggul),
+          maturityLevelMinScore: assessment.maturityLevel.minScore,
+          maturityLevelMaxScore: assessment.maturityLevel.maxScore,
           maturityLevelName: assessment.maturityLevel.name,
           maturityLevelDescription: assessment.maturityLevel.description,
           periodeAssessment: assessment.submitPeriode,
@@ -537,12 +563,15 @@ export default function AssessmentResultPage() {
         variables: reports.map(v => ({
           id: v.name,
           name: v.name,
-          pointPercent: v.point,
+          point: v.point,
+          minScore: v.minScore,
+          maxScore: v.maxScore,
           maturityLevel: v.maturityLevel,
           desc: v.desc,
         })),
         radarChartImage: image,
       };
+      console.log('pdfData', pdfData)
 
       const doc = (
         <AssessmentResultPDFDocument
