@@ -292,9 +292,11 @@ export default function AssessmentPage() {
                 <div className="flex gap-2 flex-wrap bg-white">
                   <TableButton data={currentData} />
                   {/* ✅ Tombol Tambah Assessment: Muncul untuk semua role */}
+                  {roleId === 1 && (
                   <Button variant="primary" onClick={handleTambah}>
                     Tambah Assessment
                   </Button>
+                  )}
                 </div>
               </div>
             </div>

@@ -51,6 +51,7 @@ export default function KampusCabangPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newAddress, setNewAddress] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -60,6 +61,7 @@ export default function KampusCabangPage() {
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editAddress, setEditAddress] = useState('');
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -387,6 +389,7 @@ export default function KampusCabangPage() {
     setEditBranch(branch);
     setEditName(branch.name);
     setEditEmail(branch.email);
+    setEditAddress(branch.address);
     setEditLogoFile(null);
     if (branch.logoFile?.path) {
       const cleanPath = branch.logoFile.path.replace(/^\/+/, "");
@@ -403,6 +406,7 @@ export default function KampusCabangPage() {
 
     const name = editName.trim();
     const email = editEmail.trim();
+    const address = editAddress.trim();
 
     if (!name || !email) {
       setErrorMessage('Nama dan email wajib diisi.');
@@ -435,6 +439,8 @@ export default function KampusCabangPage() {
       const formData = new FormData();
       formData.append('name', name);
       formData.append('email', email);
+      formData.append('address', address);
+      
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
@@ -466,6 +472,7 @@ export default function KampusCabangPage() {
   const handleAddSubmit = async () => {
     const name = newName.trim();
     const email = newEmail.trim();
+    const address = newAddress.trim();
 
     if (!name || !email) {
       setErrorMessage('Nama dan email wajib diisi.');
@@ -496,6 +503,7 @@ export default function KampusCabangPage() {
       const formData = new FormData();
       formData.append('name', name);
       formData.append('email', email);
+      formData.append('address', address);
       if (logoFile) {
         formData.append('logo', logoFile);
       }
@@ -865,6 +873,16 @@ export default function KampusCabangPage() {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+              <input
+                type="text"
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-base"
+                placeholder=""
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opsional)</label>
               <input
                 type="file"
@@ -944,6 +962,16 @@ export default function KampusCabangPage() {
                 onChange={(e) => setEditEmail(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-base"
                 placeholder="Email kampus"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input
+                type="text"
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-base"
+                placeholder=""
               />
             </div>
             <div>
