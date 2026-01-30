@@ -31,6 +31,7 @@ export interface Branch {
   id: number;
   name: string;
   email: string;
+  address: string;
   status: 'active' | 'inactive';
   logoFileId: number;
   logoFile: LogoFile;
