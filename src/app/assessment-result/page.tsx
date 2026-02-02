@@ -493,7 +493,7 @@ export default function AssessmentResultPage() {
 
       const canvas = document.createElement('canvas');
       canvas.width = 600;
-      canvas.height = 600;
+      canvas.height = 450;
       const ctx = canvas.getContext('2d')!;
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
