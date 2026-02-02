@@ -21,7 +21,10 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, ChartDataLabels);
 import { Radar } from 'react-chartjs-2';
 
 const normalizeLabel = (str: string) =>
@@ -37,6 +40,7 @@ interface Assessment {
   jumlahProdi: number;
   jumlahProdiUnggul: number;
   status: string;
+  maturityLevelScore: number;
   maturityLevel: {
     minScore: number;
     maxScore: number;
@@ -115,6 +119,17 @@ function RadarChart({
         plugins: {
           legend: { position: 'top' as const },
           tooltip: { enabled: true },
+          datalabels: {
+            formatter: (value) => value,
+            color: '#555',
+            font: {
+              weight: 'bold',
+              size: 12,
+            },
+            anchor: 'end',
+            align: 'end',
+            offset: 4,
+          },
         },
         scales: {
           r: {
@@ -314,7 +329,7 @@ export default function AssessmentResultPage() {
   const fetchAssessmentData = async (branchId: number, periodId: number) => {
     try {
       const res = await getAssessmentResult(branchId, periodId);
-      const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity } = res.data;
+      const { branch, period, transformationMaturityIndex: tmiData, maturityLevel: overallMaturity, maturityLevelScore } = res.data;
       console.log('overallMaturity', overallMaturity)
 
       if (!branch || !period) return null;
@@ -362,6 +377,7 @@ export default function AssessmentResultPage() {
         jumlahProdi,
         jumlahProdiUnggul,
         status: period.status,
+        maturityLevelScore, 
         maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
       };
 
@@ -466,6 +482,7 @@ export default function AssessmentResultPage() {
   const handleDownloadPDFPerUPPS = async (uppsId: string) => {
     const assessment = assessments.find(a => a.id === uppsId);
     if (!assessment || !radarLabels.length) return;
+    console.log('assessment', assessment)
 
     setIsDownloading(uppsId);
 
@@ -475,25 +492,30 @@ export default function AssessmentResultPage() {
       const pal = getPalette(0);
 
       const canvas = document.createElement('canvas');
-      canvas.width = 600;
-      canvas.height = 450;
+      canvas.width = 700;
+      canvas.height = 700;
       const ctx = canvas.getContext('2d')!;
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       console.log(radarData)
+      console.log(canvas)
 
       const radarDataFormatted = []
+      const radarDataLabels = []
+
       let maxScore = 0;
       for(const item of radarData){
-        radarDataFormatted.push(item * 4)
+        const itemA = item * 5
+        radarDataLabels["v" + itemA] = item;
+        radarDataFormatted.push(itemA)
         if(item > maxScore){
           maxScore = item
         }
       }
 
-      let maxScale = Math.ceil(maxScore / 10) * 10 
-      if(maxScale < 50){
-        maxScale = 50
+      let maxScale = Math.ceil(maxScore / 20) * 20 
+      if(maxScale < 60){
+        maxScale = 60
       }
 
       const chartConfig = {
@@ -525,6 +547,17 @@ export default function AssessmentResultPage() {
               },
             },
             tooltip: { enabled: false },
+            datalabels: {
+              formatter: (value) => radarDataLabels["v" + value],
+              color: '#555',
+              font: {
+                weight: 'bold' as const,
+                size: 12,
+              },
+              anchor: 'end' as const,
+              align: 'end' as const,
+              offset: 4,
+            },
           },
             scales: {
               r: {
@@ -558,6 +591,7 @@ export default function AssessmentResultPage() {
           maturityLevelMaxScore: assessment.maturityLevel.maxScore,
           maturityLevelName: assessment.maturityLevel.name,
           maturityLevelDescription: assessment.maturityLevel.description,
+          maturityLevelScore: assessment.maturityLevelScore,
           periodeAssessment: assessment.submitPeriode,
         },
         variables: reports.map(v => ({
@@ -585,7 +619,7 @@ export default function AssessmentResultPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `HEDR_${assessment.name.replace(/[^a-zA-Z0-9\s_-]/g, '_').replace(/\s+/g, '_')}.pdf`;
+      a.download = `TMA_${assessment.name.replace(/[^a-zA-Z0-9\s_-]/g, '_').replace(/\s+/g, '_')}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -705,7 +739,7 @@ export default function AssessmentResultPage() {
                           { label: 'Student Body', render: (c: Assessment) => c.studentBody },
                           { label: 'Jumlah Prodi', render: (c: Assessment) => c.jumlahProdi },
                           { label: 'Jumlah Prodi Terakreditasi Unggul', render: (c: Assessment) => c.jumlahProdiUnggul },
-                          { label: 'Maturity Level', render: (c: Assessment) => c.maturityLevel.name },
+                          { label: 'Maturity Level', render: (c: Assessment) => (c.maturityLevel.name + ' ('+ c.maturityLevelScore +'%)') },
                           { 
                             label: 'Deskripsi', 
                             render: (c: Assessment) => c.maturityLevel.description || '-' 

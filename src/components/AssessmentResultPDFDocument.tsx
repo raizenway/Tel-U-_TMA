@@ -26,6 +26,8 @@
     ],
   });
 
+  Font.registerHyphenationCallback(word => [word]);
+
   /* ================= TYPES ================= */
   interface Assessment {
     name: string;
@@ -34,6 +36,7 @@
     studentBody: number;
     jumlahProdi: number;
     jumlahProdiUnggul: string;
+    maturityLevelScore: number;
     maturityLevelMinScore: number;
     maturityLevelMaxScore: number;
     maturityLevelName: string;
@@ -260,7 +263,7 @@
                 {assessment.maturityLevelName}
               </Text>
               <Text style={[styles.center, { fontSize: 14, marginBottom: 6, border: '2px solid #fff', borderRadius: '5px' }]}>
-                Skor: {assessment.maturityLevelMinScore} s.d. {assessment.maturityLevelMaxScore}
+                Skor: {assessment.maturityLevelScore} %
               </Text>
               <Text style={styles.redBoxContent}>
                 {assessment.maturityLevelDescription || 'Tidak ada deskripsi.'}
