@@ -59,6 +59,18 @@ const TablePage = () => {
 
   const rowsPerPage = 25;
 
+  const withHttp = (url) => {
+    if (!url) return '';
+  
+    // kalau sudah ada http / https → langsung return
+    if (/^https?:\/\//i.test(url)) {
+      return url;
+    }
+  
+    // default pakai https
+    return `https://${url}`;
+  };
+
   const columns = [
     { header: "Nomor", key: "nomor", width: "100px", sortable: true },
     { header: "Nama Variable", key: "variable", width: "250px", sortable: true },
@@ -86,7 +98,9 @@ const TablePage = () => {
         if (!item || !item.linkEvidence || item.linkEvidence.trim() === "") {
           return <span className="text-gray-400">-</span>;
         }
-        const link = item.linkEvidence.trim();
+        
+        const link = withHttp(item.linkEvidence.trim());
+        
         return (
           <a 
             href={link} 
