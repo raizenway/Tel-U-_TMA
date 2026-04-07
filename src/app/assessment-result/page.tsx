@@ -47,6 +47,7 @@ interface Assessment {
     name: string;
     description: string;
   };
+  logoDocumentUrl?: string | null;
 }
 
 interface VariableReport {
@@ -379,6 +380,9 @@ export default function AssessmentResultPage() {
         status: period.status,
         maturityLevelScore, 
         maturityLevel: overallMaturity || { name: 'Unknown', description: 'Tidak ada deskripsi.' },
+        logoDocumentUrl: branch.logoDocumentPath 
+          ? `${process.env.NEXT_PUBLIC_ASSET_URL?.replace(/\/$/, '') || ''}/${branch.logoDocumentPath.replace(/^\/+/, '')}` 
+          : null,
       };
 
       return { assessment, reports, radarData, radarLabels: labelsFromAPI };
@@ -593,6 +597,7 @@ export default function AssessmentResultPage() {
           maturityLevelDescription: assessment.maturityLevel.description,
           maturityLevelScore: assessment.maturityLevelScore,
           periodeAssessment: assessment.submitPeriode,
+          logoDocumentUrl: assessment.logoDocumentUrl,
         },
         variables: reports.map(v => ({
           id: v.name,

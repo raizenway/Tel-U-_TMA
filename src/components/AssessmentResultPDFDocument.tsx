@@ -42,6 +42,7 @@
     maturityLevelName: string;
     maturityLevelDescription: string;
     periodeAssessment: string;
+    logoDocumentUrl?: string | null;
   }
 
   interface VariableReport {
@@ -206,7 +207,7 @@
 
   {/* Logo Besar di Tengah */}
   <Image
-    src="/Logo_Telkom_University_potrait.png" // Ganti dengan path logo Anda
+    src={assessment.logoDocumentUrl || "/Logo_Telkom_University_potrait.png"}
     style={{
       width: 180,
       height: 'auto',
