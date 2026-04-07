@@ -54,6 +54,8 @@ export default function KampusCabangPage() {
   const [newAddress, setNewAddress] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoDocFile, setLogoDocFile] = useState<File | null>(null);
+  const [logoDocPreview, setLogoDocPreview] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   // State untuk modal edit
@@ -64,6 +66,8 @@ export default function KampusCabangPage() {
   const [editAddress, setEditAddress] = useState('');
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
+  const [editLogoDocFile, setEditLogoDocFile] = useState<File | null>(null);
+  const [editLogoDocPreview, setEditLogoDocPreview] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // State untuk toggle status
@@ -373,6 +377,18 @@ export default function KampusCabangPage() {
     }
   };
 
+  const handleLogoDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setLogoDocFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setLogoDocPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setLogoDocPreview(null);
+    }
+  };
+
   const handleEditLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setEditLogoFile(file);
@@ -385,18 +401,38 @@ export default function KampusCabangPage() {
     }
   };
 
+  const handleEditLogoDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setEditLogoDocFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setEditLogoDocPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setEditLogoDocPreview(null);
+    }
+  };
+
   const handleEditClick = (branch: Branch) => {
     setEditBranch(branch);
     setEditName(branch.name);
     setEditEmail(branch.email);
     setEditAddress(branch.address);
     setEditLogoFile(null);
+    setEditLogoDocFile(null);
     if (branch.logoFile?.path) {
       const cleanPath = branch.logoFile.path.replace(/^\/+/, "");
       const logoUrl = `${ASSET_URL}/${cleanPath}`;
       setEditLogoPreview(logoUrl);
     } else {
       setEditLogoPreview(null);
+    }
+    if (branch.logoDocument?.path) {
+      const cleanPathDoc = branch.logoDocument.path.replace(/^\/+/, "");
+      const logoDocUrl = `${ASSET_URL}/${cleanPathDoc}`;
+      setEditLogoDocPreview(logoDocUrl);
+    } else {
+      setEditLogoDocPreview(null);
     }
     setShowEditModal(true);
   };
@@ -443,6 +479,9 @@ export default function KampusCabangPage() {
       
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
+      }
+      if (editLogoDocFile) {
+        formData.append('logo_document', editLogoDocFile);
       }
 
       const response = await fetch(`${baseUrl}/branch/${editBranch.id}`, {
@@ -507,6 +546,9 @@ export default function KampusCabangPage() {
       if (logoFile) {
         formData.append('logo', logoFile);
       }
+      if (logoDocFile) {
+        formData.append('logo_document', logoDocFile);
+      }
 
       const response = await fetch(`${baseUrl}/branch`, {
         method: 'POST',
@@ -527,6 +569,8 @@ export default function KampusCabangPage() {
       setNewEmail('');
       setLogoFile(null);
       setLogoPreview(null);
+      setLogoDocFile(null);
+      setLogoDocPreview(null);
     } catch (err: any) {
       const msg = err?.message || 'Gagal menambah kampus.';
       setErrorMessage(msg);
@@ -822,6 +866,8 @@ export default function KampusCabangPage() {
             setNewEmail('');
             setLogoFile(null);
             setLogoPreview(null);
+            setLogoDocFile(null);
+            setLogoDocPreview(null);
           }}
           title=""
           header="Tambah Kampus Cabang Baru"
@@ -835,6 +881,8 @@ export default function KampusCabangPage() {
                   setNewEmail('');
                   setLogoFile(null);
                   setLogoPreview(null);
+                  setLogoDocFile(null);
+                  setLogoDocPreview(null);
                 }}
                 className="rounded-[2px] px-8 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
               >
@@ -900,6 +948,24 @@ export default function KampusCabangPage() {
                 </div>
               )}
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo Document (opsional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoDocChange}
+                className="w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {logoDocPreview && (
+                <div className="mt-2 flex justify-center">
+                  <img
+                    src={logoDocPreview}
+                    alt="Preview logo document"
+                    className="w-20 h-20 object-contain border rounded"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </ModalConfirm>
 
@@ -913,6 +979,8 @@ export default function KampusCabangPage() {
             setEditEmail('');
             setEditLogoFile(null);
             setEditLogoPreview(null);
+            setEditLogoDocFile(null);
+            setEditLogoDocPreview(null);
           }}
           title=""
           header="Edit Kampus Cabang"
@@ -927,6 +995,8 @@ export default function KampusCabangPage() {
                   setEditEmail('');
                   setEditLogoFile(null);
                   setEditLogoPreview(null);
+                  setEditLogoDocFile(null);
+                  setEditLogoDocPreview(null);
                 }}
                 className="rounded-[2px] px-8 py-2 text-sm font-semibold text-[#263859] hover:bg-gray-100 border border-[#263859]"
               >
@@ -987,6 +1057,24 @@ export default function KampusCabangPage() {
                   <img
                     src={editLogoPreview}
                     alt="Preview logo"
+                    className="w-20 h-20 object-contain border rounded"
+                  />
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo Document (opsional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleEditLogoDocChange}
+                className="w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {editLogoDocPreview && (
+                <div className="mt-2 flex justify-center">
+                  <img
+                    src={editLogoDocPreview}
+                    alt="Preview logo document"
                     className="w-20 h-20 object-contain border rounded"
                   />
                 </div>

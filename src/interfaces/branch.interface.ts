@@ -35,5 +35,7 @@ export interface Branch {
   status: 'active' | 'inactive';
   logoFileId: number;
   logoFile: LogoFile;
+  logoDocumentId?: number;
+  logoDocument?: LogoFile;
   branchDetails: BranchDetail[];
 }
